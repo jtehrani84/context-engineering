@@ -1,0 +1,1802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>From Memory to Operating System | Context Engineering</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            font-size: 16px;
+            line-height: 1.7;
+            color: #E2E8F0;
+            background: #0F172A;
+            overflow-x: hidden;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #1E293B; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+
+        /* Container */
+        .container {
+            max-width: 820px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Hero */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+            padding: 80px 0;
+        }
+
+        .hero-badge {
+            display: inline-block;
+            width: fit-content;
+            padding: 6px 16px;
+            border-radius: 20px;
+            background: rgba(8, 145, 178, 0.1);
+            border: 1px solid rgba(8, 145, 178, 0.3);
+            color: #22D3EE;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 32px;
+        }
+
+        .hero h1 {
+            font-size: clamp(36px, 6vw, 56px);
+            font-weight: 800;
+            line-height: 1.1;
+            color: #F8FAFC;
+            margin-bottom: 16px;
+        }
+
+        .hero h1 span {
+            background: linear-gradient(135deg, #22D3EE, #818CF8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            font-size: 18px;
+            color: #94A3B8;
+            line-height: 1.6;
+            max-width: 560px;
+            margin-bottom: 48px;
+        }
+
+        .hero-metrics {
+            display: flex;
+            gap: 32px;
+            flex-wrap: wrap;
+        }
+
+        .hero-metric {
+            text-align: center;
+        }
+
+        .hero-metric-value {
+            font-size: 36px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .hero-metric-value.cyan { color: #22D3EE; }
+        .hero-metric-value.indigo { color: #818CF8; }
+        .hero-metric-value.pink { color: #F472B6; }
+        .hero-metric-value.amber { color: #FBBF24; }
+        .hero-metric-value.green { color: #34D399; }
+
+        .hero-metric-label {
+            font-size: 10px;
+            color: #64748B;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 6px;
+        }
+
+        /* Scroll indicator */
+        .scroll-hint {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            color: #475569;
+            font-size: 11px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .scroll-hint::after {
+            content: '';
+            width: 1px;
+            height: 24px;
+            background: linear-gradient(to bottom, #475569, transparent);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        /* Sections */
+        section {
+            padding: 80px 0;
+            border-top: 1px solid #1E293B;
+        }
+
+        h2 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #F8FAFC;
+            margin-bottom: 8px;
+        }
+
+        h2 .section-label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #22D3EE;
+            margin-bottom: 8px;
+        }
+
+        h3 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #F8FAFC;
+            margin-top: 32px;
+            margin-bottom: 12px;
+        }
+
+        h4 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #CBD5E1;
+            margin-top: 20px;
+            margin-bottom: 6px;
+        }
+
+        p {
+            margin-bottom: 16px;
+            color: #94A3B8;
+        }
+
+        strong { color: #F8FAFC; }
+
+        code {
+            background: #1E293B;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #22D3EE;
+        }
+
+        /* THE EMPTY ROOM -- Day 0 Visual */
+        .empty-room {
+            background: #1E293B;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 32px;
+            margin: 32px 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .terminal-bar {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 20px;
+        }
+
+        .terminal-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .terminal-dot.red { background: #EF4444; }
+        .terminal-dot.yellow { background: #F59E0B; }
+        .terminal-dot.green { background: #10B981; }
+
+        .terminal-content {
+            font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+            font-size: 13px;
+            line-height: 1.8;
+            color: #64748B;
+        }
+
+        .terminal-content .prompt {
+            color: #22D3EE;
+        }
+
+        .terminal-content .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 16px;
+            background: #22D3EE;
+            animation: blink 1s step-end infinite;
+            vertical-align: middle;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        .terminal-content .dim { color: #475569; }
+        .terminal-content .comment { color: #475569; font-style: italic; }
+
+        /* Day 60 visual -- layered stack */
+        .stack-visual {
+            margin: 32px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .stack-layer {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            opacity: 0;
+            transform: translateX(-20px);
+            transition: all 0.4s ease;
+        }
+
+        .stack-layer.visible {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .stack-layer-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .stack-layer-content {
+            flex: 1;
+        }
+
+        .stack-layer-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: #F8FAFC;
+        }
+
+        .stack-layer-desc {
+            font-size: 11px;
+            color: #64748B;
+        }
+
+        .stack-layer-stat {
+            font-size: 12px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .layer-identity { background: rgba(8, 145, 178, 0.08); border: 1px solid rgba(8, 145, 178, 0.2); }
+        .layer-identity .stack-layer-icon { background: rgba(8, 145, 178, 0.2); color: #22D3EE; }
+        .layer-identity .stack-layer-stat { color: #22D3EE; }
+
+        .layer-memory { background: rgba(129, 140, 248, 0.08); border: 1px solid rgba(129, 140, 248, 0.2); }
+        .layer-memory .stack-layer-icon { background: rgba(129, 140, 248, 0.2); color: #818CF8; }
+        .layer-memory .stack-layer-stat { color: #818CF8; }
+
+        .layer-knowledge { background: rgba(167, 139, 250, 0.08); border: 1px solid rgba(167, 139, 250, 0.2); }
+        .layer-knowledge .stack-layer-icon { background: rgba(167, 139, 250, 0.2); color: #A78BFA; }
+        .layer-knowledge .stack-layer-stat { color: #A78BFA; }
+
+        .layer-standards { background: rgba(251, 191, 36, 0.08); border: 1px solid rgba(251, 191, 36, 0.2); }
+        .layer-standards .stack-layer-icon { background: rgba(251, 191, 36, 0.2); color: #FBBF24; }
+        .layer-standards .stack-layer-stat { color: #FBBF24; }
+
+        .layer-enforcement { background: rgba(244, 114, 182, 0.08); border: 1px solid rgba(244, 114, 182, 0.2); }
+        .layer-enforcement .stack-layer-icon { background: rgba(244, 114, 182, 0.2); color: #F472B6; }
+        .layer-enforcement .stack-layer-stat { color: #F472B6; }
+
+        .layer-expertise { background: rgba(52, 211, 153, 0.08); border: 1px solid rgba(52, 211, 153, 0.2); }
+        .layer-expertise .stack-layer-icon { background: rgba(52, 211, 153, 0.2); color: #34D399; }
+        .layer-expertise .stack-layer-stat { color: #34D399; }
+
+        .layer-action { background: rgba(251, 146, 60, 0.08); border: 1px solid rgba(251, 146, 60, 0.2); }
+        .layer-action .stack-layer-icon { background: rgba(251, 146, 60, 0.2); color: #FB923C; }
+        .layer-action .stack-layer-stat { color: #FB923C; }
+
+        .layer-overflow { background: rgba(56, 189, 248, 0.08); border: 1px solid rgba(56, 189, 248, 0.2); }
+        .layer-overflow .stack-layer-icon { background: rgba(56, 189, 248, 0.2); color: #38BDF8; }
+        .layer-overflow .stack-layer-stat { color: #38BDF8; }
+
+        .layer-graph { background: rgba(232, 121, 249, 0.08); border: 1px solid rgba(232, 121, 249, 0.2); }
+        .layer-graph .stack-layer-icon { background: rgba(232, 121, 249, 0.2); color: #E879F9; }
+        .layer-graph .stack-layer-stat { color: #E879F9; }
+
+        .layer-decisions { background: rgba(148, 163, 184, 0.08); border: 1px solid rgba(148, 163, 184, 0.2); }
+        .layer-decisions .stack-layer-icon { background: rgba(148, 163, 184, 0.2); color: #94A3B8; }
+        .layer-decisions .stack-layer-stat { color: #94A3B8; }
+
+        /* Animated growth chart */
+        .growth-chart {
+            margin: 32px 0;
+            padding: 24px;
+            background: #1E293B;
+            border-radius: 12px;
+            border: 1px solid #334155;
+        }
+
+        .growth-chart-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748B;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+        }
+
+        .growth-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            gap: 12px;
+        }
+
+        .growth-label {
+            width: 100px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #94A3B8;
+            text-align: right;
+        }
+
+        .growth-track {
+            flex: 1;
+            height: 28px;
+            background: #0F172A;
+            border-radius: 6px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .growth-bar-then {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            height: 20px;
+            background: #475569;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            padding: 0 8px;
+            font-size: 10px;
+            font-weight: 600;
+            color: #94A3B8;
+            transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+            width: 0;
+        }
+
+        .growth-bar-now {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            height: 20px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            padding: 0 8px;
+            font-size: 10px;
+            font-weight: 600;
+            color: #F8FAFC;
+            transition: width 1.5s cubic-bezier(0.4, 0, 0.2, 1) 0.3s;
+            width: 0;
+        }
+
+        .growth-bar-now.cyan { background: linear-gradient(90deg, #0891B2, #22D3EE); }
+        .growth-bar-now.indigo { background: linear-gradient(90deg, #6366F1, #818CF8); }
+        .growth-bar-now.pink { background: linear-gradient(90deg, #DB2777, #F472B6); }
+        .growth-bar-now.green { background: linear-gradient(90deg, #059669, #34D399); }
+        .growth-bar-now.amber { background: linear-gradient(90deg, #D97706, #FBBF24); }
+
+        .growth-multiplier {
+            width: 48px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #34D399;
+            text-align: left;
+        }
+
+        /* Compound loop animation */
+        .loop-visual {
+            margin: 32px 0;
+            padding: 32px;
+            background: #1E293B;
+            border-radius: 12px;
+            border: 1px solid #334155;
+            position: relative;
+        }
+
+        .loop-nodes {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .loop-node {
+            background: #0F172A;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 12px 16px;
+            text-align: center;
+            flex: 1;
+            min-width: 120px;
+            transition: all 0.3s ease;
+        }
+
+        .loop-node.active {
+            border-color: #22D3EE;
+            box-shadow: 0 0 20px rgba(34, 211, 238, 0.1);
+        }
+
+        .loop-node-icon {
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+
+        .loop-node-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #94A3B8;
+        }
+
+        .loop-arrow {
+            color: #334155;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .loop-arrow.active { color: #22D3EE; }
+
+        /* Callout */
+        .callout {
+            background: rgba(8, 145, 178, 0.06);
+            border-left: 3px solid #22D3EE;
+            padding: 20px 24px;
+            border-radius: 0 8px 8px 0;
+            margin: 24px 0;
+        }
+
+        .callout p { margin-bottom: 0; color: #94A3B8; }
+        .callout strong { color: #22D3EE; }
+
+        .callout-amber {
+            background: rgba(251, 191, 36, 0.06);
+            border-left-color: #FBBF24;
+        }
+
+        .callout-amber strong { color: #FBBF24; }
+
+        /* Case Study Tabs */
+        .case-tabs {
+            display: flex;
+            gap: 4px;
+            margin: 32px 0 0;
+            border-bottom: 1px solid #334155;
+        }
+
+        .case-tab {
+            padding: 14px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #64748B;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .case-tab:hover { color: #CBD5E1; }
+        .case-tab.active { color: #22D3EE; border-bottom-color: #22D3EE; }
+
+        .case-panel {
+            display: none;
+            padding-top: 32px;
+            animation: caseFadeIn 0.3s ease;
+        }
+
+        .case-panel.active { display: block; }
+
+        @keyframes caseFadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .case-metrics {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin: 24px 0;
+        }
+
+        .case-metric {
+            background: #1E293B;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .case-metric-value {
+            display: block;
+            font-size: 28px;
+            font-weight: 700;
+            line-height: 1;
+            margin-bottom: 6px;
+        }
+
+        .case-metric-value.cyan { color: #22D3EE; }
+        .case-metric-value.green { color: #34D399; }
+        .case-metric-value.indigo { color: #818CF8; }
+        .case-metric-value.amber { color: #FBBF24; }
+
+        .case-metric-label {
+            display: block;
+            font-size: 10px;
+            color: #64748B;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        @media (max-width: 640px) {
+            .case-tabs { overflow-x: auto; }
+            .case-tab { padding: 12px 16px; white-space: nowrap; }
+            .case-metrics { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        /* Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 24px 0;
+            font-size: 14px;
+        }
+
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid #1E293B;
+        }
+
+        th {
+            background: #1E293B;
+            font-weight: 600;
+            color: #F8FAFC;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td { color: #94A3B8; }
+        td strong { color: #F8FAFC; }
+        td.highlight { color: #22D3EE; font-weight: 600; }
+
+        /* Cards */
+        .card {
+            background: #1E293B;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 20px 24px;
+            margin-bottom: 12px;
+            transition: border-color 0.3s ease;
+        }
+
+        .card:hover { border-color: #475569; }
+
+        .card-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #F8FAFC;
+            margin-bottom: 6px;
+        }
+
+        .card p {
+            font-size: 14px;
+            color: #94A3B8;
+            margin-bottom: 0;
+        }
+
+        /* Blockquote */
+        blockquote {
+            border-left: 3px solid #334155;
+            padding: 16px 24px;
+            margin: 24px 0;
+            background: #1E293B;
+            border-radius: 0 8px 8px 0;
+        }
+
+        blockquote p {
+            font-style: italic;
+            color: #94A3B8;
+            font-size: 17px;
+            margin-bottom: 0;
+        }
+
+        .attribution {
+            font-size: 13px;
+            color: #475569;
+            font-style: normal;
+            margin-top: 8px;
+        }
+
+        /* Comparison split */
+        .comparison-split {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin: 24px 0;
+        }
+
+        @media (max-width: 640px) {
+            .comparison-split { grid-template-columns: 1fr; }
+        }
+
+        .comparison-panel {
+            border-radius: 10px;
+            padding: 24px;
+        }
+
+        .comparison-panel.day0 {
+            background: rgba(239, 68, 68, 0.05);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .comparison-panel.day90 {
+            background: rgba(34, 211, 238, 0.05);
+            border: 1px solid rgba(34, 211, 238, 0.2);
+        }
+
+        .comparison-panel h4 {
+            margin-top: 0;
+            font-size: 12px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .comparison-panel.day0 h4 { color: #F87171; }
+        .comparison-panel.day90 h4 { color: #22D3EE; }
+
+        .comparison-panel ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .comparison-panel ul li {
+            font-size: 13px;
+            color: #94A3B8;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+        }
+
+        .comparison-panel ul li:last-child { border-bottom: none; }
+
+        /* Timeline */
+        .timeline {
+            position: relative;
+            padding-left: 32px;
+            margin: 32px 0;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 8px;
+            bottom: 8px;
+            width: 2px;
+            background: linear-gradient(to bottom, #22D3EE, #818CF8, #F472B6, #34D399);
+            border-radius: 2px;
+        }
+
+        .timeline-item {
+            position: relative;
+            margin-bottom: 28px;
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -28px;
+            top: 8px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #0F172A;
+            border: 2px solid #22D3EE;
+        }
+
+        .timeline-item:nth-child(2)::before { border-color: #818CF8; }
+        .timeline-item:nth-child(3)::before { border-color: #F472B6; }
+        .timeline-item:nth-child(4)::before { border-color: #34D399; }
+
+        .timeline-date {
+            font-size: 11px;
+            font-weight: 600;
+            color: #22D3EE;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .timeline-item:nth-child(2) .timeline-date { color: #818CF8; }
+        .timeline-item:nth-child(3) .timeline-date { color: #F472B6; }
+        .timeline-item:nth-child(4) .timeline-date { color: #34D399; }
+
+        .timeline-title {
+            font-weight: 600;
+            color: #F8FAFC;
+            font-size: 15px;
+            margin-top: 2px;
+        }
+
+        .timeline-desc {
+            font-size: 13px;
+            color: #64748B;
+            margin-top: 4px;
+        }
+
+        /* Insight box */
+        .insight-box {
+            background: linear-gradient(135deg, rgba(8, 145, 178, 0.08) 0%, rgba(99, 102, 241, 0.08) 100%);
+            border: 1px solid rgba(8, 145, 178, 0.2);
+            border-radius: 10px;
+            padding: 20px 24px;
+            margin: 24px 0;
+        }
+
+        .insight-box h4 {
+            margin-top: 0;
+            color: #22D3EE;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .insight-box p {
+            font-size: 14px;
+            color: #94A3B8;
+            margin-bottom: 0;
+        }
+
+        /* Priority table highlight */
+        .priority-num {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: rgba(34, 211, 238, 0.1);
+            color: #22D3EE;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        /* Footer */
+        .footer {
+            padding: 48px 0;
+            border-top: 1px solid #1E293B;
+            text-align: center;
+        }
+
+        .footer p {
+            font-size: 13px;
+            color: #475569;
+            margin-bottom: 4px;
+        }
+
+        .footer a { color: #22D3EE; text-decoration: none; }
+
+        /* CTA Button */
+        .cta-button {
+            display: inline-block;
+            padding: 14px 32px;
+            background: linear-gradient(135deg, #0891B2, #6366F1);
+            color: #F8FAFC;
+            font-size: 15px;
+            font-weight: 600;
+            border-radius: 8px;
+            text-decoration: none;
+            margin-top: 24px;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(8, 145, 178, 0.3);
+        }
+
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(8, 145, 178, 0.4);
+        }
+
+        /* Animations */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease, transform 0.6s ease;
+        }
+
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Counter animation */
+        .counter { display: inline-block; }
+
+        /* One-line summary */
+        .one-liner {
+            text-align: center;
+            padding: 48px 0;
+            margin: 32px 0;
+            border-top: 1px solid #1E293B;
+            border-bottom: 1px solid #1E293B;
+        }
+
+        .one-liner p {
+            font-size: 20px;
+            font-weight: 300;
+            color: #94A3B8;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .one-liner strong {
+            color: #F8FAFC;
+            font-weight: 600;
+        }
+
+        .one-liner .accent { color: #22D3EE; }
+    </style>
+</head>
+<body>
+
+    <!-- HERO -->
+    <div class="container">
+        <div class="hero">
+            <div class="hero-badge">Context Engineering &mdash; The Full Story</div>
+            <h1>From Memory to<br><span>Operating System</span></h1>
+            <p class="hero-subtitle">60 days ago I taught Claude Code to remember. Then compound learning took over. What started as a filing system became an autonomous development platform.</p>
+
+            <div class="hero-metrics">
+                <div class="hero-metric">
+                    <div class="hero-metric-value cyan counter" data-target="220">0</div>
+                    <div class="hero-metric-label">Memory Files</div>
+                </div>
+                <div class="hero-metric">
+                    <div class="hero-metric-value indigo counter" data-target="180">0</div>
+                    <div class="hero-metric-label">Skills</div>
+                </div>
+                <div class="hero-metric">
+                    <div class="hero-metric-value pink counter" data-target="14">0</div>
+                    <div class="hero-metric-label">Active Hooks</div>
+                </div>
+                <div class="hero-metric">
+                    <div class="hero-metric-value amber counter" data-target="10">0</div>
+                    <div class="hero-metric-label">MCP Servers</div>
+                </div>
+                <div class="hero-metric">
+                    <div class="hero-metric-value green">2.1 GB</div>
+                    <div class="hero-metric-label">Local Intelligence</div>
+                </div>
+            </div>
+
+            <div class="scroll-hint">Scroll</div>
+        </div>
+    </div>
+
+    <!-- THE EMPTY ROOM -->
+    <section>
+        <div class="container">
+            <h2 class="fade-in"><span class="section-label">Day Zero</span>The genius with amnesia</h2>
+
+            <p class="fade-in">Install Claude Code today. Open a terminal. Here's what you get:</p>
+
+            <div class="empty-room fade-in">
+                <div class="terminal-bar">
+                    <div class="terminal-dot red"></div>
+                    <div class="terminal-dot yellow"></div>
+                    <div class="terminal-dot green"></div>
+                </div>
+                <div class="terminal-content">
+                    <span class="prompt">$</span> claude<br>
+                    <br>
+                    <span class="dim">Welcome to Claude Code v2.1.136</span><br>
+                    <span class="dim">Model: claude-opus-4-6</span><br>
+                    <span class="dim">Context: 1,000,000 tokens</span><br>
+                    <br>
+                    <span class="dim">What can I help you with?</span> <span class="cursor"></span><br>
+                    <br>
+                    <span class="comment">// No memory of yesterday's session</span><br>
+                    <span class="comment">// No knowledge of your project</span><br>
+                    <span class="comment">// No rules about your constraints</span><br>
+                    <span class="comment">// No enforcement of your decisions</span><br>
+                    <span class="comment">// Nothing compounds. Nothing persists.</span>
+                </div>
+            </div>
+
+            <p class="fade-in">Every session starts from scratch. You explain who you are. You explain your project. You re-state constraints Claude violated yesterday. At minute 45, the context fills. You start over. The genius has total amnesia.</p>
+
+            <div class="comparison-split fade-in">
+                <div class="comparison-panel day0">
+                    <h4>Day 0 &mdash; Fresh Install</h4>
+                    <ul>
+                        <li>You explain yourself every session</li>
+                        <li>Corrections lost overnight</li>
+                        <li>No enforcement &mdash; suggestions only</li>
+                        <li>Generic model capability</li>
+                        <li>Can only read/write local files</li>
+                        <li>Session dies at context limit</li>
+                        <li>Asks permission for everything</li>
+                        <li>Starts from zero each time</li>
+                    </ul>
+                </div>
+                <div class="comparison-panel day90">
+                    <h4>Day 60 &mdash; After Compound Learning</h4>
+                    <ul>
+                        <li>Knows your role, style, constraints instantly</li>
+                        <li>220+ files of persisted decisions</li>
+                        <li>14 hooks intercept and block mistakes</li>
+                        <li>180+ domain-expert skills on demand</li>
+                        <li>10+ MCP servers &mdash; APIs, databases, browser, search</li>
+                        <li>FTS5 compression &mdash; multi-hour sessions</li>
+                        <li>Runs production builds unsupervised</li>
+                        <li>Compound learning across every session</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="one-liner fade-in">
+                <p><strong>Day 0:</strong> You work <em>with</em> Claude.<br>
+                <strong class="accent">Day 60:</strong> Claude works <em>for</em> you.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- WHY WE'RE HERE -->
+    <section>
+        <div class="container">
+            <h2 class="fade-in"><span class="section-label">The Mechanism</span>How corrections become autonomy</h2>
+
+            <p class="fade-in">Nobody planned a 2.1 GB local intelligence system. It grew from three forces that compound on each other:</p>
+
+            <div class="card fade-in">
+                <div class="card-title">1. Friction became architecture</div>
+                <p>Every mistake Claude made, I corrected. Every correction became a memory file. Every repeated mistake became a rule. Every ignored rule became a hook. Every hook that needed data became an MCP server. Every MCP server that overflowed context became context-mode. Each layer exists because the previous layer wasn't enough.</p>
+            </div>
+
+            <div class="card fade-in">
+                <div class="card-title">2. The non-developer advantage</div>
+                <p>I never wrote a line of Python. Never authored a YAML skill file. Never debugged a hook script. Every piece of infrastructure was built by Claude based on my requirements. The hooks, the graph indexer, the skills &mdash; all AI-authored. The barrier isn't coding ability. It's knowing what you want and being specific about constraints.</p>
+            </div>
+
+            <div class="card fade-in">
+                <div class="card-title">3. Compound learning is exponential</div>
+                <p>Day 1&ndash;20: memory + wiki (the filing system). Day 20&ndash;40: hooks + MCP (the enforcement layer). Day 40&ndash;60: skills + graph + context-mode (the expertise layer). Each layer made the next faster to build. By day 60, Claude creates new skills in 5 minutes because it has the patterns from the previous 179.</p>
+            </div>
+
+            <!-- Compound loop visual -->
+            <h3 class="fade-in">The compound loop</h3>
+
+            <div class="loop-visual fade-in" id="compound-loop">
+                <div class="loop-nodes">
+                    <div class="loop-node" id="loop-1">
+                        <div class="loop-node-icon">&#x26A0;</div>
+                        <div class="loop-node-label">Mistake</div>
+                    </div>
+                    <div class="loop-arrow">&rarr;</div>
+                    <div class="loop-node" id="loop-2">
+                        <div class="loop-node-icon">&#x1F4DD;</div>
+                        <div class="loop-node-label">Correction</div>
+                    </div>
+                    <div class="loop-arrow">&rarr;</div>
+                    <div class="loop-node" id="loop-3">
+                        <div class="loop-node-icon">&#x1F4CB;</div>
+                        <div class="loop-node-label">Memory</div>
+                    </div>
+                    <div class="loop-arrow">&rarr;</div>
+                    <div class="loop-node" id="loop-4">
+                        <div class="loop-node-icon">&#x1F6E1;</div>
+                        <div class="loop-node-label">Guardrail</div>
+                    </div>
+                    <div class="loop-arrow">&rarr;</div>
+                    <div class="loop-node" id="loop-5">
+                        <div class="loop-node-icon">&#x2705;</div>
+                        <div class="loop-node-label">Prevention</div>
+                    </div>
+                </div>
+            </div>
+
+            <p class="fade-in" style="font-size: 14px; color: #64748B; text-align: center; margin-top: -16px;"><em>Example: <code>--set-env-vars</code> wipes all Cloud Run vars &rarr; correction &rarr; memory &rarr; infrastructure rule &rarr; PreToolUse hook blocks it forever</em></p>
+        </div>
+    </section>
+
+    <!-- GROWTH CHART -->
+    <section>
+        <div class="container">
+            <h2 class="fade-in"><span class="section-label">Scale</span>60 days of compound growth</h2>
+
+            <div class="growth-chart fade-in" id="growth-chart">
+                <div class="growth-chart-title">Part 1 &rarr; Today</div>
+
+                <div class="growth-row">
+                    <div class="growth-label">Memory</div>
+                    <div class="growth-track">
+                        <div class="growth-bar-then" data-width="40%">128</div>
+                        <div class="growth-bar-now cyan" data-width="65%">220+</div>
+                    </div>
+                    <div class="growth-multiplier">+63%</div>
+                </div>
+
+                <div class="growth-row">
+                    <div class="growth-label">Wiki</div>
+                    <div class="growth-track">
+                        <div class="growth-bar-then" data-width="38%">59</div>
+                        <div class="growth-bar-now indigo" data-width="55%">85</div>
+                    </div>
+                    <div class="growth-multiplier">+44%</div>
+                </div>
+
+                <div class="growth-row">
+                    <div class="growth-label">Hooks</div>
+                    <div class="growth-track">
+                        <div class="growth-bar-then" data-width="10%">4</div>
+                        <div class="growth-bar-now pink" data-width="50%">14</div>
+                    </div>
+                    <div class="growth-multiplier">4x</div>
+                </div>
+
+                <div class="growth-row">
+                    <div class="growth-label">Skills</div>
+                    <div class="growth-track">
+                        <div class="growth-bar-then" data-width="6%">20</div>
+                        <div class="growth-bar-now green" data-width="85%">180+</div>
+                    </div>
+                    <div class="growth-multiplier">10x</div>
+                </div>
+
+                <div class="growth-row">
+                    <div class="growth-label">MCP Servers</div>
+                    <div class="growth-track">
+                        <div class="growth-bar-then" data-width="0%"></div>
+                        <div class="growth-bar-now amber" data-width="45%">10+</div>
+                    </div>
+                    <div class="growth-multiplier">new</div>
+                </div>
+            </div>
+
+            <!-- Timeline -->
+            <h3 class="fade-in">How it grew</h3>
+
+            <div class="timeline fade-in">
+                <div class="timeline-item">
+                    <div class="timeline-date">Month 1</div>
+                    <div class="timeline-title">Part 1 &mdash; Five-tier architecture</div>
+                    <div class="timeline-desc">128 memory files, 59 wiki pages, SessionStart hook, ~20 commands. Claude stopped forgetting overnight.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-date">Month 2</div>
+                    <div class="timeline-title">Enforcement + MCP servers</div>
+                    <div class="timeline-desc">GitHub, Slack, Playwright, web search. PreToolUse hooks started blocking instead of suggesting. Born from three bad deploys.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-date">Month 3</div>
+                    <div class="timeline-title">Skills explosion + knowledge graph</div>
+                    <div class="timeline-desc">Domain-specific skills, project management workflows, entity graph. Skills went from 20 to 100+. Each one a compressed domain expert.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-date">Month 4</div>
+                    <div class="timeline-title">Full autonomy</div>
+                    <div class="timeline-desc">Context-mode overflow, 180+ skills, plugin system. Multi-hour production builds without supervision.</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- THE 11-LAYER STACK -->
+    <section>
+        <div class="container">
+            <h2 class="fade-in"><span class="section-label">Architecture</span>The eleven-layer stack</h2>
+
+            <p class="fade-in">Part 1 had five tiers. The current system has eleven layers. Five evolved from the original. Six are entirely new.</p>
+
+            <div class="stack-visual" id="stack-visual">
+                <div class="stack-layer layer-identity">
+                    <div class="stack-layer-icon">&#x1F3AF;</div>
+                    <div class="stack-layer-content">
+                        <div class="stack-layer-name">Identity</div>
+                        <div class="stack-layer-desc">CLAUDE.md &mdash; who, what, routing table</div>
+                    </div>
+                    <div class="stack-layer-stat">194 lines</div>
+                </div>
+                <div class="stack-layer layer-memory">
+                    <div class="stack-layer-icon">&#x1F9E0;</div>
+                    <div class="stack-layer-content">
+                        <div class="stack-layer-name">Memory</div>
+                        <div class="stack-layer-desc">Decisions, corrections, state, feedback</div>
+                    </div>
+                    <div class="stack-layer-stat">220+ files</div>
+                </div>
+                <div class="stack-layer layer-knowledge">
+                    <div class="stack-layer-icon">&#x1F4DA;</div>
+                    <div class="stack-layer-content">
+                        <div class="stack-layer-name">Knowledge</div>
+                        <div class="stack-layer-desc">Wiki &mdash; architecture, patterns, runbooks</div>
+                    </div>
+                    <div class="stack-layer-stat">85+ pages</div>
+                </div>
+                <div class="stack-layer layer-standards">
+                    <div class="stack-layer-icon">&#x1F4CF;</div>
+                    <div class="stack-layer-content">
+                        <div class="stack-layer-name">Standards</div>
+                        <div class="stack-layer-desc">Rules &mdash; security, architecture, quality, voice</div>
+                    </div>
+                    <div class="stack-layer-stat">11 files</div>
+                </div>
+                <div class="stack-layer layer-decisions">
+                    <div class="stack-layer-icon">&#x2696;</div>
+                    <div class="stack-layer-content">
+                        <div class="stack-layer-name">Decisions</div>
+                        <div class="stack-layer-desc">ADRs &mdash; reasoning cache for architecture choices</div>
+                    </div>
+                    <div class="stack-layer-stat">5 ADRs</div>
+                </div>
+                <div class="stack-layer layer-enforcement">
+                    <div class="stack-layer-icon">&#x1F6E1;</div>
+                    <div class="stack-layer-content">
+                        <div class="stack-layer-name">Enforcement</div>
+                        <div class="stack-layer-desc">Hooks &mdash; intercept, validate, gate actions</div>
+                    </div>
+                    <div class="stack-layer-stat">14 scripts</div>
+                </div>
+                <div class="stack-layer layer-expertise">
+                    <div class="stack-layer-icon">&#x1F393;</div>
+                    <div class="stack-layer-content">
+                        <div class="stack-layer-name">Expertise</div>
+                        <div class="stack-layer-desc">Skills &mdash; compressed domain experts</div>
+                    </div>
+                    <div class="stack-layer-stat">180+ skills</div>
+                </div>
+                <div class="stack-layer layer-action">
+                    <div class="stack-layer-icon">&#x26A1;</div>
+                    <div class="stack-layer-content">
+                        <div class="stack-layer-name">Action</div>
+                        <div class="stack-layer-desc">MCP &mdash; APIs, databases, browser, services</div>
+                    </div>
+                    <div class="stack-layer-stat">10+ servers</div>
+                </div>
+                <div class="stack-layer layer-overflow">
+                    <div class="stack-layer-icon">&#x1F4E6;</div>
+                    <div class="stack-layer-content">
+                        <div class="stack-layer-name">Overflow</div>
+                        <div class="stack-layer-desc">Context-mode &mdash; 98% compression sandbox</div>
+                    </div>
+                    <div class="stack-layer-stat">FTS5</div>
+                </div>
+                <div class="stack-layer layer-graph">
+                    <div class="stack-layer-icon">&#x1F578;</div>
+                    <div class="stack-layer-content">
+                        <div class="stack-layer-name">Graph</div>
+                        <div class="stack-layer-desc">Entity relationships &mdash; semantic linking</div>
+                    </div>
+                    <div class="stack-layer-stat">auto-indexed</div>
+                </div>
+                <div class="stack-layer layer-identity">
+                    <div class="stack-layer-icon">&#x1F465;</div>
+                    <div class="stack-layer-content">
+                        <div class="stack-layer-name">Entities</div>
+                        <div class="stack-layer-desc">People pages &mdash; org trees, timelines, relationships</div>
+                    </div>
+                    <div class="stack-layer-stat">150+ people</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- PASSIVE TO ACTIVE -->
+    <section>
+        <div class="container">
+            <h2 class="fade-in"><span class="section-label">The Shift</span>From passive to active</h2>
+
+            <p class="fade-in">Part 1 described a passive system &mdash; store things, load them when relevant. What evolved is active &mdash; intercepts, validates, enforces without human intervention.</p>
+
+            <table class="fade-in">
+                <thead>
+                    <tr><th>Part 1 (Passive)</th><th></th><th>Now (Active)</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>"Hooks auto-suggest wiki pages"</td>
+                        <td>&rarr;</td>
+                        <td><strong>Hooks block unsafe operations, validate output, enrich graphs</strong></td>
+                    </tr>
+                    <tr>
+                        <td>"Memory persists corrections"</td>
+                        <td>&rarr;</td>
+                        <td><strong>Memory is entity-linked, graph-indexed, auto-curated</strong></td>
+                    </tr>
+                    <tr>
+                        <td>"Rules load as standards"</td>
+                        <td>&rarr;</td>
+                        <td><strong>Rules enforced by hook chains &mdash; gated, not suggested</strong></td>
+                    </tr>
+                    <tr>
+                        <td>"Wiki pages load on demand"</td>
+                        <td>&rarr;</td>
+                        <td><strong>Wiki has inbox, lint, auto-capture, entity extraction</strong></td>
+                    </tr>
+                    <tr>
+                        <td>"CLAUDE.md routes context"</td>
+                        <td>&rarr;</td>
+                        <td><strong>CLAUDE.md is a full orchestration manifest</strong></td>
+                    </tr>
+                    <tr>
+                        <td>"Contacts live in a database"</td>
+                        <td>&rarr;</td>
+                        <td><strong>Entity pages capture working style, decision patterns, relationship history</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="insight-box fade-in">
+                <h4>The pattern</h4>
+                <p>Every passive component attracted an active counterpart. Storage attracted enforcement. Reference attracted validation. Memory attracted curation. The system developed an immune response to its own failure modes.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ENTITY PAGES -->
+    <section>
+        <div class="container">
+            <h2 class="fade-in"><span class="section-label">Entity Pages</span>The relationship layer</h2>
+
+            <p class="fade-in">Memory stores corrections. Wiki stores knowledge. But neither stores <em>people</em>. Entity pages close that gap &mdash; a structured page per person that compounds across every interaction.</p>
+
+            <p class="fade-in">Two templates (internal + external). Structured top for instant prep &mdash; role, org position, working style, territory. Append-only timeline below that grows with every meeting, decision, and collaboration. Seeded programmatically from communication channels, then enriched by overnight intelligence crons.</p>
+
+            <table class="fade-in">
+                <thead>
+                    <tr><th>Without</th><th></th><th>With entity pages</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>"Who's the lead on that project?"</td>
+                        <td>&rarr;</td>
+                        <td><strong>Full org tree with role assignments in one Read</strong></td>
+                    </tr>
+                    <tr>
+                        <td>"What did we discuss last time?"</td>
+                        <td>&rarr;</td>
+                        <td><strong>Timeline shows every interaction chronologically</strong></td>
+                    </tr>
+                    <tr>
+                        <td>Meeting prep = 20 min searching</td>
+                        <td>&rarr;</td>
+                        <td><strong>One page, auto-routed by SessionStart hook</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p class="fade-in">Result: 150+ people mapped across organizational structures. Every leader with their reports, communication handles, and coverage areas. Databases know accounts &mdash; entity pages know the humans working them.</p>
+        </div>
+    </section>
+
+    <!-- COMPOUND LOOPS -->
+    <section>
+        <div class="container">
+            <h2 class="fade-in"><span class="section-label">Interactions</span>Where the real payoff lives</h2>
+
+            <p class="fade-in">Individual layers are useful. The interactions between them are where compound growth happens.</p>
+
+            <div class="card fade-in">
+                <div class="card-title">Loop 1: Error &rarr; Memory &rarr; Guardrail &rarr; Prevention</div>
+                <p>Deploy with <code>--set-env-vars</code> instead of <code>--update-env-vars</code>. All env vars wiped. Correct Claude. Correction becomes memory. Memory cited in infrastructure rule. Hook now blocks any deploy using <code>--set-env-vars</code>. That error class can never happen again &mdash; even in a brand new session.</p>
+            </div>
+
+            <div class="card fade-in">
+                <div class="card-title">Loop 2: Research &rarr; Wiki &rarr; Graph &rarr; Routing</div>
+                <p>Research a new technology pattern. Claude writes a wiki page. Graph extracts entities. Next session, mention the topic &mdash; SessionStart hook surfaces that wiki page + related memories + architecture doc. Context arrives before you ask.</p>
+            </div>
+
+            <div class="card fade-in">
+                <div class="card-title">Loop 3: Skill &rarr; MCP &rarr; Context-Mode &rarr; Output</div>
+                <p>Run a prep command. Skill knows the workflow. Calls MCP servers (databases, news APIs, web search). Each response compresses through context-mode. Skill assembles the output using quality standards and grounding rules. One command, five systems, zero manual context management.</p>
+            </div>
+
+            <div class="callout fade-in">
+                <p><strong>This is the compound effect.</strong> No single layer produced these outcomes. Memory alone doesn't prevent errors. Hooks alone don't know what's dangerous. Skills alone can't access external data. The value is in the connections.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- DDR-001 -->
+    <section>
+        <div class="container">
+            <h2 class="fade-in"><span class="section-label">Lesson</span>AI assistants forget to remember &mdash; at every layer</h2>
+
+            <p class="fade-in">The core design principle: "agents forget to remember." The fix is intrinsic constraint awareness. After two months, this principle applies at every layer of the system:</p>
+
+            <table class="fade-in">
+                <thead>
+                    <tr><th>Layer</th><th>"Forgetting" Failure Mode</th><th>Fix</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><strong>Memory</strong></td><td>Doesn't check before claiming</td><td>Graph recalls relevant memories proactively</td></tr>
+                    <tr><td><strong>Rules</strong></td><td>Reads but ignores under pressure</td><td>PreToolUse hook intercepts before execution</td></tr>
+                    <tr><td><strong>Skills</strong></td><td>Reinvents instead of loading</td><td>Skill routing matches task automatically</td></tr>
+                    <tr><td><strong>Wiki</strong></td><td>Pattern-matches from training data</td><td>ADR hook injects decisions when files in scope</td></tr>
+                    <tr><td><strong>MCP</strong></td><td>Hallucinates instead of querying</td><td>Grounding rules require real data queries</td></tr>
+                </tbody>
+            </table>
+
+            <div class="callout-amber callout fade-in">
+                <p><strong>Meta-lesson:</strong> Every knowledge source needs a corresponding enforcement mechanism. Knowledge without enforcement is a suggestion. Knowledge with enforcement is a constraint. Constraints compound. Suggestions decay.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- VALIDATION -->
+    <section>
+        <div class="container">
+            <h2 class="fade-in"><span class="section-label">Validation</span>The world caught up</h2>
+
+            <p class="fade-in">When the first article went out, this felt like a personal hack. Four weeks later:</p>
+
+            <div class="card fade-in">
+                <div class="card-title">Karpathy's "LLM Wiki" hit 5,000+ GitHub stars</div>
+                <p>The pattern (ingest-synthesize-evolve) went viral. Spawned persistent memory tools across the ecosystem. This system had been running in production for months before it got a name.</p>
+            </div>
+
+            <div class="card fade-in">
+                <div class="card-title">Garry Tan called his version "GBrain" &mdash; permanent memory for his YC work</div>
+                <p>Same pattern, different domain. Context engineering isn't niche &mdash; it's the emerging standard for anyone doing serious work with AI assistants.</p>
+            </div>
+
+            <div class="card fade-in">
+                <div class="card-title">Anthropic shipped Managed Agents with memory consolidation</div>
+                <p>"Dreaming" &mdash; agents consolidating learnings between sessions. The same pattern as this system's memory + curation workflow, productized by Anthropic themselves. Validation at the platform level.</p>
+            </div>
+
+            <div class="card fade-in">
+                <div class="card-title">MCP token overhead became a known problem</div>
+                <p>58 tools = 55K tokens per turn. This system runs 200+ with deferred loading. A problem others are discovering had already been solved here months earlier.</p>
+            </div>
+
+            <div class="card fade-in">
+                <div class="card-title">OpenClaw launched as the first open-source AI agent framework with persistent context</div>
+                <p>Browser automation meets memory persistence. Different approach, same thesis: AI without context is just a chatbot. AI with compounding context is an operating system.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- LESSONS -->
+    <section>
+        <div class="container">
+            <h2 class="fade-in"><span class="section-label">Lessons</span>What 60 days taught me</h2>
+
+            <div class="card fade-in">
+                <div class="card-title">1. The system builds itself</div>
+                <p>I didn't plan most of this. Each correction, wiki page, and skill grew from a specific session's need. The 5-tier framework just gave those decisions somewhere to land.</p>
+            </div>
+
+            <div class="card fade-in">
+                <div class="card-title">2. Enforcement matters more than knowledge</div>
+                <p>128 memory files didn't stop infrastructure mistakes. 3 PreToolUse hooks did. If you only build one new thing after reading this, build a guardrail hook for your most expensive mistake.</p>
+            </div>
+
+            <div class="card fade-in">
+                <div class="card-title">3. Context overflow is the real scaling limit</div>
+                <p>The initial optimization reduced startup from 15K to 5K tokens. The real limit hit at minute 45 when research filled the window. Context-mode was the breakthrough that enabled multi-hour sessions.</p>
+            </div>
+
+            <div class="card fade-in">
+                <div class="card-title">4. Skills are the highest-return investment</div>
+                <p>One skill replaces 30 minutes of manual instruction per session. 180+ skills assembled from three plugin suites &mdash; project management, domain-specific workflows, and developer tooling &mdash; plus 20+ custom commands built for specific professional workflows. You don't build 180 skills from scratch. You install the right systems and customize the last mile.</p>
+            </div>
+
+            <div class="card fade-in">
+                <div class="card-title">5. You don't need to be a developer</div>
+                <p>I've never opened a Python file to write the hooks. Never manually created a skill. Claude builds its own infrastructure from my direction. Domain expertise + clear requirements + an AI that builds its own tooling = this.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOR YOU -->
+    <section>
+        <div class="container">
+            <h2 class="fade-in"><span class="section-label">For You</span>What to build first</h2>
+
+            <p class="fade-in">Priority order based on what gave me the most return:</p>
+
+            <table class="fade-in">
+                <thead>
+                    <tr><th>#</th><th>What</th><th>Why</th><th>Effort</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><span class="priority-num">1</span></td><td><strong>One PreToolUse guardrail hook</strong></td><td>Prevents your most expensive recurring mistake</td><td>30 min</td></tr>
+                    <tr><td><span class="priority-num">2</span></td><td><strong>3 domain skills</strong></td><td>Replaces 30 min of instruction per session each</td><td>2 hrs</td></tr>
+                    <tr><td><span class="priority-num">3</span></td><td><strong>One MCP server</strong></td><td>Closes the gap between "understands" and "does"</td><td>1 hr</td></tr>
+                    <tr><td><span class="priority-num">4</span></td><td><strong>Context overflow management</strong></td><td>Removes the 20-minute session ceiling</td><td>1 hr</td></tr>
+                    <tr><td><span class="priority-num">5</span></td><td><strong>ADR directory</strong></td><td>Reasoning cache &mdash; stops re-debating settled decisions</td><td>15 min</td></tr>
+                </tbody>
+            </table>
+
+            <div class="callout fade-in">
+                <p>You don't need 220 memory files or 180 skills. You need the <strong>feedback loops</strong>. One guardrail that fires when it matters. One skill that loads expertise automatically. One MCP server that fetches real data. Start the loops, then let compound growth do the rest.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- CLOSING -->
+    <section>
+        <div class="container">
+            <h2 class="fade-in"><span class="section-label">The Trajectory</span>Where this goes</h2>
+
+            <p class="fade-in">The first article solved a specific problem: Claude forgetting between sessions. The system that grew from that fix solves a different problem: <strong>making a non-developer as productive as a senior engineering team.</strong></p>
+
+            <p class="fade-in">199 commits in 28 days built an AI-powered production platform with 6 intelligent agents, 25 data connectors, and cloud infrastructure. That was with the early five-tier system. With the current eleven-layer stack, the same scope takes less than a week.</p>
+
+            <p class="fade-in">The gap between "domain expertise + clear requirements" and "production software" is closing. Not because models got smarter. Because the <em>local infrastructure around the model</em> compounds. Memory remembers. Hooks enforce. Skills teach. MCP servers act. The graph connects. And none of it requires you to be a developer.</p>
+
+            <blockquote class="fade-in">
+                <p>&ldquo;I think there is room here for an incredible new product instead of a hacky collection of scripts.&rdquo;</p>
+                <div class="attribution">&mdash; Andrej Karpathy, on the LLM Wiki pattern</div>
+            </blockquote>
+
+            <p class="fade-in">60 days later, the hacky scripts became a platform. Not because I designed one &mdash; because compound learning doesn't stop at memory.</p>
+        </div>
+    </section>
+
+    <!-- CASE STUDIES: TABBED -->
+    <section>
+        <div class="container">
+            <h2 class="fade-in"><span class="section-label">Case Studies</span>What context actually buys you</h2>
+
+            <p class="fade-in">Two proof points. One about intelligence. One about autonomy.</p>
+
+            <div class="case-tabs fade-in">
+                <div class="case-tab active" data-case="intelligence">The Intelligence Gap</div>
+                <div class="case-tab" data-case="autonomy">The Autonomy Gap</div>
+            </div>
+
+            <!-- TAB 1: Intelligence Gap (Gemini) -->
+            <div class="case-panel active" id="case-intelligence">
+                <h3>A frontier model audits my setup. 9 of 10 recommendations were already solved.</h3>
+
+                <p>I shared this article with a competing frontier model and asked it to audit my setup. It gave 10 confident recommendations:</p>
+
+                <table>
+                    <thead>
+                        <tr><th>Model's Recommendation</th><th>Reality</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>"You need a deprecation/garbage collection layer"</td><td class="highlight">Already built. /curate runs weekly with decay rates and prune cycles.</td></tr>
+                        <tr><td>"Risk of over-constraint paralysis from hooks"</td><td class="highlight">Claude Code's permission system already has bypass. Not a rigid rule engine.</td></tr>
+                        <tr><td>"Graph indexing will cause startup latency"</td><td class="highlight">Already measured: 61ms per file, 151ms session-init. Imperceptible.</td></tr>
+                        <tr><td>"Users will have dependency conflicts"</td><td class="highlight">Starter kit is a clean template. No machine-specific paths.</td></tr>
+                        <tr><td>"You need an auth onboarding wizard"</td><td class="highlight">Recipients are professionals with CLI tools already authenticated.</td></tr>
+                        <tr><td>"Risk of identity/state bleed in the repo"</td><td class="highlight">Starter kit is already scrubbed. Personal data never ships.</td></tr>
+                    </tbody>
+                </table>
+
+                <p>Confident, well-structured advice that would have been correct for a generic setup &mdash; but wrong for mine. It couldn't know because it had no context.</p>
+
+                <div class="callout">
+                    <p><strong>The gap isn't intelligence &mdash; it's context.</strong> Same model family, same parameters. The difference is what the system remembers about YOUR specific situation.</p>
+                </div>
+            </div>
+
+            <!-- TAB 2: Autonomy Gap (Overnight Build) -->
+            <div class="case-panel" id="case-autonomy">
+                <h3>I approved a plan at 10 PM. By 7 AM, it was deployed to production.</h3>
+
+                <p>The first case study showed context makes AI smarter. This one shows it makes AI <strong>autonomous</strong>. It doesn't just answer better. It operates independently.</p>
+
+                <p>I had a 7-pillar architecture plan for transforming a production intelligence platform. Three rounds of architectural audit. 14 accepted fixes. 6 rejected findings with documented rationale. Approved at 10 PM. I said: <strong>"Build overnight. Don't stop."</strong> Then I went to sleep.</p>
+
+                <div class="case-metrics">
+                    <div class="case-metric"><span class="case-metric-value cyan">19</span><span class="case-metric-label">Files Created</span></div>
+                    <div class="case-metric"><span class="case-metric-value green">375</span><span class="case-metric-label">Tests Passing</span></div>
+                    <div class="case-metric"><span class="case-metric-value indigo">22</span><span class="case-metric-label">Components Deployed</span></div>
+                    <div class="case-metric"><span class="case-metric-value amber">25x</span><span class="case-metric-label">Compression</span></div>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr><th>Phase</th><th>Original Estimate</th><th>Actual</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Platform metadata (objects, fields, events, services, tests)</td><td>3-4 days</td><td class="highlight">~2 hours</td></tr>
+                        <tr><td>Pipeline infrastructure (types, extractor, evaluator, connector)</td><td>3-4 days</td><td class="highlight">~1.5 hours</td></tr>
+                        <tr><td>Three API endpoints (competitive, risk, temporal)</td><td>2-3 days</td><td class="highlight">~45 minutes</td></tr>
+                        <tr><td>Brand design system provider</td><td>3-4 days</td><td class="highlight">~30 minutes</td></tr>
+                        <tr><td>Conversational AI router</td><td>4-5 days</td><td class="highlight">~30 minutes</td></tr>
+                        <tr><td><strong>Total (4 phases)</strong></td><td><strong>15-20 days</strong></td><td class="highlight"><strong>~5 hours</strong></td></tr>
+                    </tbody>
+                </table>
+
+                <h4>Why this was possible</h4>
+
+                <p>This wasn't just "AI writes code fast." Any frontier model can generate files. The reason it shipped as a <strong>coherent system</strong> &mdash; not disconnected fragments &mdash; is the operating system underneath:</p>
+
+                <table>
+                    <thead>
+                        <tr><th>OS Layer</th><th>What It Contributed</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><strong>Memory</strong></td><td>Knew the entire architecture, cached data model, deployment patterns &mdash; no re-briefing needed</td></tr>
+                        <tr><td><strong>Rules</strong></td><td>Security governance, architecture patterns, quality standards &mdash; all enforced automatically on every file written</td></tr>
+                        <tr><td><strong>Plan</strong></td><td>3-round audited plan with explicit file paths, interface contracts, dependency graph &mdash; zero ambiguity</td></tr>
+                        <tr><td><strong>Wiki</strong></td><td>60+ pages of project knowledge, integration topology, platform constraints &mdash; answered questions without asking</td></tr>
+                        <tr><td><strong>Hooks</strong></td><td>Validators scored every file (90-120/120). Caught issues at write-time, not deploy-time</td></tr>
+                    </tbody>
+                </table>
+
+                <h4>What the human actually did</h4>
+
+                <table>
+                    <thead>
+                        <tr><th>Role</th><th>Time</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Approve the plan (after 3 audit rounds)</td><td>30 min</td></tr>
+                        <tr><td>Say "build overnight"</td><td>5 seconds</td></tr>
+                        <tr><td>Sleep</td><td>8 hours</td></tr>
+                        <tr><td>Verify build + tests + deploy next morning</td><td>10 min</td></tr>
+                        <tr><td><strong>Total human involvement</strong></td><td><strong>~45 minutes</strong></td></tr>
+                    </tbody>
+                </table>
+
+                <div class="callout">
+                    <p><strong>The gap isn't speed &mdash; it's autonomy.</strong> Context architecture doesn't just make AI faster at answering questions. It makes AI capable of independent execution. The human role shifts from "writing code" to "approving plans and verifying outcomes."</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- RECIPE CARD -->
+    <section>
+        <div class="container">
+            <h2 class="fade-in"><span class="section-label">Recipe Card</span>Copy this setup in one shot</h2>
+
+            <p class="fade-in">I built this over 60 days through trial and error. You don't have to. Here's the architecture as a deployable kit &mdash; clone the repo, run setup, start from Day 30 instead of Day 0.</p>
+
+            <div class="callout fade-in">
+                <p><strong>What transfers vs. what doesn't:</strong> The architecture, templates, and feedback loops transfer. The 220+ specific memories don't &mdash; those are YOUR corrections, YOUR project state. The kit gives you the scaffolding. Compound learning fills it in.</p>
+            </div>
+
+            <h3 class="fade-in">The Kit (5 layers, 30 minutes to deploy)</h3>
+
+            <div class="card fade-in">
+                <div class="card-title">Layer 1: Identity Skeleton</div>
+                <p><strong>Template CLAUDE.md</strong> with routing table structure, role definition, project registry, and essential standards (voice quality, anti-hallucination). Pre-wired wiki index. You fill in YOUR role, YOUR projects, YOUR constraints. Takes 10 minutes.</p>
+            </div>
+
+            <div class="card fade-in">
+                <div class="card-title">Layer 2: Rules &amp; Guardrails</div>
+                <p><strong>3 starter rules files:</strong> communication.md (voice standards, banned patterns), security-governance.md (secrets, access control, data protection), architecture.md (decision framework, preferred patterns). Plus <strong>2 hook scripts:</strong> session-init (context routing on start) and one PreToolUse guardrail (blocks your most expensive recurring mistake).</p>
+            </div>
+
+            <div class="card fade-in">
+                <div class="card-title">Layer 3: Skill Pack (21 professional workflows)</div>
+                <p><strong>21 production-ready skills</strong> covering intelligence gathering, content generation, meeting workflows, and project execution. Each one replaces 30 minutes of manual instruction per use. Install the skill pack, then customize for your domain.</p>
+            </div>
+
+            <div class="card fade-in">
+                <div class="card-title">Layer 4: Intelligence Automation</div>
+                <p><strong>Channel categories to monitor:</strong> industry news, competitor announcements, team updates, leadership broadcasts, technical developments. <strong>Overnight gather scripts</strong> that scan news, GitHub, and communication channels then synthesize a morning brief. <strong>One MCP server</strong> (GitHub) to prove the action layer.</p>
+            </div>
+
+            <div class="card fade-in">
+                <div class="card-title">Layer 5: Entity Pages + Knowledge Graph</div>
+                <p><strong>wiki/people/ directory</strong> with two templates (internal + external). Seed your org tree from communication profiles &mdash; Claude pulls name, title, email, timezone programmatically. Structure: org position at top, append-only timeline below. After one session, every key contact is mapped. After a month, you have a relationship graph no database captures.</p>
+            </div>
+
+            <h3 class="fade-in">Channel Categories to Monitor</h3>
+
+            <table class="fade-in">
+                <thead>
+                    <tr><th>Category</th><th>What to Watch</th><th>What You Get</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><strong>Competitive Intel</strong></td><td>Industry channels, analyst reports</td><td>Market moves, analyst coverage, positioning shifts</td></tr>
+                    <tr><td><strong>Product &amp; Roadmap</strong></td><td>Release channels, update feeds</td><td>What shipped, what's coming, deprecations</td></tr>
+                    <tr><td><strong>AI &amp; Tooling</strong></td><td>Engineering productivity, AI tooling groups</td><td>New tools, techniques, internal launches</td></tr>
+                    <tr><td><strong>Team Enablement</strong></td><td>Training channels, asset sharing</td><td>New resources, techniques that work in the field</td></tr>
+                    <tr><td><strong>Leadership</strong></td><td>Org broadcasts, strategy updates</td><td>Priority shifts, organizational changes, key decisions</td></tr>
+                    <tr><td><strong>Industry Verticals</strong></td><td>Sector-specific channels</td><td>Vertical trends, customer stories, use cases</td></tr>
+                </tbody>
+            </table>
+
+            <h3 class="fade-in">Growth timeline (what to expect)</h3>
+
+            <div class="timeline fade-in">
+                <div class="timeline-item">
+                    <div class="timeline-date">Week 1</div>
+                    <div class="timeline-title">Foundation working</div>
+                    <div class="timeline-desc">CLAUDE.md routes context. Rules enforce standards. Session-init suggests relevant pages. Claude stops making your most common mistake.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-date">Week 2&ndash;3</div>
+                    <div class="timeline-title">Memory accumulating</div>
+                    <div class="timeline-desc">20&ndash;30 memory files from corrections and decisions. Wiki growing organically. Skills saving 30+ min/day. Morning brief arriving automatically.</div>
+                </div>
+                <div class="timeline-item">
+                    <div class="timeline-date">Week 4+</div>
+                    <div class="timeline-title">Compound effects kick in</div>
+                    <div class="timeline-desc">Loops connecting. Memory feeding guardrails. Skills calling MCP servers. Context-mode extending sessions. The system builds itself from here.</div>
+                </div>
+            </div>
+
+            <div class="insight-box fade-in">
+                <h4>The non-developer advantage</h4>
+                <p>You don't need to code any of this. Tell Claude what you want enforced, what workflow you need automated, what mistake to never make again. Claude builds the hooks, writes the skills, configures the MCP servers. Your job is direction and domain expertise &mdash; the same skills that make you good at your actual job.</p>
+            </div>
+
+            <div class="callout fade-in" style="text-align: center;">
+                <p><strong>Get the kit:</strong></p>
+                <p style="margin-top: 8px;"><code>git clone https://github.com/jtehrani84/context-engineering.git && cd context-engineering && cat README.md</code></p>
+                <a href="https://github.com/jtehrani84/context-engineering" class="cta-button">Get the Kit on GitHub</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <div class="container">
+        <div class="footer">
+            <p>From Memory to Operating System &mdash; John Tehrani</p>
+            <p><a href="https://github.com/jtehrani84/context-engineering">github.com/jtehrani84/context-engineering</a></p>
+            <p style="margin-top: 12px; font-size: 11px; color: #334155;">The future belongs to individuals who build compounding AI systems.</p>
+        </div>
+    </div>
+
+    <!-- INTERACTIVE JS -->
+    <script>
+        // Counter animation
+        function animateCounters() {
+            document.querySelectorAll('.counter[data-target]').forEach(counter => {
+                const target = parseInt(counter.dataset.target);
+                const duration = 2000;
+                const start = performance.now();
+
+                function update(now) {
+                    const elapsed = now - start;
+                    const progress = Math.min(elapsed / duration, 1);
+                    const eased = 1 - Math.pow(1 - progress, 3);
+                    counter.textContent = Math.round(target * eased);
+                    if (progress < 1) requestAnimationFrame(update);
+                    else counter.textContent = target + (target >= 10 ? '+' : '');
+                }
+                requestAnimationFrame(update);
+            });
+        }
+
+        // Intersection Observer for fade-in
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+
+        document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+        // Stack layer stagger animation
+        const stackObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const layers = entry.target.querySelectorAll('.stack-layer');
+                    layers.forEach((layer, i) => {
+                        setTimeout(() => layer.classList.add('visible'), i * 100);
+                    });
+                    stackObserver.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.2 });
+
+        const stackEl = document.getElementById('stack-visual');
+        if (stackEl) stackObserver.observe(stackEl);
+
+        // Growth chart animation
+        const growthObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.querySelectorAll('.growth-bar-then').forEach(bar => {
+                        bar.style.width = bar.dataset.width;
+                    });
+                    entry.target.querySelectorAll('.growth-bar-now').forEach(bar => {
+                        bar.style.width = bar.dataset.width;
+                    });
+                    growthObserver.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.3 });
+
+        const growthEl = document.getElementById('growth-chart');
+        if (growthEl) growthObserver.observe(growthEl);
+
+        // Compound loop animation
+        const loopObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const nodes = entry.target.querySelectorAll('.loop-node');
+                    const arrows = entry.target.querySelectorAll('.loop-arrow');
+                    let i = 0;
+
+                    function activateNext() {
+                        // Reset all
+                        nodes.forEach(n => n.classList.remove('active'));
+                        arrows.forEach(a => a.classList.remove('active'));
+
+                        // Activate current
+                        nodes[i].classList.add('active');
+                        if (i > 0) arrows[i - 1].classList.add('active');
+
+                        i = (i + 1) % nodes.length;
+                        setTimeout(activateNext, 800);
+                    }
+
+                    activateNext();
+                    loopObserver.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.5 });
+
+        const loopEl = document.getElementById('compound-loop');
+        if (loopEl) loopObserver.observe(loopEl);
+
+        // Start counter on page load
+        window.addEventListener('load', () => {
+            setTimeout(animateCounters, 500);
+        });
+
+        // Case study tab switching
+        document.querySelectorAll('.case-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.case-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.case-panel').forEach(p => p.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById('case-' + tab.dataset.case).classList.add('active');
+            });
+        });
+    </script>
+
+</body>
+</html>
