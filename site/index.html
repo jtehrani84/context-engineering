@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Context Engineering Starter Kit</title>
+    <meta name="description" content="Go from Day 0 to Day 5 with Claude Code. Compound loops take over from there.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .gradient-text {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .card-hover {
+            transition: all 0.2s ease;
+        }
+        .card-hover:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.12);
+        }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-up {
+            animation: fadeUp 0.6s ease forwards;
+        }
+        .fade-up-delay-1 { animation-delay: 0.1s; opacity: 0; }
+        .fade-up-delay-2 { animation-delay: 0.2s; opacity: 0; }
+        .fade-up-delay-3 { animation-delay: 0.3s; opacity: 0; }
+        .fade-up-delay-4 { animation-delay: 0.4s; opacity: 0; }
+    </style>
+</head>
+<body class="bg-slate-900 text-gray-100">
+
+    <!-- Hero -->
+    <section class="min-h-screen flex items-center justify-center px-6 py-24">
+        <div class="max-w-4xl text-center">
+            <p class="text-sm font-medium text-purple-400 tracking-wider uppercase mb-4 fade-up">Open Source Starter Kit</p>
+            <h1 class="text-5xl md:text-7xl font-bold mb-6 fade-up fade-up-delay-1">
+                <span class="gradient-text">Context Engineering</span>
+            </h1>
+            <p class="text-xl md:text-2xl text-gray-300 mb-4 fade-up fade-up-delay-2">
+                Go from Day 0 to Day 5.
+            </p>
+            <p class="text-lg text-gray-400 mb-12 max-w-2xl mx-auto fade-up fade-up-delay-3">
+                Persistent memory, compound loops, and autonomous growth for Claude Code.
+                Every correction becomes permanent. Every mistake develops immunity.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center fade-up fade-up-delay-4">
+                <a href="https://github.com/jtehrani84/context-engineering"
+                   class="bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl">
+                    Clone the Kit
+                </a>
+                <a href="#architecture"
+                   class="bg-slate-800 hover:bg-slate-700 text-gray-200 px-8 py-3 rounded-lg font-medium border border-slate-700 transition-all duration-200">
+                    See the Architecture
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- The Problem -->
+    <section class="py-24 px-6 bg-slate-800/50">
+        <div class="max-w-4xl mx-auto">
+            <h2 class="text-3xl font-bold mb-8 text-center">The Problem</h2>
+            <div class="grid md:grid-cols-2 gap-8">
+                <div class="bg-slate-800 rounded-xl p-6 border border-slate-700">
+                    <h3 class="text-lg font-semibold text-red-400 mb-3">Without Context Engineering</h3>
+                    <ul class="space-y-2 text-gray-400 text-sm">
+                        <li>Every session starts from zero</li>
+                        <li>Same corrections repeated weekly</li>
+                        <li>AI-sounding output requires manual editing</li>
+                        <li>Knowledge trapped in chat history</li>
+                        <li>No immune response to mistake patterns</li>
+                    </ul>
+                </div>
+                <div class="bg-slate-800 rounded-xl p-6 border border-purple-700/50">
+                    <h3 class="text-lg font-semibold text-purple-400 mb-3">With Context Engineering</h3>
+                    <ul class="space-y-2 text-gray-300 text-sm">
+                        <li>Every session picks up where you left off</li>
+                        <li>Corrections stick permanently (rules + hooks)</li>
+                        <li>Voice quality enforced mechanically</li>
+                        <li>Knowledge compounds across sessions</li>
+                        <li>The system gets better without effort</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Architecture -->
+    <section id="architecture" class="py-24 px-6">
+        <div class="max-w-5xl mx-auto">
+            <h2 class="text-3xl font-bold mb-4 text-center">11 Layers, One System</h2>
+            <p class="text-gray-400 text-center mb-12 max-w-2xl mx-auto">Each layer reinforces the others. Memory feeds rules. Rules feed hooks. Hooks feed skills. Skills feed the graph.</p>
+
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="card-hover bg-slate-800 rounded-xl p-6 border border-slate-700">
+                    <div class="text-2xl mb-3">1</div>
+                    <h3 class="font-semibold text-purple-300 mb-2">Identity (CLAUDE.md)</h3>
+                    <p class="text-sm text-gray-400">Who you are, what you do, routing table for context. Loaded every session.</p>
+                </div>
+                <div class="card-hover bg-slate-800 rounded-xl p-6 border border-slate-700">
+                    <div class="text-2xl mb-3">2</div>
+                    <h3 class="font-semibold text-purple-300 mb-2">Rules</h3>
+                    <p class="text-sm text-gray-400">Voice standards, security, architecture. Soft enforcement via context.</p>
+                </div>
+                <div class="card-hover bg-slate-800 rounded-xl p-6 border border-slate-700">
+                    <div class="text-2xl mb-3">3</div>
+                    <h3 class="font-semibold text-purple-300 mb-2">Hooks</h3>
+                    <p class="text-sm text-gray-400">Hard enforcement. Code that runs mechanically. Can't be forgotten.</p>
+                </div>
+                <div class="card-hover bg-slate-800 rounded-xl p-6 border border-slate-700">
+                    <div class="text-2xl mb-3">4</div>
+                    <h3 class="font-semibold text-purple-300 mb-2">Skills (21)</h3>
+                    <p class="text-sm text-gray-400">Workflow automation. /research-prep, /draft, /validate. 30 min -> 2 min.</p>
+                </div>
+                <div class="card-hover bg-slate-800 rounded-xl p-6 border border-slate-700">
+                    <div class="text-2xl mb-3">5</div>
+                    <h3 class="font-semibold text-purple-300 mb-2">Memory</h3>
+                    <p class="text-sm text-gray-400">Corrections, decisions, preferences. Every "remember this" persists.</p>
+                </div>
+                <div class="card-hover bg-slate-800 rounded-xl p-6 border border-slate-700">
+                    <div class="text-2xl mb-3">6</div>
+                    <h3 class="font-semibold text-purple-300 mb-2">Wiki</h3>
+                    <p class="text-sm text-gray-400">Structured knowledge. People, entities, concepts, projects. Graph-indexed.</p>
+                </div>
+                <div class="card-hover bg-slate-800 rounded-xl p-6 border border-slate-700">
+                    <div class="text-2xl mb-3">7</div>
+                    <h3 class="font-semibold text-purple-300 mb-2">Knowledge Graph</h3>
+                    <p class="text-sm text-gray-400">SQLite graph that grows from your work. Surfaces related context automatically.</p>
+                </div>
+                <div class="card-hover bg-slate-800 rounded-xl p-6 border border-slate-700">
+                    <div class="text-2xl mb-3">8</div>
+                    <h3 class="font-semibold text-purple-300 mb-2">Passive Intelligence</h3>
+                    <p class="text-sm text-gray-400">Overnight crons gather web + HN + GitHub intel while you sleep.</p>
+                </div>
+                <div class="card-hover bg-slate-800 rounded-xl p-6 border border-slate-700">
+                    <div class="text-2xl mb-3">9</div>
+                    <h3 class="font-semibold text-purple-300 mb-2">Multi-Model QA</h3>
+                    <p class="text-sm text-gray-400">Cross-validate content against multiple models. /validate before shipping.</p>
+                </div>
+                <div class="card-hover bg-slate-800 rounded-xl p-6 border border-slate-700">
+                    <div class="text-2xl mb-3">10</div>
+                    <h3 class="font-semibold text-purple-300 mb-2">Meta-Skills</h3>
+                    <p class="text-sm text-gray-400">/skillify extracts new skills from sessions. The system builds itself.</p>
+                </div>
+                <div class="card-hover bg-slate-800 rounded-xl p-6 border border-slate-700">
+                    <div class="text-2xl mb-3">11</div>
+                    <h3 class="font-semibold text-purple-300 mb-2">Compound Loop</h3>
+                    <p class="text-sm text-gray-400">Mistake -> correction -> memory -> rule -> hook -> prevention. Permanent immunity.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- The Compound Loop -->
+    <section class="py-24 px-6 bg-slate-800/50">
+        <div class="max-w-3xl mx-auto text-center">
+            <h2 class="text-3xl font-bold mb-8">The Compound Loop</h2>
+            <div class="bg-slate-900 rounded-xl p-8 font-mono text-sm text-left border border-slate-700">
+                <p class="text-gray-400">Day 1: &nbsp;You correct Claude &rarr; Memory file saved</p>
+                <p class="text-gray-400">Day 3: &nbsp;Same mistake class &rarr; Rule prevents it</p>
+                <p class="text-gray-300">Day 7: &nbsp;Rule forgotten in long session &rarr; Hook enforces</p>
+                <p class="text-gray-200">Day 14: Hook catches pattern &rarr; /skillify extracts it</p>
+                <p class="text-purple-300">Day 30: Crons feed intel &rarr; Morning brief surfaces it</p>
+                <p class="text-purple-400">Day 60: Graph connects entities &rarr; Better context always</p>
+            </div>
+            <p class="text-gray-400 mt-8 text-lg">
+                A mediocre setup running for 60 days beats a perfect setup running for 1 day.
+            </p>
+        </div>
+    </section>
+
+    <!-- Quick Start -->
+    <section class="py-24 px-6">
+        <div class="max-w-3xl mx-auto text-center">
+            <h2 class="text-3xl font-bold mb-8">Get Started in 30 Minutes</h2>
+            <div class="bg-slate-800 rounded-xl p-8 text-left font-mono text-sm border border-slate-700">
+                <p class="text-gray-400"># Clone the kit</p>
+                <p class="text-green-400">git clone https://github.com/jtehrani84/context-engineering.git</p>
+                <p class="text-green-400">cd context-engineering</p>
+                <p class="text-green-400">./setup.sh</p>
+                <br>
+                <p class="text-gray-400"># Or let Claude build it interactively</p>
+                <p class="text-green-400">claude</p>
+                <p class="text-gray-300">> Read ~/context-engineering/QUICKSTART-PROMPT.md and follow the instructions.</p>
+            </div>
+            <div class="mt-8">
+                <a href="https://github.com/jtehrani84/context-engineering"
+                   class="inline-block bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl">
+                    View on GitHub
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-12 px-6 border-t border-slate-800">
+        <div class="max-w-4xl mx-auto text-center text-gray-500 text-sm">
+            <p>Built by <a href="https://github.com/jtehrani84" class="text-purple-400 hover:text-purple-300">John Tehrani</a></p>
+            <p class="mt-2">Architecture developed over 60 days of daily Claude Code usage.</p>
+            <p class="mt-2">
+                <a href="https://jtehrani84.github.io/claude-context-architecture/from-memory-to-operating-system.html" class="text-purple-400 hover:text-purple-300">Read the full story</a>
+            </p>
+        </div>
+    </footer>
+
+</body>
+</html>

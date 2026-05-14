@@ -1,0 +1,121 @@
+{
+  // ~/.claude/settings.json — Claude Code configuration
+  // Copy this file to ~/.claude/settings.json and customize for your environment.
+  //
+  // This controls hooks, permissions, environment variables, and model selection.
+  // Changes here take effect on the next Claude Code session.
+
+  // Model selection — use your preferred model
+  "model": "claude-sonnet-4-20250514",
+
+  // Environment variables available to hooks and scripts
+  "env": {
+    // Your Anthropic API key (if using direct API)
+    // "ANTHROPIC_API_KEY": "sk-ant-...",
+
+    // Exa API key for web intelligence crons
+    // "EXA_API_KEY": "exa-...",
+
+    // Custom variables for your hooks
+    "CLAUDE_WIKI_DIR": "~/.claude/wiki",
+    "CLAUDE_MEMORY_DIR": "~/.claude/memory"
+  },
+
+  // Permissions — tools Claude can use without asking each time
+  "permissions": {
+    "allow": [
+      // Read-only operations (safe to auto-approve)
+      "Bash(git status)",
+      "Bash(git log*)",
+      "Bash(git diff*)",
+      "Bash(git branch*)",
+      "Bash(ls *)",
+      "Bash(find *)",
+      "Bash(grep *)",
+      "Bash(cat *)",
+      "Bash(head *)",
+      "Bash(wc *)",
+      "Bash(which *)",
+
+      // MCP tools you trust (add your own)
+      "mcp__github__get_file_contents",
+      "mcp__github__list_issues",
+
+      // File operations in safe directories
+      "Read",
+      "Write(~/.claude/memory/*)",
+      "Write(~/.claude/wiki/*)",
+      "Edit(~/.claude/memory/*)",
+      "Edit(~/.claude/wiki/*)"
+    ],
+    "deny": [
+      // Never auto-approve destructive operations
+      "Bash(rm -rf *)",
+      "Bash(git push --force*)",
+      "Bash(git reset --hard*)",
+      "Bash(docker system prune*)"
+    ]
+  },
+
+  // Hooks — scripts that fire at specific lifecycle events
+  "hooks": {
+    // Fires once at the start of every session
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "python3 ~/.claude/hooks/scripts/session-init.py"
+      }
+    ],
+
+    // Fires before Claude executes any tool
+    "PreToolUse": [
+      {
+        // Block dangerous bash commands
+        "type": "command",
+        "command": "python3 ~/.claude/hooks/scripts/guardrail.py",
+        "matcher": {
+          "tool_name": "Bash"
+        }
+      },
+      {
+        // Check for hallucinated domain terms on file writes
+        "type": "command",
+        "command": "python3 ~/.claude/hooks/scripts/domain-verification.py",
+        "matcher": {
+          "tool_name": ["Edit", "Write"]
+        }
+      },
+      {
+        // Validate schema/types before queries
+        "type": "command",
+        "command": "python3 ~/.claude/hooks/scripts/schema-check.py",
+        "matcher": {
+          "tool_name": "Bash"
+        }
+      }
+    ],
+
+    // Fires after Claude completes a tool execution
+    "PostToolUse": [
+      {
+        // Scan written content for AI-sounding language
+        "type": "command",
+        "command": "python3 ~/.claude/hooks/scripts/output-quality-gate.py",
+        "matcher": {
+          "tool_name": "Write"
+        }
+      },
+      {
+        // Auto-index entities into knowledge graph
+        "type": "command",
+        "command": "python3 ~/.claude/hooks/scripts/graph-auto-index.py",
+        "matcher": {
+          "tool_name": ["Write", "Edit"]
+        }
+      }
+    ],
+
+    // Fires when Claude's stop turn completes
+    "Stop": []
+  }
+}
