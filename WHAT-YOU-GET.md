@@ -70,7 +70,7 @@ Each skill replaces 15-60 minutes of manual work. Say the command, get the outpu
 |-------|-------------|-----------|
 | `/validate` | Scores the content in-session (SHIP / FIX FIRST / REWRITE), then asks a model from another lab through your endpoint. With no endpoint configured, it says the second read didn't happen | Manual review -> automated |
 | `/review` | Adversarial review by a model from a different lab than the drafter, through `scripts/llm-review.py` | A second opinion that isn't grading its own house style |
-| `/voice-check` | Anti-slop scan through the voice engine: banned words, replacements, pass/fail | Catches what you'd miss |
+| `/voice-check` | Anti-slop scanner: the full banned list, replacements, pass/fail (for a 0-100 score, run `node ~/.claude/tools/aiscore.mjs <file>`) | Catches what you'd miss |
 | `/voice-judge` | The gestalt read for register tells no regex reaches; it can veto a clean voice score | Catches prose that's clean but still reads as generated |
 | `/content-review` | 6-dimension universal reviewer with scoring rubric | Peer review -> instant |
 | `/claim-audit` | Extract every claim in an external-facing artifact and re-verify each against its source | Overstated or inverted claims get caught before they ship |
@@ -110,7 +110,7 @@ Each skill replaces 15-60 minutes of manual work. Say the command, get the outpu
 
 | Component | What It Does | How It Helps |
 |-----------|-------------|-------------|
-| `tools/aiscore.mjs` + vendored detector | 0–100 AI score from the vendored MIT detector, plus your personal overlay (shipped blank). The structural and cadence checks are described in `rules/structural-voice.md`; until they ship in code, they run only if you write them into your overlay | The engine `voice-tell-gate.py` and `/voice-check` run on |
+| `tools/aiscore.mjs` + vendored detector | 0–100 AI score from the vendored MIT detector, plus your personal overlay (shipped blank). The structural and cadence checks are described in `rules/structural-voice.md`; until they ship in code, they run only if you write them into your overlay | The engine `voice-tell-gate.py` runs on; also callable as `node ~/.claude/tools/aiscore.mjs <file>` |
 | `tools/voice-setup.mjs` | The calibration fuse: labels every result "generic-only" until you've calibrated it to you (`VOICE-ONBOARDING.md`) | A clean score never gets mistaken for "sounds like me" |
 | `harness-evolution/` | Held-out eval harness plus a generic seed corpus you replace with your own writing | Prove a guard change is a real improvement, not a lucky sample |
 | `tools/rag-quality/` + `tools/llm.mjs` | ECHO error attribution over Claude Code workflow traces (runs as-is), one query-rewrite tool that runs once `llm.mjs` points at your endpoint, and three method skeletons you aim at your own corpus | Find which agent or step broke a multi-agent run |

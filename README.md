@@ -91,7 +91,7 @@ Claude asks 5 questions and writes your `CLAUDE.md`. It doesn't recreate the fil
 | `/design-doc` | Architecture or design document for any system or project |
 | `/validate` | Quality gate: scores in-session, then asks a model from another lab through your endpoint (and says so when none is configured) |
 | `/review` | Adversarial review of a document by a model from a different lab than the one that drafted it |
-| `/voice-check` | Anti-slop scan through the voice engine, with line numbers and replacements |
+| `/voice-check` | Anti-slop scanner: banned words with line numbers and replacements (for a 0-100 score, run `node ~/.claude/tools/aiscore.mjs <file>`) |
 | `/voice-judge` | The gestalt read: can veto a clean voice score when the text still reads as generated |
 | `/content-review` | 6-dimension reviewer: accuracy, voice, specificity, focus, actionability, credibility |
 | `/claim-audit` | Re-verify every factual and causal claim in an external-facing artifact against its source |
