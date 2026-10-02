@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contents | Voice System Docs</title>
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="layout">
+<nav class="sidebar" aria-label="Chapters">
+<div class="site-title"><a href="index.html">Voice System Docs</a></div>
+<div class="edition">Public edition</div>
+<form class="search" role="search">
+<label for="q" class="sr-only">Search the docs</label>
+<input id="q" type="search" placeholder="Search" autocomplete="off">
+<ol id="results" class="results" aria-live="polite"></ol>
+</form>
+<ol class="toc">
+<li><a href="00-overview.html">Overview</a></li>
+<li><a href="01-getting-started.html">Getting Started With /voice-setup</a></li>
+<li><a href="02-architecture.html">Architecture</a></li>
+<li><a href="03-threat-model.html">Threat Model</a></li>
+<li><a href="04-runbooks.html">Runbooks</a></li>
+<li><a href="05-reference.html">Reference</a></li>
+<li><a href="06-calibration-and-evidence.html">Calibration and Evidence</a></li>
+<li><a href="07-decision-log.html">Decision Log</a></li>
+<li><a href="09-review-packet.html">Review Packet</a></li>
+<li><a href="10-maintaining-the-docs.html">Maintaining the Docs</a></li>
+</ol>
+</nav>
+<main id="main" class="content">
+<h1 id="contents">Contents</h1>
+<ol>
+<li><a href="00-overview.html">Overview</a>
+<ul><li><a href="00-overview.html#what-the-system-does">What the System Does</a></li><li><a href="00-overview.html#what-the-system-cannot-do">What the System Cannot Do</a></li><li><a href="00-overview.html#where-it-runs">Where It Runs</a></li><li><a href="00-overview.html#how-well-it-does-on-human-writing">How Well It Does on Human Writing</a></li><li><a href="00-overview.html#the-overlay-in-this-edition">The Overlay in This Edition</a></li><li><a href="00-overview.html#reading-order">Reading Order</a></li></ul></li>
+<li><a href="01-getting-started.html">Getting Started With /voice-setup</a>
+<ul><li><a href="01-getting-started.html#your-writing-samples-stay-on-this-machine">Your Writing Samples Stay on This Machine</a></li><li><a href="01-getting-started.html#before-you-start">Before You Start</a></li><li><a href="01-getting-started.html#step-1-run-the-doctor">Step 1: Run the Doctor</a></li><li><a href="01-getting-started.html#step-2-create-the-config-and-wire-the-hook">Step 2: Create the Config and Wire the Hook</a></li><li><a href="01-getting-started.html#step-3-add-your-writing-samples">Step 3: Add Your Writing Samples</a></li><li><a href="01-getting-started.html#step-4-draft-a-personal-overlay">Step 4: Draft a Personal Overlay</a></li><li><a href="01-getting-started.html#step-5-review-the-draft-yourself">Step 5: Review the Draft Yourself</a></li><li><a href="01-getting-started.html#step-6-calibrate-the-draft-on-held-out-writing">Step 6: Calibrate the Draft on Held-Out Writing</a></li><li><a href="01-getting-started.html#step-7-install-the-overlay">Step 7: Install the Overlay</a></li><li><a href="01-getting-started.html#step-8-optional-measure-recall-on-ai-drafts">Step 8 (Optional): Measure Recall on AI Drafts</a></li><li><a href="01-getting-started.html#step-9-doctor-green">Step 9: Doctor GREEN</a></li><li><a href="01-getting-started.html#later-runs">Later Runs</a></li><li><a href="01-getting-started.html#terms-used-in-this-chapter">Terms Used in This Chapter</a></li></ul></li>
+<li><a href="02-architecture.html">Architecture</a>
+<ul><li><a href="02-architecture.html#components">Components</a></li><li><a href="02-architecture.html#layers">Layers</a></li><li><a href="02-architecture.html#data-flow">Data Flow</a></li><li><a href="02-architecture.html#data-boundary">Data Boundary</a></li><li><a href="02-architecture.html#dependencies-and-pins">Dependencies and Pins</a></li></ul></li>
+<li><a href="03-threat-model.html">Threat Model</a>
+<ul><li><a href="03-threat-model.html#scope">Scope</a></li><li><a href="03-threat-model.html#summary">Summary</a></li><li><a href="03-threat-model.html#evasion">Evasion</a></li><li><a href="03-threat-model.html#injection-into-judges">Injection Into Judges</a></li><li><a href="03-threat-model.html#a-judge-grading-its-own-lab">A Judge Grading Its Own Lab</a></li><li><a href="03-threat-model.html#fail-open-paths">Fail-Open Paths</a></li><li><a href="03-threat-model.html#data-leaks">Data Leaks</a></li><li><a href="03-threat-model.html#supply-chain-of-the-detector">Supply Chain of the Detector</a></li><li><a href="03-threat-model.html#open-gaps">Open Gaps</a></li></ul></li>
+<li><a href="04-runbooks.html">Runbooks</a>
+<ul><li><a href="04-runbooks.html#a-legitimate-send-was-blocked">A Legitimate Send Was Blocked</a></li><li><a href="04-runbooks.html#the-scorer-errored-gate-exit-4-hook-denies-every-send">The Scorer Errored (Gate Exit 4, Hook Denies Every Send)</a></li><li><a href="04-runbooks.html#judges-are-unavailable">Judges Are Unavailable</a></li><li><a href="04-runbooks.html#the-hook-isnt-firing">The Hook Isn't Firing</a></li><li><a href="04-runbooks.html#recalibrate-after-a-change">Recalibrate After a Change</a></li><li><a href="04-runbooks.html#add-a-banned-word-or-a-structure">Add a Banned Word or a Structure</a></li><li><a href="04-runbooks.html#swap-a-judge-model-or-provider">Swap a Judge Model or Provider</a></li><li><a href="04-runbooks.html#upgrade-the-vendored-detector">Upgrade the Vendored Detector</a></li><li><a href="04-runbooks.html#claude-code-version-drift">Claude Code Version Drift</a></li><li><a href="04-runbooks.html#restore-the-hook-from-backup">Restore the Hook from Backup</a></li></ul></li>
+<li><a href="05-reference.html">Reference</a>
+<ul><li><a href="05-reference.html#check-catalog">Check Catalog</a></li><li><a href="05-reference.html#cli-flags">CLI Flags</a></li><li><a href="05-reference.html#exit-codes">Exit Codes</a></li><li><a href="05-reference.html#environment-variables">Environment Variables</a></li><li><a href="05-reference.html#hook-tiers-and-matchers">Hook Tiers and Matchers</a></li><li><a href="05-reference.html#files-and-tests">Files and Tests</a></li></ul></li>
+<li><a href="06-calibration-and-evidence.html">Calibration and Evidence</a>
+<ul><li><a href="06-calibration-and-evidence.html#what-is-measured">What Is Measured</a></li><li><a href="06-calibration-and-evidence.html#the-human-false-positive-budget">The Human False-Positive Budget</a></li><li><a href="06-calibration-and-evidence.html#rules-that-reject-on-their-own">Rules That Reject on Their Own</a></li><li><a href="06-calibration-and-evidence.html#full-gate-evaluation">Full-Gate Evaluation</a></li><li><a href="06-calibration-and-evidence.html#judge-panel">Judge Panel</a></li><li><a href="06-calibration-and-evidence.html#calibrating-your-own-overlay">Calibrating Your Own Overlay</a></li><li><a href="06-calibration-and-evidence.html#test-suites">Test Suites</a></li><li><a href="06-calibration-and-evidence.html#known-limits">Known Limits</a></li><li><a href="06-calibration-and-evidence.html#evidence-files">Evidence Files</a></li></ul></li>
+<li><a href="07-decision-log.html">Decision Log</a>
+<ul><li><a href="07-decision-log.html#summary">Summary</a></li><li><a href="07-decision-log.html#d1-cadence-checks-scale-with-document-length">D1. Cadence Checks Scale With Document Length</a></li><li><a href="07-decision-log.html#d2-rule-c-narrowed-from-seven-pinned-structures-to-one-phrase">D2. Rule C Narrowed From Seven Pinned Structures to One Phrase</a></li><li><a href="07-decision-log.html#d3-cadence-penalty-capped-then-taken-out-of-the-score">D3. Cadence Penalty Capped, Then Taken Out of the Score</a></li><li><a href="07-decision-log.html#d4-the-judge-is-never-the-drafters-vendor">D4. The Judge Is Never the Drafter's Vendor</a></li><li><a href="07-decision-log.html#d5-juror-panel-chosen-by-drafter-vendor-a-lone-juror-cannot-reject">D5. Juror Panel Chosen by Drafter Vendor; a Lone Juror Cannot Reject</a></li><li><a href="07-decision-log.html#d6-text-is-normalized-before-every-scan">D6. Text Is Normalized Before Every Scan</a></li><li><a href="07-decision-log.html#d7-unicode-tag-characters-stripped-and-decoded">D7. Unicode Tag Characters Stripped and Decoded</a></li><li><a href="07-decision-log.html#d8-scorer-and-send-hook-fail-closed">D8. Scorer and Send Hook Fail Closed</a></li><li><a href="07-decision-log.html#d9-html-cleanup-and-text-scans-run-in-linear-time">D9. HTML Cleanup and Text Scans Run in Linear Time</a></li><li><a href="07-decision-log.html#d10-the-stated-ceiling-deliberate-mimicry-is-out-of-reach">D10. The Stated Ceiling: Deliberate Mimicry Is Out of Reach</a></li><li><a href="07-decision-log.html#d11-the-human-false-positive-budget-is-a-standing-gate">D11. The Human False-Positive Budget Is a Standing Gate</a></li></ul></li>
+<li><a href="09-review-packet.html">Review Packet</a>
+<ul><li><a href="09-review-packet.html#what-the-system-does">What the System Does</a></li><li><a href="09-review-packet.html#claims-and-evidence">Claims and Evidence</a></li><li><a href="09-review-packet.html#reproduce-the-public-numbers">Reproduce the Public Numbers</a></li><li><a href="09-review-packet.html#open-decisions">Open Decisions</a></li><li><a href="09-review-packet.html#known-limits">Known Limits</a></li></ul></li>
+<li><a href="10-maintaining-the-docs.html">Maintaining the Docs</a>
+<ul><li><a href="10-maintaining-the-docs.html#one-source-three-editions">One Source, Three Editions</a></li><li><a href="10-maintaining-the-docs.html#where-every-number-comes-from">Where Every Number Comes From</a></li><li><a href="10-maintaining-the-docs.html#the-verify-docs-check">The verify-docs Check</a></li><li><a href="10-maintaining-the-docs.html#leak-checks">Leak Checks</a></li><li><a href="10-maintaining-the-docs.html#before-a-commit">Before a Commit</a></li><li><a href="10-maintaining-the-docs.html#adding-a-chapter-or-a-fact">Adding a Chapter or a Fact</a></li><li><a href="10-maintaining-the-docs.html#committing-a-rendered-site">Committing a Rendered Site</a></li></ul></li>
+</ol>
+
+<p class="built">Built from tools commit b4534e3 with facts from 2026-10-02.</p>
+</main>
+</div>
+<script src="search-index.js"></script>
+<script src="assets/search.js"></script>
+</body>
+</html>

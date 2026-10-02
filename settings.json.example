@@ -158,6 +158,16 @@
         "hooks": [
           { "type": "command", "command": "python3 ~/.claude/hooks/scripts/schema-check.py" }
         ]
+      },
+      {
+        // Voice engine on send tools (chat, email, documents, comments, pull requests): blocks a send with a hard
+        // tell and denies one it can't score. The matcher is a regular expression over the MCP tool names, the
+        // default sendTools of the voice config; `node ~/.claude/tools/onboarding/voice-doctor.mjs --print-hooks`
+        // prints it for your config.
+        "matcher": "^(?:mcp__.+__(?:slack_send_message|slack_send_message_draft|slack_schedule_message|slack_create_canvas|slack_update_canvas|send_gmail_message|draft_gmail_message|create_doc|import_to_google_doc|batch_update_doc|insert_doc_elements|modify_doc_text|find_and_replace_doc|update_doc_headers_footers|create_presentation|import_to_google_slides|batch_update_presentation|create_form|batch_update_form|manage_document_comment|manage_presentation_comment|manage_spreadsheet_comment|create_pull_request|create_issue|add_issue_comment|create_pull_request_review|update_pull_request|update_issue|add_comment_to_pending_review|add_reply_to_pull_request_comment|pull_request_review_write))$",
+        "hooks": [
+          { "type": "command", "command": "python3 ~/.claude/hooks/scripts/voice-tell-gate.py" }
+        ]
       }
     ],
 
@@ -170,8 +180,9 @@
         ]
       },
       {
-        // Voice engine (~/.claude/tools/aiscore.mjs: the generic detector plus your overlay). Silent if node or the engine is missing.
-        "matcher": "Write",
+        // Voice engine on file writes (~/.claude/tools/aiscore.mjs and text-normalize.mjs: the generic detector plus
+        // your overlay). Nudges only; if the engine can't run, it adds a visible warning.
+        "matcher": "Write|Edit|MultiEdit",
         "hooks": [
           { "type": "command", "command": "python3 ~/.claude/hooks/scripts/voice-tell-gate.py" }
         ]

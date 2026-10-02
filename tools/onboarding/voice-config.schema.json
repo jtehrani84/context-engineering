@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "voice-config.schema.json",
+  "title": "Voice system user config",
+  "description": "One file per user, read by voice-doctor.mjs, profile-build.mjs and calibrate-user.mjs. Default location: {claude}/voice/voice-config.json, or the path in VOICE_CONFIG. Every property has a default, so an empty object is a valid config. Path values may use the tokens ~ (home), {claude} (CLAUDE_CONFIG_DIR, else ~/.claude), {tools} (the tools dir this onboarding copy is installed in), {toolsDir} and {voiceDir} (the resolved values of paths.toolsDir and paths.voiceDir). Two rules can't be written as JSON Schema and are checked in code (lib/config.mjs): no judge in judges.allowed may come from judges.drafterLab, and judges.aiDraftsToJudges needs at least one allowed judge.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string", "description": "Editor hint only." },
+    "version": { "const": 1, "default": 1, "description": "Config format version." },
+    "paths": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Where the tools, the user's files and the Claude Code settings live.",
+      "properties": {
+        "toolsDir": { "type": "string", "minLength": 1, "default": "{tools}", "description": "The voice engine: aiscore.mjs, text-normalize.mjs, prose-gate.mjs, the detector." },
+        "voiceDir": { "type": "string", "minLength": 1, "default": "{claude}/voice", "description": "The user's own voice files: samples, drafts, the calibration report. Nothing in it is shipped or uploaded." },
+        "overlay": { "type": "string", "minLength": 1, "default": "{toolsDir}/voice-overlay.mjs", "description": "The installed personal overlay, the one the scorer loads." },
+        "draftOverlay": { "type": "string", "minLength": 1, "default": "{voiceDir}/voice-overlay.draft.mjs", "description": "Where profile-build.mjs writes a draft overlay for review. Never the installed overlay." },
+        "baseOverlay": { "type": ["string", "null"], "default": null, "description": "An optional overlay the engine ships; when set, the personal overlay adds its checks to this one." },
+        "samplesDir": { "type": "string", "minLength": 1, "default": "{voiceDir}/samples", "description": "The user's own writing samples (.txt, .md, .mdx, .markdown, .text). Read locally, never sent anywhere." },
+        "aiDraftsDir": { "type": "string", "minLength": 1, "default": "{voiceDir}/ai-drafts", "description": "Optional AI drafts in the user's topics, for the recall check." },
+        "calibrationReport": { "type": "string", "minLength": 1, "default": "{voiceDir}/calibration-report.json", "description": "Written by calibrate-user.mjs, read by voice-doctor.mjs." },
+        "settings": {
+          "anyOf": [
+            { "type": "string", "minLength": 1 },
+            { "type": "array", "items": { "type": "string", "minLength": 1 }, "minItems": 1 }
+          ],
+          "default": ["{claude}/settings.json"],
+          "description": "Claude Code settings file or files whose hooks section wires the voice hook."
+        },
+        "hook": { "type": "string", "minLength": 1, "default": "{claude}/hooks/scripts/voice-tell-gate.py", "description": "The voice hook script. If the settings wire a different path, the wired path is used." }
+      }
+    },
+    "sendTools": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[A-Za-z0-9_-]+$" },
+      "minItems": 1,
+      "uniqueItems": true,
+      "default": [
+        "slack_send_message", "slack_send_message_draft", "slack_schedule_message", "slack_create_canvas", "slack_update_canvas",
+        "send_gmail_message", "draft_gmail_message",
+        "create_doc", "import_to_google_doc", "batch_update_doc", "insert_doc_elements", "modify_doc_text", "find_and_replace_doc", "update_doc_headers_footers",
+        "create_presentation", "import_to_google_slides", "batch_update_presentation",
+        "create_form", "batch_update_form",
+        "manage_document_comment", "manage_presentation_comment", "manage_spreadsheet_comment",
+        "create_pull_request", "create_issue", "add_issue_comment", "create_pull_request_review", "update_pull_request", "update_issue",
+        "add_comment_to_pending_review", "add_reply_to_pull_request_comment", "pull_request_review_write"
+      ],
+      "description": "Tools whose calls send prose somewhere it can't be taken back. The hook BLOCKS these on a hard tell or a scorer failure. A name that starts with mcp__ is one exact tool; any other name is a tool suffix, matched under any MCP server prefix (mcp__<server>__<name>), the way the hook matches it."
+    },
+    "nudgeGlobs": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1,
+      "uniqueItems": true,
+      "default": ["**/*.md", "**/*.mdx", "**/*.txt", "**/*.html", "**/*.htm", "**/*.rtf", "**/*.docx"],
+      "description": "Files whose writes (Write, Edit, MultiEdit) get a NUDGE, never a block. The default matches the hook's prose extensions."
+    },
+    "judges": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The optional judge panel (prose-gate.mjs). A judge never comes from the drafter's lab: a model under-rates the tells of its own lab's writing.",
+      "properties": {
+        "mode": { "enum": ["none", "single", "consensus"], "default": "none", "description": "none: deterministic checks only (det-only mode; a clean draft is INCONCLUSIVE, never ADMIT). single: one judge. consensus: two judges from two other labs." },
+        "drafterLab": { "type": "string", "pattern": "^[a-z0-9-]+$", "default": "unknown", "description": "The lab whose model drafts your text (for example anthropic, google, openai, xai). Judges from this lab are not allowed." },
+        "allowed": {
+          "type": "array",
+          "uniqueItems": true,
+          "default": [],
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "lab"],
+            "properties": {
+              "name": { "type": "string", "pattern": "^[a-z0-9-]+$", "description": "A judge name in the gate's registry (prose-gate.mjs JUDGES)." },
+              "lab": { "type": "string", "pattern": "^[a-z0-9-]+$", "description": "The lab that makes this judge's model. Must differ from drafterLab." },
+              "command": { "type": "string", "minLength": 1, "description": "Optional path to the judge backend's CLI. voice-doctor checks that it is an executable file, and calibrate-user.mjs --judge-drafts passes it to the gate as OPENCODE_BIN when the environment sets none. Default: OPENCODE_BIN, then opencode on PATH." }
+            }
+          }
+        },
+        "aiDraftsToJudges": { "type": "boolean", "default": false, "description": "Allow calibrate-user.mjs --judge-drafts to send AI drafts (never your samples) to the allowed judges." }
+      }
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Rules for your writing samples. They are constants: the tools refuse a config that changes them.",
+      "properties": {
+        "samplesLeaveMachine": { "const": false, "default": false, "description": "Samples are read locally and never sent to a model, a judge, a web tool or a remote path." },
+        "samplesToJudges": { "const": false, "default": false, "description": "No judge ever sees a sample, including during calibration." },
+        "printSampleText": { "const": false, "default": false, "description": "The tools print counts and sample ids, not sample text, because their output may be read into an AI session. --show-spans prints matched text for a terminal you run yourself." }
+      }
+    },
+    "strictness": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "level": { "enum": ["standard", "strict"], "default": "standard", "description": "standard: a held-out sample fails calibration when the gate rejects it or the send hook blocks it. strict: a nudge also counts." },
+        "detBar": { "type": "integer", "minimum": 1, "maximum": 100, "default": 40, "description": "prose-gate --det-bar: the AI-evidence score at which the deterministic layer rejects." },
+        "judgeBar": { "type": "integer", "minimum": 1, "maximum": 100, "default": 50, "description": "prose-gate --bar: the mean judge AI-ness at which the panel rejects." },
+        "heldOutShare": { "type": "number", "minimum": 0.1, "maximum": 0.5, "default": 0.3, "description": "Share of samples kept out of profile building and used only to test." },
+        "minSamples": { "type": "integer", "minimum": 4, "maximum": 1000, "default": 20, "description": "Below this many samples the tools still run but warn that the held-out set is small." }
+      }
+    }
+  }
+}

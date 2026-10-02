@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Decision Log | Voice System Docs</title>
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="layout">
+<nav class="sidebar" aria-label="Chapters">
+<div class="site-title"><a href="index.html">Voice System Docs</a></div>
+<div class="edition">Public edition</div>
+<form class="search" role="search">
+<label for="q" class="sr-only">Search the docs</label>
+<input id="q" type="search" placeholder="Search" autocomplete="off">
+<ol id="results" class="results" aria-live="polite"></ol>
+</form>
+<ol class="toc">
+<li><a href="00-overview.html">Overview</a></li>
+<li><a href="01-getting-started.html">Getting Started With /voice-setup</a></li>
+<li><a href="02-architecture.html">Architecture</a></li>
+<li><a href="03-threat-model.html">Threat Model</a></li>
+<li><a href="04-runbooks.html">Runbooks</a></li>
+<li><a href="05-reference.html">Reference</a></li>
+<li><a href="06-calibration-and-evidence.html">Calibration and Evidence</a></li>
+<li><a href="07-decision-log.html" aria-current="page">Decision Log</a>
+<ol><li><a href="#summary">Summary</a></li><li><a href="#d1-cadence-checks-scale-with-document-length">D1. Cadence Checks Scale With Document Length</a></li><li><a href="#d2-rule-c-narrowed-from-seven-pinned-structures-to-one-phrase">D2. Rule C Narrowed From Seven Pinned Structures to One Phrase</a></li><li><a href="#d3-cadence-penalty-capped-then-taken-out-of-the-score">D3. Cadence Penalty Capped, Then Taken Out of the Score</a></li><li><a href="#d4-the-judge-is-never-the-drafters-vendor">D4. The Judge Is Never the Drafter's Vendor</a></li><li><a href="#d5-juror-panel-chosen-by-drafter-vendor-a-lone-juror-cannot-reject">D5. Juror Panel Chosen by Drafter Vendor; a Lone Juror Cannot Reject</a></li><li><a href="#d6-text-is-normalized-before-every-scan">D6. Text Is Normalized Before Every Scan</a></li><li><a href="#d7-unicode-tag-characters-stripped-and-decoded">D7. Unicode Tag Characters Stripped and Decoded</a></li><li><a href="#d8-scorer-and-send-hook-fail-closed">D8. Scorer and Send Hook Fail Closed</a></li><li><a href="#d9-html-cleanup-and-text-scans-run-in-linear-time">D9. HTML Cleanup and Text Scans Run in Linear Time</a></li><li><a href="#d10-the-stated-ceiling-deliberate-mimicry-is-out-of-reach">D10. The Stated Ceiling: Deliberate Mimicry Is Out of Reach</a></li><li><a href="#d11-the-human-false-positive-budget-is-a-standing-gate">D11. The Human False-Positive Budget Is a Standing Gate</a></li></ol></li>
+<li><a href="09-review-packet.html">Review Packet</a></li>
+<li><a href="10-maintaining-the-docs.html">Maintaining the Docs</a></li>
+</ol>
+</nav>
+<main id="main" class="content">
+<h1 id="decision-log">Decision Log</h1>
+<p>One entry per decision that set how the voice system behaves today. Each entry gives the context, the decision, the evidence, the date and commit, and what would reopen it. Numbers here are the measurements recorded in the named evidence files at the commits named; the current counts are in <a href="06-calibration-and-evidence.html">Calibration and Evidence</a>, filled from the facts file at b4534e3. Past values in this chapter are history and are not expected to match a fresh run.</p>
+<p>A decision is reopened by new evidence of the kind its entry names. Changing a decision means a new entry with its own evidence, and the old entry stays.</p>
+<p>Some evidence files sit in the author's private evidence directory and are cited by name only. Measurements of private writing alone are left out of this edition. Some control-set counts below are pooled over public and private sets; those say so, and the private share is not broken out.</p>
+<h2 id="summary">Summary</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Id</th><th>Decision</th><th>Date</th><th>Commit</th></tr></thead>
+<tbody>
+<tr><td>D1</td><td>Cadence checks scale with document length above a crossover</td><td>2026-10-01</td><td>96a4a66</td></tr>
+<tr><td>D2</td><td>Rule C narrowed from seven pinned structures to one phrase</td><td>2026-10-01</td><td>1de0ab1</td></tr>
+<tr><td>D3</td><td>Cadence penalty capped, then taken out of the score</td><td>2026-10-02</td><td>eb21f5c, 05da726</td></tr>
+<tr><td>D4</td><td>The judge is never the drafter's vendor</td><td>2026-09-29</td><td>9fe9f5d</td></tr>
+<tr><td>D5</td><td>Juror panel chosen by drafter vendor; a lone juror cannot reject</td><td>2026-10-02</td><td>1858a48</td></tr>
+<tr><td>D6</td><td>Text is normalized before every scan</td><td>2026-10-02</td><td>5813fd1, ca26e8a, c0bf840</td></tr>
+<tr><td>D7</td><td>Unicode tag characters stripped and decoded</td><td>2026-10-02</td><td>bc1a378</td></tr>
+<tr><td>D8</td><td>Scorer and send hook fail closed</td><td>2026-10-02</td><td>892b20b, 1763892, 4f7daef</td></tr>
+<tr><td>D9</td><td>HTML cleanup and text scans run in linear time</td><td>2026-10-02</td><td>98b6adc</td></tr>
+<tr><td>D10</td><td>The stated ceiling: deliberate mimicry is out of reach</td><td>2026-09-21</td><td>(documentation)</td></tr>
+<tr><td>D11</td><td>The human false-positive budget is a standing gate</td><td>2026-10-02</td><td>c8c713b</td></tr>
+</tbody></table></div>
+<h2 id="d1-cadence-checks-scale-with-document-length">D1. Cadence Checks Scale With Document Length</h2>
+<ul>
+<li><strong>Date and commit:</strong> 2026-10-01, 96a4a66. 8010a94 added an environment override for the crossover.</li>
+<li><strong>Context:</strong> The cadence checks count sentence-rhythm patterns: runs of short sentences, colon reveals, scheduled fragments and similar. As fixed counts they fired more often the longer a document got, so long human documents collected penalties that short ones did not.</li>
+<li><strong>Decision:</strong> At or below a crossover length nothing changes. Above it, each count threshold becomes a density: the count must reach max(N, N x words / crossover).</li>
+<li><strong>Evidence:</strong> <code>VERDICT.md</code> (crossover sweep) and <code>decide/DECISION.md</code>.</li>
+<li><strong>Reopen if:</strong> a modern human long-form set (business memos, for example) shows the crossover is in the wrong place, or a new long-AI set gains catches at a higher crossover on more than two of the six long-draft prompt topics.</li>
+</ul>
+<p>The cadence checks live in the author's personal overlay, which the starter kits ship blank, so the thresholds and the crossover value are not reproduced here. The engine mechanism (count thresholds that become densities past a crossover) applies to any overlay that defines cadence checks.</p>
+<h2 id="d2-rule-c-narrowed-from-seven-pinned-structures-to-one-phrase">D2. Rule C Narrowed From Seven Pinned Structures to One Phrase</h2>
+<ul>
+<li><strong>Date and commit:</strong> 2026-10-01, 1de0ab1. The original rule C came in dc5bc08.</li>
+<li><strong>Context:</strong> Rule C lets a pinned structure reject in the gate on its own, without a score. It started with seven structures. A pin that rejects on its own has to cost zero real people, and the seven did not meet that.</li>
+<li><strong>Decision:</strong> Pin one phrase, a candor label, with an explicit <code>verdict: true</code> flag. The other six keep their severities, so the send hook still blocks them; in the gate they print as must-fix.</li>
+<li><strong>Evidence:</strong> <code>VERDICT.md</code> (first pass, seven types to two), <code>decide/DECISION.md</code> (final, seven to one), <code>decide/test-results.json</code>, <code>decide/ngram/summary.txt</code> (Google Books Ngram lookups; no corpus text was sent).</li>
+<li><strong>Reopen if:</strong> a modern (2020s) human business-email corpus contains the phrase, or the phrase is widened by a word.</li>
+<li><strong>Limits:</strong> the three AI catches are in-sample and come from two of 16 prompt topics. A drafter that holds the same ban list avoids the phrase by construction, so the pin is a tripwire for drafts written without the rules.</li>
+</ul>
+<p>The standing budget fails if the pinned phrase hits any human document. The run in the facts file (measured at b4534e3 on 2026-10-02) rejected 0 of the 18,335 public documents for any reason.</p>
+<h2 id="d3-cadence-penalty-capped-then-taken-out-of-the-score">D3. Cadence Penalty Capped, Then Taken Out of the Score</h2>
+<ul>
+<li><strong>Date and commit:</strong> 2026-10-02. eb21f5c capped the cadence penalty; 05da726 set its weight to 0 by default (<code>--cadence-weight</code> restores the capped weighting). 1e0ba0b and 6209756 made the adjusted score count only the detector categories that held up as AI evidence.</li>
+<li><strong>Context:</strong> Cadence points were added to the score on 2026-09-28 and 2026-09-29, after a Gemini point-of-view draft scored 1 out of 100 on the detector while two judges rated it 78 to 91 (<code>case-study/RESULTS.md</code>). The added points then became the main source of rejects on human text.</li>
+<li><strong>Decision:</strong> Cadence findings still print as must-fix in the scorer and the gate, but add 0 points to the score by default. The send hook does not read them.</li>
+<li><strong>Evidence:</strong> <code>recal/FINAL.md</code> (with <code>recal/CADENCE.md</code>, <code>recal/CLASSIFY.md</code>, <code>recal/cadence-change.diff</code>) and <code>judge/JUDGE.md</code>. The cap was chosen on a pre-registered tune half and scored once on an author-disjoint held-out half.</li>
+<li><strong>Cost:</strong> one fresh-AI catch on the deterministic layer is lost, and a Gemini point-of-view case-study draft moves from REJECT to INCONCLUSIVE in det-only mode, so the judges have to catch it.</li>
+<li><strong>Reopen if:</strong> a tune and held-out split on a new generation run shows cadence separating AI drafts from human documents at matched length, or the owner wants cadence back in the score (one flag).</li>
+</ul>
+<h2 id="d4-the-judge-is-never-the-drafters-vendor">D4. The Judge Is Never the Drafter's Vendor</h2>
+<ul>
+<li><strong>Date and commit:</strong> 2026-09-29, 9fe9f5d (cross-vendor gestalt gate), tidied in 824cb27; evidence committed in d0aed68.</li>
+<li><strong>Context:</strong> A model grading its own vendor's writing may be lenient on it. The first version of the gate let the drafting model judge.</li>
+<li><strong>Decision:</strong> Every juror comes from a vendor other than the drafter's. The drafter is named on the command line, or treated as unknown.</li>
+<li><strong>Evidence:</strong> <code>case-study/RESULTS.md</code> and <code>case-study/calibration-2026-09-29.json</code>. The drafts are generated text about a fictional company, Cascade Outdoor Co. A controlled two-by-two: Gemini and Opus each drafted an account playbook and a point-of-view document (n = 4 documents).</li>
+<li><strong>Reopen if:</strong> a larger, blinded run comparing same-vendor and cross-vendor judging shows no bias.</li>
+</ul>
+<div class="table-wrap"><table>
+<thead><tr><th>Judge</th><th>Gemini Drafts</th><th>Opus Drafts</th></tr></thead>
+<tbody>
+<tr><td>Opus, grading both (mean AI-ness)</td><td>74</td><td>62.5</td></tr>
+<tr><td>Blind neutral judge (mean AI-ness)</td><td>87</td><td>87.5</td></tr>
+</tbody></table></div>
+<p>Opus rated both vendors' drafts as less AI-like than the neutral judge did: 13 points lower on the Gemini drafts and 25 points lower on its own. The 12-point difference between those two gaps is the self-bias figure. With n = 4 and one prompt pair, this shows the effect exists. It has no interval, so it says little about the size. In a draft, gate and regenerate loop, both vendors' drafts scored 82 to 85 over three attempts and were rated clockable by both jurors on every attempt; none was admitted.</p>
+<h2 id="d5-juror-panel-chosen-by-drafter-vendor-a-lone-juror-cannot-reject">D5. Juror Panel Chosen by Drafter Vendor; a Lone Juror Cannot Reject</h2>
+<ul>
+<li><strong>Date and commit:</strong> 2026-10-02, 1858a48 (panel and lone-juror fix); f53d80d set the prompt fence per juror.</li>
+<li><strong>Context:</strong> The previous panel caught 26 of 94 drafts from Anthropic models. Its Gemini juror was weak on Anthropic text (AUC 0.83 on Opus drafts). Separately, four documents had ended with one surviving juror, and &quot;unanimous&quot; had been computed over that one survivor.</li>
+<li><strong>Decision:</strong> Anthropic, human and unknown drafters get Grok and GPT. Google drafters keep Grok and Claude. xAI drafters get Gemini and Claude. OpenAI drafters get Grok and Gemini. The remaining juror is a spare asked only when one errors, and with fewer than two answers the panel cannot reject.</li>
+<li><strong>Evidence:</strong> <code>judge/JUDGE.md</code>, pre-registered in <code>judge/holdout-prereg.json</code> and <code>judge/gpt-prereg.json</code>; the change itself is <code>judge/proposed-prose-gate.diff</code>. 400 human documents from the public corpora and 154 generated AI drafts.</li>
+<li><strong>Reopen if:</strong> a held-out AI set shows the new panel's recall collapsing, access to the GPT juror is lost, or a human-labeled validation set disagrees with the judges.</li>
+</ul>
+<p>Numbers. The new panel caught 49 of 94 Anthropic drafts against 26, with 0 of 400 human rejects (0 of 200 in-sample, 0 of 200 held out; 95% upper bound 0.95% to 1.0%). A second sample gave 49 of 94 again against 33 for the old panel; 45 drafts were caught in both samples by the new panel and 22 by the old. On the 94 Anthropic drafts, verdict flips between the samples were 8.5% for the new panel and 16.0% for the old. Over all 154 AI drafts, recall went from 78 (50.6%) to 101 (65.6%); on 30 adversary drafts written under the anti-AI rules, from 7 to 13. Repeat runs of the old panel changed 0 of 200 human verdicts and 12.3% of AI gestalt calls. The GPT juror returned 0 errors in 938 calls, with a median of 8 seconds.</p>
+<p>Limits. The AI side has no held-out set, and the Gemini swap was chosen after watching Gemini miss the same 94 drafts. More than half of the jurors' &quot;not AI&quot; calls on human documents cite the date or medium, so 0 of 400 is optimistic for a modern writer. The polished 18F posts scored highest and produced both single-juror &quot;clockable&quot; calls.</p>
+<h2 id="d6-text-is-normalized-before-every-scan">D6. Text Is Normalized Before Every Scan</h2>
+<ul>
+<li><strong>Date and commit:</strong> 2026-10-02. 5813fd1 added <code>text-normalize.mjs</code> (NFKC, invisible and bidi characters removed, look-alike letters folded, quote, dash and space variants unified, emphasis markers removed). ca26e8a made the pin and the injection check also read the rendered text. c0bf840 fenced judged text as data and made text addressed to a grader reject before any judge is called.</li>
+<li><strong>Context:</strong> A separate verification run tested the claim that a tell cannot be hidden by typing it differently, against commit 3eea922, and found it false. All 24 crafted spellings of the pinned phrase got past the pin, and all 9 obfuscated spellings of known injection wordings got past the injection check. The send hook's word list had the same gap: a blocked word typed with a Cyrillic letter or a zero-width space passed until 4f7daef (D8).</li>
+<li><strong>Decision:</strong> Every scan reads canonical text. The overlay and the injection check get <code>normalizeForScan</code>, the detector gets a lighter form because it counts some of these characters itself, and the pin and injection check also see <code>renderedView</code>.</li>
+<li><strong>Evidence:</strong> the 2026-10-02 apply report and verification report, with the attack table, and the attack suite the verification run used.</li>
+<li><strong>Reopen if:</strong> a new spelling class gets past the pin or the injection check in the attack suite.</li>
+<li><strong>Limits:</strong> an injection worded in a way the pattern list does not cover still passes the deterministic check by design; the prompt fence and juror behavior are the backstop. Normalization is a fixed table (572 confusables from Unicode UTS #39 v18.0.0) and proves nothing about characters outside it.</li>
+</ul>
+<p>Numbers. After ca26e8a all 24 spellings and all 9 injections are caught. Normalization changed exactly one document in the test sample (a curly apostrophe in an 18F post). In a live run, seven injections in wordings the patterns do not list were each run on two panels, and no juror followed them. The scorer suite went from 13 to 15 cases and the gate unit suite from 90 to 110.</p>
+<h2 id="d7-unicode-tag-characters-stripped-and-decoded">D7. Unicode Tag Characters Stripped and Decoded</h2>
+<ul>
+<li><strong>Date and commit:</strong> 2026-10-02, bc1a378 (landed by the verification run as a fast-forward), with a follow-up in ca26e8a.</li>
+<li><strong>Context:</strong> Unicode tag characters (U+E0000 to U+E007F) render as nothing, but a model reads them. An override instruction encoded as tag characters displayed as 32 visible characters, passed the injection check and reached the judges. The Gemini juror read the hidden payload, which shows the channel exists; no juror obeyed it. A single tag character inserted into a word also hid every overlay tell.</li>
+<li><strong>Decision:</strong> Tag characters are removed in every scan. <code>revealTags()</code> decodes them into the ASCII they spell for the injection check, and the judges get the stripped text.</li>
+<li><strong>Evidence:</strong> the apply report addendum and verification report items 14 and 15 (2026-10-02).</li>
+<li><strong>Reopen if:</strong> another invisible-character class carries text to a model. The interlinear annotation anchor (U+FFF9) also passed on 3eea922 and is the first candidate to test.</li>
+</ul>
+<p>Numbers. After the fix the smuggled text returns REJECT with the reason &quot;judge-directed injection (hidden-override-instructions)&quot;, exit 2, and no judge is called. The gate unit suite went from 90 to 94 cases with this change. None of the 39,492 test documents (a pooled control set that includes private sets) contains a tag character.</p>
+<h2 id="d8-scorer-and-send-hook-fail-closed">D8. Scorer and Send Hook Fail Closed</h2>
+<ul>
+<li><strong>Date and commit:</strong> 2026-10-02. 892b20b: a broken scorer makes the gate return ERROR (exit 4), never ADMIT. 1763892: a 120-second scorer timeout with SIGKILL, so a hang is also ERROR. 4f7daef: the send hook fails closed and normalizes its word list.</li>
+<li><strong>Context:</strong> With the scorer printing <code>{}</code> and stand-in judges answering NO, the old gate returned ADMIT and exit 0 on text it had never scored. A real hang also happened: <code>gate-eval.mjs</code> waited 12 minutes on a scorer child process blocked on stdin. In the old hook, a scorer error or a 20-second timeout made the scan return nothing and dropped every structure check, so a pinned phrase that should block went out.</li>
+<li><strong>Decision:</strong> In the gate, any scorer failure is ERROR (exit 4) and no judge is called. In the hook, any scorer or normalizer failure denies a send, adds a visible warning to a file write, and unreadable hook input exits 2.</li>
+<li><strong>Evidence:</strong> the apply report steps 6 and 6b, verification report items 11, 12 and 18, and the final line of the hook-fix workflow journal (2026-10-02).</li>
+<li><strong>Ordering dependency:</strong> the hook calls the <code>text-normalize.mjs</code> CLI. Against an older tools checkout it denies every send by design, so tools and hook have to move together.</li>
+<li><strong>Reopen if:</strong> fail-closed denies block legitimate sends often enough to matter, for example scorer timeouts under load. The tuning points are the hook's scorer timeout, 20 seconds by default and at most 40 through <code>VOICE_SCORER_TIMEOUT</code>, and the gate's scorer timeout of 120,000 ms.</li>
+</ul>
+<p>Numbers. The verification run broke the scorer 13 ways (throw, syntax error, non-JSON output, empty output, <code>{}</code>, a string score, a null score, no issues list, an issue with no type, a JSON array, exit 1 after valid JSON, a hang, a missing detector). All 13 gave exit 4 and 0 judge calls, both judged and in det-only mode. The new hook suite had 77 cases at 4f7daef, 65 of which fail against the old hook; 2ce7f40 took it to 99 and the D4 fixes on the docs branch to 115. The scorer suite went from 15 to 20 cases. The old and new hooks gave the same decision on all 39,522 control documents (a pooled set that includes private sets; 359 blocks, the same at four commits: 8010a94, 3eea922, bc1a378, ca26e8a).</p>
+<h2 id="d9-html-cleanup-and-text-scans-run-in-linear-time">D9. HTML Cleanup and Text Scans Run in Linear Time</h2>
+<ul>
+<li><strong>Date and commit:</strong> 2026-10-02, 98b6adc. The same commit gave <code>text-normalize.mjs</code> its CLI.</li>
+<li><strong>Context:</strong> The scorer's HTML-to-prose step used a lazy match for script blocks. On 32,000 unclosed script tags (288 KB) it took 2 seconds (verification report item 19; the commit message of 98b6adc measured 2.8 seconds on 40,000 tags at ca26e8a), and the time grew with the square of the input, so a crafted input could in principle exceed the hook's scorer timeout and turn every send into a fail-closed deny.</li>
+<li><strong>Decision:</strong> HTML reduction, emphasis removal, and the metric and aphorism scans all run in linear time. The verification run had already made the new rendered view linear (40,000 unclosed tags in 1 ms).</li>
+<li><strong>Evidence:</strong> verification report item 19 and its rendered-view section, and the hook-fix workflow result (2026-10-02). The inputs are synthetic.</li>
+<li><strong>Reopen if:</strong> a new scan's regular expression shows super-linear time on adversarial input.</li>
+</ul>
+<p>Hook decisions were unchanged on the 39,522 control documents (pooled, including private sets).</p>
+<h2 id="d10-the-stated-ceiling-deliberate-mimicry-is-out-of-reach">D10. The Stated Ceiling: Deliberate Mimicry Is Out of Reach</h2>
+<ul>
+<li><strong>Date:</strong> 2026-09-21 (<code>VOICE-SYSTEM.md</code>, &quot;The ceiling&quot;). Re-confirmed 2026-09-29 (d0aed68) and 2026-10-02 (adversary set).</li>
+<li><strong>Context:</strong> A detector that passes text can be read as vouching for who wrote it. The system was tested against a model told to imitate a specific writer.</li>
+<li><strong>Decision:</strong> The docs describe a pass as &quot;not obviously AI.&quot; A pass never means &quot;written by this person.&quot; Authorship is a provenance question (who typed the text), outside what a detector can answer.</li>
+<li><strong>Evidence:</strong> <code>VOICE-SYSTEM.md</code> &quot;The ceiling&quot;, <code>case-study/calibration-2026-09-29.json</code>, <code>judge/JUDGE.md</code>.</li>
+<li><strong>Reopen if:</strong> a provenance control is added, or a mimic-resistant judge passes a held-out mimic set.</li>
+</ul>
+<p>Numbers. Mimicry recall on the frozen mimic set was 0 of 11 with a three-judge consensus (Wilson 95% interval 0 to 0.26; 0 under leave-one-out). A stylometry check that caught 11 of 11 was measuring length, since &quot;more than 40 words&quot; also catches 11 of 11 (the mimic passages were about seven times longer than the real writer's samples). The 2026-09-29 corpus run (n = 5 per class, snippets of about 60 words) had 1 false positive in 10 human snippets, caught 3 of 5 plain AI snippets and 0 of 5 mimics. On the 2026-10-02 adversary set (n = 30), panel recall was 23% to 43% depending on the panel.</p>
+<h2 id="d11-the-human-false-positive-budget-is-a-standing-gate">D11. The Human False-Positive Budget Is a Standing Gate</h2>
+<ul>
+<li><strong>Date and commit:</strong> 2026-10-02, c8c713b.</li>
+<li><strong>Context:</strong> Until this commit, human false-positive rates were measured in one-time studies for each change (D1 to D3). No check ran on later changes, so a change could raise human rejects again without anyone seeing it.</li>
+<li><strong>Decision:</strong> <code>calibration/fetch-public-corpora.sh</code> pins the public corpora (18F @ 292605ab, PEPs @ f2f542d, 18 RFCs, the 20 Newsgroups tarball) with a sha256 per file, and <code>calibration/human-fp-budget.mjs</code> fails when human rejects exceed the recorded baseline plus a small margin, or when a pinned tell or injection pattern hits any human document. Every guard change has to pass it and <code>gate-eval.mjs</code>.</li>
+<li><strong>Evidence:</strong> the baseline <code>calibration/human-fp-budget.json</code>, measured 2026-10-02T05:07:45Z at tools commit 892b20b. The run in the facts file: 0 rejects in 18,335 public documents (measured at b4534e3 on 2026-10-02).</li>
+<li><strong>Why this replaced the tune-gain rule for verdict-only changes:</strong> the harness evaluation measures raw score and flag counts, so a change that only moves a verdict (a pin, a bar, which checks count) reads as zero gain there and can neither pass nor fail it.</li>
+<li><strong>Reopen if:</strong> a corpus becomes unavailable at its pinned version, or a modern human corpus is added and the budget has to cover it.</li>
+</ul>
+<p>The detector itself was also run on the newer upstream commit bdeb726: the public budget still showed zero rejects. The pin stays at 58a95fc because about 1,350 lines of the detector's pattern file changed upstream.</p>
+<nav class="pager" aria-label="Previous and next chapter"><span><a href="06-calibration-and-evidence.html">Previous: Calibration and Evidence</a></span><span><a href="09-review-packet.html">Next: Review Packet</a></span></nav>
+<p class="built">Built from tools commit b4534e3 with facts from 2026-10-02.</p>
+</main>
+</div>
+<script src="search-index.js"></script>
+<script src="assets/search.js"></script>
+</body>
+</html>

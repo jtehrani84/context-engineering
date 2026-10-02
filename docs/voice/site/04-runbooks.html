@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Runbooks | Voice System Docs</title>
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="layout">
+<nav class="sidebar" aria-label="Chapters">
+<div class="site-title"><a href="index.html">Voice System Docs</a></div>
+<div class="edition">Public edition</div>
+<form class="search" role="search">
+<label for="q" class="sr-only">Search the docs</label>
+<input id="q" type="search" placeholder="Search" autocomplete="off">
+<ol id="results" class="results" aria-live="polite"></ol>
+</form>
+<ol class="toc">
+<li><a href="00-overview.html">Overview</a></li>
+<li><a href="01-getting-started.html">Getting Started With /voice-setup</a></li>
+<li><a href="02-architecture.html">Architecture</a></li>
+<li><a href="03-threat-model.html">Threat Model</a></li>
+<li><a href="04-runbooks.html" aria-current="page">Runbooks</a>
+<ol><li><a href="#a-legitimate-send-was-blocked">A Legitimate Send Was Blocked</a></li><li><a href="#the-scorer-errored-gate-exit-4-hook-denies-every-send">The Scorer Errored (Gate Exit 4, Hook Denies Every Send)</a></li><li><a href="#judges-are-unavailable">Judges Are Unavailable</a></li><li><a href="#the-hook-isnt-firing">The Hook Isn't Firing</a></li><li><a href="#recalibrate-after-a-change">Recalibrate After a Change</a></li><li><a href="#add-a-banned-word-or-a-structure">Add a Banned Word or a Structure</a></li><li><a href="#swap-a-judge-model-or-provider">Swap a Judge Model or Provider</a></li><li><a href="#upgrade-the-vendored-detector">Upgrade the Vendored Detector</a></li><li><a href="#claude-code-version-drift">Claude Code Version Drift</a></li><li><a href="#restore-the-hook-from-backup">Restore the Hook from Backup</a></li></ol></li>
+<li><a href="05-reference.html">Reference</a></li>
+<li><a href="06-calibration-and-evidence.html">Calibration and Evidence</a></li>
+<li><a href="07-decision-log.html">Decision Log</a></li>
+<li><a href="09-review-packet.html">Review Packet</a></li>
+<li><a href="10-maintaining-the-docs.html">Maintaining the Docs</a></li>
+</ol>
+</nav>
+<main id="main" class="content">
+<h1 id="runbooks">Runbooks</h1>
+<p>Each runbook starts from something you can see (a blocked send, an exit code, a hook that stays quiet) and ends with a check you can run. Every runbook has the same five parts: <strong>Symptom</strong>, <strong>Confirm</strong>, <strong>Fix</strong>, <strong>Verify</strong> and <strong>Rollback</strong>. The commands and file names match the engine at tools commit b4534e3, written 2026-10-02. Flags, exit codes and environment variables are in the generated reference (chapter 05); this chapter links to them instead of repeating them.</p>
+<p>The commands use two shell variables:</p>
+<pre><code class="language-bash">T=&quot;${CLAUDE_CONFIG_DIR:-$HOME/.claude}/tools&quot;                       # the engine and the onboarding tools
+H=&quot;${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/scripts/voice-tell-gate.py&quot;   # the send hook</code></pre>
+<p>One rule holds in every runbook: no fix turns the gate off. Removing the hook entry from <code>settings.json</code>, making the hook exit 0 early, raising the scorer timeout until failures stop showing, or pointing <code>VOICE_AISCORE</code> at a stub all count as turning it off. If a check is wrong, change the check and prove the change on the calibration sets (runbook &quot;Recalibrate After a Change&quot;). If a send has to go out before the check is fixed, a person sends it by hand, outside the agent, and knows the gate did not see it.</p>
+<h2 id="a-legitimate-send-was-blocked">A Legitimate Send Was Blocked</h2>
+<p><strong>Symptom.</strong> A send tool call is denied with <code>AI-TELL GATE blocked this send</code>, followed by a bullet list of the hits, and the text is something you meant to send.</p>
+<p><strong>Confirm.</strong> Decide which kind of hit it is before changing anything. Run the scorer on the exact text:</p>
+<pre><code class="language-bash">pbpaste &gt; /tmp/blocked.txt        # or save the outgoing text any other way
+node &quot;$T/aiscore.mjs&quot; /tmp/blocked.txt</code></pre>
+<p>The hook's deny message lists every hit. Each hit has one of three sources, and each source has a different fix:</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Hit in the deny message</th><th>Source</th><th>Where the fix goes</th></tr></thead>
+<tbody>
+<tr><td>A word or phrase from the hook's own lists</td><td><code>BLOCK_WORDS</code> or <code>BLOCK_PHRASES</code> in the hook</td><td>the hook file (move the word to <code>NUDGE_WORDS</code> or <code>FULL_EXEMPT</code>)</td></tr>
+<tr><td>A structure with critical severity (an announced hedge, a candor label)</td><td>the overlay's structure list</td><td>the overlay (an approved line, or a narrower pattern)</td></tr>
+<tr><td>A phrase from the overlay</td><td>the overlay's phrase list: blocks when the overlay marks it critical (a kit <code>TEAM_PHRASES</code> entry) or the hook's word tiers block it</td><td>the overlay or the hook's tiers</td></tr>
+</tbody></table></div>
+<p>Then ask whether it is a false positive. A hit is a false positive when the matched text is a sense of the word you really use (a product name, a literal technical meaning), a verbatim quote, or a line you write and have approved. It is a true positive when the matched text is the move the check was written to catch, even if the rest of the message is fine. For a true positive, rewrite the sentence and resend; nothing else changes.</p>
+<p><strong>Fix.</strong> Pick the narrowest change that clears this case:</p>
+<ol>
+<li><strong>A line you write on purpose</strong> (a sign-off, a quote you repeat). Add the exact line to the approved lines in your overlay. The overlay's own checks skip it. The generic detector and the hook's word lists do not read the approved lines, so this fix only clears an overlay hit.</li>
+<li><strong>A word with a real second sense.</strong> Move the word in your copy of the hook from <code>BLOCK_WORDS</code> to <code>NUDGE_WORDS</code>: it is still flagged on every send, it stops blocking. Move it to <code>FULL_EXEMPT</code> only when it is a name you own and should never be flagged.</li>
+<li><strong>A structure that fires on a sentence it was not meant for.</strong> Narrow its regular expression and add the sentence as a should-stay-silent test case (runbook &quot;Add a Banned Word or a Structure&quot;).</li>
+</ol>
+<p>In a starter kit install the overlay is the file named on <code>voice-doctor</code>'s <code>overlay</code> line (<code>voice-overlay.mjs</code> by default), and its approved lines are <code>APPROVED_LINES</code>. <code>/voice-setup</code> steps 5 and 6 walk through editing it.</p>
+<p><strong>Verify.</strong> Run the hook on the same text as a synthetic send; nothing is sent:</p>
+<pre><code class="language-bash">jq -n --rawfile t /tmp/blocked.txt '{hook_event_name:&quot;PreToolUse&quot;, tool_name:&quot;mcp__probe__send_gmail_message&quot;, tool_input:{body:$t}}' \
+  | python3 &quot;$H&quot;</code></pre>
+<p>No output, or an <code>additionalContext</code> nudge, means the send would go through. A <code>permissionDecision: deny</code> means it is still blocked. Then run the hook tests and recalibrate, because a tier change moves the hook's numbers for everyone who uses this copy.</p>
+<p><strong>Rollback.</strong> Every fix here is a one-line edit. Before you edit a file, keep a dated copy (<code>cp &lt;file&gt; &lt;file&gt;.bak-$(date +%Y-%m-%d)</code>), and copy it back to undo. In a git checkout of the tools, <code>git checkout -- &lt;file&gt;</code> also works. For the hook, see &quot;Restore the Hook from Backup&quot;.</p>
+<h2 id="the-scorer-errored-gate-exit-4-hook-denies-every-send">The Scorer Errored (Gate Exit 4, Hook Denies Every Send)</h2>
+<p><strong>Symptom.</strong> One of two things:</p>
+<ul>
+<li><code>prose-gate.mjs</code> prints <code>VERDICT: ERROR</code> and exits 4. Nothing was admitted and no judge was called.</li>
+<li>The send hook denies a send with <code>Voice gate couldn't run its scorer (...)</code>, or a file write gets a <code>VOICE GATE WARNING</code> saying the structure checks did not run.</li>
+</ul>
+<p>Both are the system failing closed on purpose. The scorer timeout is 120,000 ms in the gate and 20 s in the hook (<code>VOICE_SCORER_TIMEOUT</code>, at most 40 s; the normalizer gets at most 10 s).</p>
+<p><strong>Confirm.</strong> The text in parentheses names the cause. Match it here, then reproduce it by running the scorer by hand on the same text:</p>
+<pre><code class="language-bash">node &quot;$T/aiscore.mjs&quot; /tmp/blocked.txt --json; echo &quot;exit $?&quot;
+echo 'probe text' | node &quot;$T/text-normalize.mjs&quot; --json; echo &quot;exit $?&quot;</code></pre>
+<div class="table-wrap"><table>
+<thead><tr><th>Message (gate, then hook)</th><th>Cause</th><th>Fix</th></tr></thead>
+<tbody>
+<tr><td><code>aiscore failed (exit N): ...</code> / <code>aiscore exited N: ...</code></td><td>The scorer threw. The usual reasons are a syntax error after an edit, a missing overlay file, or a missing detector (<code>AVOID_AI_DETECTOR</code> or <code>avoid-ai-writing/detector/patterns.js</code>)</td><td>Fix the file the stack trace names; for the detector, restore the pinned checkout (runbook &quot;Upgrade the Vendored Detector&quot;)</td></tr>
+<tr><td><code>aiscore failed ... ETIMEDOUT</code> / <code>aiscore timed out after N s</code></td><td>A hang or a very slow input. The gate kills the child with SIGKILL</td><td>Re-run on the same input by hand. If it is slow on one input only, that input is a test case for a super-linear regular expression; file it and keep the deny</td></tr>
+<tr><td><code>aiscore returned bad JSON</code> / <code>aiscore printed invalid JSON</code>, <code>printed nothing</code></td><td>Something printed to stdout before the JSON line, or the process died mid-write</td><td>Look for a stray <code>console.log</code> in the scorer or the overlay</td></tr>
+<tr><td><code>aiscore result has no numeric score and adjustedScore</code>, <code>has no usable ... issues</code> / <code>aiscore JSON has no numeric score</code>, <code>has a malformed issue</code></td><td>The scorer ran but its output shape changed: an engine edit renamed a field, or an overlay returns issues without a string <code>type</code> and <code>text</code></td><td>Restore the field names; check the overlay against the template interface</td></tr>
+<tr><td><code>node not found on PATH</code> (hook only)</td><td>The hook's environment has no <code>node</code></td><td>Put <code>node</code> on the PATH that Claude Code starts hooks with</td></tr>
+<tr><td><code>text-normalize JSON has no rendered text</code> (hook only)</td><td>The hook is newer than the engine: it reads a field that the installed <code>text-normalize.mjs</code> does not print yet</td><td>Update the engine so both come from one release (next paragraph)</td></tr>
+<tr><td><code>text-normalize read a different text than was sent</code> (hook only)</td><td>The normalizer and the hook disagree on the input, usually an encoding problem in a wrapper</td><td>Run the normalizer by hand on the same text and compare <code>inputCodePoints</code></td></tr>
+<tr><td><code>internal error &lt;Type&gt;: ...</code> (hook only)</td><td>A bug in the hook itself</td><td>Read the traceback with the synthetic send from the first runbook</td></tr>
+</tbody></table></div>
+<p>The hook and the engine ship as a pair. A hook that expects a newer normalizer denies every send by design, because it cannot run its word list on every view of the text.</p>
+<p><strong>Fix.</strong> Fix the cause in the table. Do not raise <code>VOICE_SCORER_TIMEOUT</code> past a real hang, and do not point <code>VOICE_AISCORE</code> or <code>VOICE_NORMALIZE</code> at anything but the real tools: both overrides exist for the hook tests and for <code>voice-doctor</code>, which use them to break the scorer in a temporary folder.</p>
+<p><strong>Verify.</strong></p>
+<pre><code class="language-bash">node &quot;$T/onboarding/voice-doctor.mjs&quot; --only scorer,normalizer,gate,send-fails-closed,write-warns</code></pre>
+<p>All five must print <code>PASS</code>. <code>send-fails-closed</code> proves the deny still happens when the scorer breaks, so a fix that only silenced the error fails here.</p>
+<p><strong>Rollback.</strong> If the error started after an engine or hook update, return both to the previous matching pair: the previous engine (<code>git checkout &lt;previous-commit&gt;</code> in a git checkout of the tools; on a kit install, re-run the previous kit release's <code>./setup.sh</code>) and the hook backup from the same day (runbook &quot;Restore the Hook from Backup&quot;). Never roll back only one of the two.</p>
+<h2 id="judges-are-unavailable">Judges Are Unavailable</h2>
+<p><strong>Symptom.</strong> <code>prose-gate.mjs</code> returns <code>INCONCLUSIVE</code> (exit 3) on drafts that used to come back <code>ADMIT</code>, and the judge detail shows errors or timeouts instead of scores.</p>
+<p><strong>Confirm.</strong> INCONCLUSIVE means the deterministic layer passed and fewer jurors answered than the panel needs. A consensus panel needs two answers; a single <code>--judge</code> override needs one (Architecture, The Gate). Each <code>opencode</code> call has a 150,000 ms timeout and every judge call one retry; in consensus mode a failed juror is replaced by the next neutral spare. A reply without a clockable YES or NO and a numeric <code>ai_ness</code> counts as a failed juror. Check whether the judges answer at all:</p>
+<pre><code class="language-bash">node &quot;$T/onboarding/voice-doctor.mjs&quot; --only judges --live-judges</code></pre>
+<p><code>--live-judges</code> sends one fixed made-up sentence to each allowed judge and nothing else. Without the flag the doctor only checks the configuration and calls no model.</p>
+<p><strong>Fix.</strong> Restore the judge backend, or keep working in det-only mode on purpose. Det-only is a complete setup: the deterministic checks, the injection check and the send hook all run, and nothing leaves the machine.</p>
+<pre><code class="language-bash">node &quot;$T/prose-gate.mjs&quot; draft.md --drafter &lt;model&gt; --det-only</code></pre>
+<p>Det-only never returns ADMIT. A clean draft is INCONCLUSIVE, because nothing read it as a whole; a draft that trips the deterministic layer is still REJECT. Do not treat a run of INCONCLUSIVE results as a pass, and do not lower <code>--bar</code> to get answers from a weaker panel. Under consensus a lone surviving juror cannot reject, so a partial outage moves verdicts toward INCONCLUSIVE, never toward a wrong REJECT.</p>
+<p><strong>Verify.</strong> With the backend restored, the doctor's <code>judges</code> line prints <code>PASS</code> with <code>--live-judges</code>, and a draft you know the panel rejects is rejected again.</p>
+<p><strong>Rollback.</strong> Nothing to roll back; det-only changes no files. If you changed <code>judges.mode</code> in <code>voice-config.json</code> to <code>none</code> during the outage, set it back.</p>
+<h2 id="the-hook-isnt-firing">The Hook Isn't Firing</h2>
+<p><strong>Symptom.</strong> A send with an obvious tell goes out with no block and no nudge, or a file write never gets an <code>AI-TELL CHECK</code> note.</p>
+<p><strong>Confirm.</strong> First rule out the cases where staying quiet is correct:</p>
+<ul>
+<li>The file is not a prose file (<code>.html .htm .md .mdx .txt .rtf .docx</code>, 7 extensions) or is shorter than 400 characters.</li>
+<li>The tool's own name (the part after the last <code>__</code>) has one of the 8 read-side markers (<code>read</code>, <code>search</code>, <code>list</code>, <code>get</code>, <code>fetch</code>, <code>download</code>, <code>poll</code>, <code>branch</code>) as a whole word. The hook treats such a tool as a read and skips it.</li>
+<li>The text went out through a shell command (<code>curl</code>, <code>gh pr create --body ...</code>, a chat CLI). Hooks fire on tool calls; a Bash-piped send is outside the hook's reach (Threat Model, Sends Outside Claude Code Tool Calls).</li>
+<li>The session started before the hook was wired. Claude Code reads hooks at session start.</li>
+</ul>
+<p>Then run the doctor's hook checks, which read <code>settings.json</code> the way Claude Code does and run the hook on synthetic calls:</p>
+<pre><code class="language-bash">node &quot;$T/onboarding/voice-doctor.mjs&quot; --only hook-wiring,hook-controls
+node &quot;$T/onboarding/voice-doctor.mjs&quot; --print-hooks     # the hooks block this config needs</code></pre>
+<p>The most common cause is the send matcher. Claude Code reads a matcher made only of letters, digits, <code>_</code>, <code>|</code>, <code>,</code>, <code>-</code> and spaces as a list of exact tool names, and anything else as a regular expression tested unanchored against the tool name. A list such as <code>send_gmail_message|create_pull_request</code> therefore never matches <code>mcp__gmail__send_gmail_message</code>. The rule was read from the Claude Code 2.1.286 bundle on 2026-10-02 and confirmed with a live probe the same day; the evidence is the comment on <code>matcherMatches</code> in <code>onboarding/lib/hook.mjs</code>.</p>
+<p>The second cause is a hook older than the engine. Hooks from before 2026-10-02 test the read markers as substrings of the whole tool name, so <code>manage_spreadsheet_comment</code> (&quot;spreadsheet&quot; contains <code>read</code>) is skipped even when the matcher routes it there; <code>hook-wiring</code> reports it as a send tool the hook does not treat as a send. Those hooks also read overlay issues only under their owner's issue prefix, so a starter-kit overlay never affects a send.</p>
+<p><strong>Fix.</strong> Rewrite the wiring with the merge tool. It replaces only the entries that run <code>voice-tell-gate.py</code>, keeps every other hook and setting, and backs up the file first:</p>
+<pre><code class="language-bash">node &quot;$T/onboarding/merge-hooks.mjs&quot; --dry-run     # prints the hooks section it would write
+node &quot;$T/onboarding/merge-hooks.mjs&quot;               # writes it; the original is kept as settings.json.bak-&lt;time&gt;</code></pre>
+<p>For a hook older than the engine, install the hook that ships with it (keep a dated copy first):</p>
+<pre><code class="language-bash">cp &quot;$H&quot; &quot;$H.bak-$(date +%Y-%m-%d)&quot;
+cp &quot;$T/hook/voice-tell-gate.py&quot; &quot;$H&quot;</code></pre>
+<p>Re-apply any word moves you made in the old copy. Restart the Claude Code session after any wiring or hook change.</p>
+<p><strong>Verify.</strong> <code>hook-wiring</code> and <code>hook-controls</code> print <code>PASS</code>. In a fresh session, a send to a test channel or a draft with a known tell is denied. The doctor runs the hook directly, so its checks pass before the restart; only the fresh-session test shows that Claude Code loaded the new matcher.</p>
+<p><strong>Rollback.</strong> <code>merge-hooks.mjs</code> printed the backup path. Copy it back over <code>settings.json</code> and restart the session.</p>
+<h2 id="recalibrate-after-a-change">Recalibrate After a Change</h2>
+<p><strong>Symptom.</strong> You changed a check, a tier, a bar, the overlay, the detector, or the hook. Or <code>voice-doctor</code> prints <code>FAIL user-calibration</code> because the calibration report was made with a different overlay, scorer, gate or hook than the ones installed now (the report records their hashes).</p>
+<p><strong>Confirm.</strong> The change is a calibration event if it can move any verdict or any block. Moving a word between hook tiers, adding a structure, changing a severity, changing <code>--det-bar</code> or the cadence crossover all qualify. Editing a comment does not, but the doctor compares file hashes, so it still asks for a fresh report.</p>
+<p><strong>Fix.</strong> Run the checks that apply, in this order. Each one is local and makes no model call.</p>
+<ol>
+<li><p>The unit suites for the files you touched:</p>
+<pre><code class="language-bash">node &quot;$T/aiscore.test.mjs&quot;
+node &quot;$T/prose-gate.unit.test.mjs&quot;
+python3 &quot;$T/hook-tests/voice-tell-gate.test.py&quot;      # VOICE_HOOK=&lt;copy&gt; tests a copy of the hook</code></pre></li>
+<li><p>The human false-positive budget over the public pre-2022 corpora. The fetch needs network once and verifies every file by sha256; the run itself is local:</p>
+<pre><code class="language-bash">bash &quot;$T/calibration/fetch-public-corpora.sh&quot;
+node &quot;$T/calibration/human-fp-budget.mjs&quot;</code></pre>
+<p>It fails when the pooled public reject count rises above the recorded baseline plus a small margin, when the pinned structure or any injection pattern hits a single human document, or when a corpus has the wrong document count. The last run (measured at b4534e3 on 2026-10-02) found 0 rejects in 18,335 public human documents.</p></li>
+<li><p>Your own held-out writing (starter kit installs):</p>
+<pre><code class="language-bash">node &quot;$T/onboarding/calibrate-user.mjs&quot;</code></pre></li>
+</ol>
+<p>Record a new baseline only when the change was meant to move the numbers, and read the diff before committing it. Keep a copy of the old baseline first; in a git checkout, <code>git diff</code> shows the change:</p>
+<pre><code class="language-bash">cp &quot;$T/calibration/human-fp-budget.json&quot; &quot;$T/calibration/human-fp-budget.json.bak-$(date +%Y-%m-%d)&quot;
+node &quot;$T/calibration/human-fp-budget.mjs&quot; --write-baseline
+git -C &quot;$T&quot; diff calibration/human-fp-budget.json     # git checkouts only</code></pre>
+<p><strong>Verify.</strong> Every suite exits 0, <code>human-fp-budget</code> reports no rise, <code>calibrate-user</code> reports <code>0 failed</code>, and <code>voice-doctor</code> ends <code>GREEN</code>.</p>
+<p><strong>Rollback.</strong> Revert the change and re-run the same steps; the old baseline still applies. If you wrote a new baseline, copy the dated backup back (or, in a git checkout, <code>git checkout -- calibration/human-fp-budget.json</code>).</p>
+<h2 id="add-a-banned-word-or-a-structure">Add a Banned Word or a Structure</h2>
+<p><strong>Symptom.</strong> A tell gets through that you want caught: a word, a phrase, or a sentence shape.</p>
+<p><strong>Confirm.</strong> Decide where it belongs, because the three places act differently:</p>
+<div class="table-wrap"><table>
+<thead><tr><th>You want</th><th>Put it in</th><th>Effect on a send</th><th>Effect in the gate</th></tr></thead>
+<tbody>
+<tr><td>A word that should stop a send</td><td>the hook's <code>BLOCK_WORDS</code> (or <code>BLOCK_PHRASES</code> for a regular expression)</td><td>block</td><td>none; the gate does not read the hook</td></tr>
+<tr><td>A word that should only be flagged</td><td>the hook's <code>NUDGE_WORDS</code></td><td>nudge</td><td>none</td></tr>
+<tr><td>A word in your own banned list</td><td>the overlay's word list</td><td>none: the hook drops overlay word hits and takes words only from its own lists</td><td>printed as must-fix</td></tr>
+<tr><td>A phrase in your own banned list</td><td>the overlay's phrase list</td><td>block when the overlay marks it critical (every kit <code>TEAM_PHRASES</code> entry) or the hook's lists block it, otherwise nudge</td><td>printed as must-fix</td></tr>
+<tr><td>A sentence shape</td><td>a structure in the overlay (<code>type</code>, <code>re</code>, <code>sev</code>, <code>note</code>; no <code>sev</code> means critical)</td><td>block when critical, nudge otherwise, under any issue prefix</td><td>printed as must-fix</td></tr>
+<tr><td>A shape that should reject a draft on its own</td><td>the structure, plus its type in <code>VERDICT_STRUCT_TYPES</code></td><td>block (it must be critical)</td><td>REJECT</td></tr>
+</tbody></table></div>
+<p>The send hook and the gate use different policies on purpose. The hook blocks on severity and its own lists; the gate's verdict uses only the pinned types, the injection check and the scores. Adding a verdict type is the strongest change in this table, and it has the strictest test: it must hit zero human documents in the budget.</p>
+<p><strong>Fix.</strong> Write the test cases before the pattern:</p>
+<ol>
+<li>Two or three sentences that must fire, taken from the drafts where the tell got through.</li>
+<li>Two or three legitimate sentences that must stay silent, covering the word's other senses and a quoted use.</li>
+<li>Add the entry. For a structure, write the regular expression with the <code>g</code> flag, bound it with <code>\b</code>, and keep any wildcard span bounded (<code>[^.!?]{0,80}</code>), because an unbounded span on a long input is how the scan regressions of 2026-10-02 started (decision D9).</li>
+</ol>
+<p>The generated reference describes the hook's tiers; the words themselves are in the hook file. Put structure cases next to your overlay and hook cases in the hook tests.</p>
+<ol start="4">
+<li>For a new verdict type only: add its type to <code>VERDICT_STRUCT_TYPES</code> and run <code>human-fp-budget</code>. Any hit on a human document fails the budget, and the type does not ship.</li>
+</ol>
+<p><strong>Verify.</strong> The new cases pass, the old ones still pass, and the runbook &quot;Recalibrate After a Change&quot; comes back clean. For a hook word, the synthetic send from the first runbook shows the block or nudge you intended.</p>
+<p><strong>Rollback.</strong> Remove the entry and its test cases in one commit; nothing else depends on them.</p>
+<h2 id="swap-a-judge-model-or-provider">Swap a Judge Model or Provider</h2>
+<p><strong>Symptom.</strong> A judge model is retired or unavailable, a better model from the same lab is out, or you want a judge from a lab the registry does not have yet.</p>
+<p><strong>Confirm.</strong> The registry is the <code>JUDGES</code> constant in <code>prose-gate.mjs</code>: each entry has a name, a <code>vendor</code> (the lab), a <code>backend</code> and a <code>model</code>. Two more constants depend on it: <code>JUROR_ORDER</code>, the panel and spares for each drafter lab, and <code>TELL_PROFILE</code>, which maps drafter names to labs. The gate never seats a judge from the drafter's lab, and that rule reads <code>vendor</code>, so a wrong <code>vendor</code> value breaks the self-bias protection without any error. The registry has 4 judges at b4534e3: grok, gemini, claude, gpt, from xai, google, anthropic, openai.</p>
+<p><strong>Fix.</strong></p>
+<ol>
+<li><strong>Same lab, new model.</strong> Change <code>model</code> in the entry. Keep <code>vendor</code>.</li>
+<li><strong>New backend for an existing judge.</strong> Change <code>backend</code> and add the call in <code>callJudge</code>. The backend must return the model's text; the gate parses the strict JSON answer itself.</li>
+<li><strong>New lab.</strong> Add an entry with the right <code>vendor</code>, add it to the <code>JUROR_ORDER</code> lists where it should serve, and add the lab's drafter names to <code>TELL_PROFILE</code> if that lab also drafts.</li>
+<li>Leave <code>fence</code> unset on a new judge, so it gets the default fence wording. The one judge with <code>fence: 'short'</code> has it because of how that model handled the default fence, not as a general setting.</li>
+</ol>
+<p>The panel for each drafter lab was measured, not picked. A swap that changes who sits on a panel needs the same kind of evidence: run the new panel on public human documents and generated AI drafts, write down in advance what result would make you keep it, and compare against the panel it replaces (decision D5 in chapter 07 records how the current panels were chosen).</p>
+<p><strong>Verify.</strong></p>
+<pre><code class="language-bash">node &quot;$T/prose-gate.unit.test.mjs&quot;                                  # registry, juror order, vendor exclusion; no model call
+node &quot;$T/onboarding/voice-doctor.mjs&quot; --only judges --live-judges   # each judge answers one made-up sentence</code></pre>
+<p><strong>Rollback.</strong> Revert the registry edit. A missing or failing judge degrades to INCONCLUSIVE, so rolling back is never urgent for safety, only for recall.</p>
+<h2 id="upgrade-the-vendored-detector">Upgrade the Vendored Detector</h2>
+<p><strong>Symptom.</strong> Upstream <code>avoid-ai-writing</code> has new commits, or <code>voice-doctor</code> prints <code>FAIL detector-pin</code> because the installed <code>detector/patterns.js</code> is not the tested commit.</p>
+<p><strong>Confirm.</strong> The pin is commit 58a95fc, recorded with the sha256 of <code>detector/patterns.js</code> in <code>onboarding/detector-pin.json</code>. Every calibration number in these docs was measured on that commit. Check what is installed:</p>
+<pre><code class="language-bash">git -C &quot;$T/avoid-ai-writing&quot; rev-parse --short HEAD
+node &quot;$T/onboarding/voice-doctor.mjs&quot; --only detector,detector-pin</code></pre>
+<p>In the voice-system repo the detector is a git checkout. The starter kits ship it as a vendored copy without git history, so on a kit install the doctor's hash check is the test.</p>
+<p>A <code>detector-pin</code> FAIL on an install you did not mean to change means the detector moved by accident (a <code>git pull</code> in the wrong folder, a kit upgrade that kept an edited copy). Put the pin back; do not edit <code>detector-pin.json</code> to make the check pass.</p>
+<p><strong>Fix.</strong> To move the pin on purpose, test the new commit in a scratch copy first:</p>
+<pre><code class="language-bash">git -C &quot;$T/avoid-ai-writing&quot; fetch
+git -C &quot;$T/avoid-ai-writing&quot; checkout &lt;new-commit&gt;
+node &quot;$T/aiscore.test.mjs&quot;                       # fails if the detector added a category the evidence lists don't classify
+bash &quot;$T/calibration/fetch-public-corpora.sh&quot; &amp;&amp; node &quot;$T/calibration/human-fp-budget.mjs&quot;</code></pre>
+<p>Three things can change with a new detector commit:</p>
+<ol>
+<li><strong>New categories.</strong> <code>aiscore.test.mjs</code> fails when the detector has a category that <code>ai-evidence.mjs</code> lists in neither <code>COUNTED</code> nor <code>NOT_COUNTED</code>. Add it to <code>NOT_COUNTED</code> with reason <code>UNTESTED</code> unless you have measured it as AI evidence. Do not add it to <code>COUNTED</code> without that measurement. The pinned commit has 51 categories.</li>
+<li><strong>The raw <code>score</code>.</strong> The gate's verdict reads <code>adjustedScore</code>, which counts only the classified categories, so the budget can still pass while the raw <code>score</code> moves. The send hook nudges on the raw <code>score</code> at 40, so check a few long documents with <code>aiscore.mjs --json</code> before and after.</li>
+<li><strong>The calibration record.</strong> If the budget and the user calibration pass, update <code>detector-pin.json</code> (commit, <code>patternsSha256</code>, date) and the kits' vendored copy in the same change, then regenerate the docs facts so the pin printed here matches.</li>
+</ol>
+<p><strong>Verify.</strong> <code>detector-pin</code> prints <code>PASS</code> against the updated pin file, <code>human-fp-budget</code> exits 0, <code>calibrate-user</code> reports <code>0 failed</code>, and <code>voice-doctor</code> ends <code>GREEN</code>.</p>
+<p><strong>Rollback.</strong> Check the detector out at the pinned commit, 58a95fc (<code>git -C &quot;$T/avoid-ai-writing&quot; checkout &lt;pin&gt;</code>), or restore the vendored copy from the kit, and revert <code>detector-pin.json</code> and <code>ai-evidence.mjs</code> together.</p>
+<h2 id="claude-code-version-drift">Claude Code Version Drift</h2>
+<p><strong>Symptom.</strong> One of these:</p>
+<ul>
+<li>The hook blocks on one machine or launcher and stays quiet on another with the same <code>settings.json</code>.</li>
+<li><code>hook-wiring</code> passes in one shell and fails in another.</li>
+</ul>
+<p><strong>Confirm.</strong> Find every Claude Code install and its version:</p>
+<pre><code class="language-bash">which -a claude
+for c in $(which -a claude | sort -u); do echo &quot;$c -&gt; $(readlink &quot;$c&quot;)&quot;; &quot;$c&quot; --version; done</code></pre>
+<p>Each launcher is usually a symlink into a versions folder, and two launchers can point at different versions. A session transcript records the version that ran it (<code>jq -r .version</code> on a line of the session's <code>.jsonl</code>), which tells you what ran a past session.</p>
+<p>Two things in the voice system depend on the Claude Code version:</p>
+<ol>
+<li><strong>The matcher rule.</strong> How a hook matcher is read (exact names or a regular expression) was read from the Claude Code 2.1.286 bundle on 2026-10-02. A different version may read matchers differently. After any Claude Code upgrade, re-run <code>voice-doctor --only hook-wiring,hook-controls</code>.</li>
+<li><strong>The drafter name.</strong> The gate excludes judges from the drafter's lab, so <code>--drafter</code> has to name the model that wrote the draft. The model comes from the <code>model</code> setting in <code>settings.json</code> (or a <code>/model</code> choice in the session), and a subagent can run on a different model than its parent. A wrong drafter name seats a judge from the drafter's own lab, and nothing reports it.</li>
+</ol>
+<p><strong>Fix.</strong> Point every launcher at one version, restart the sessions, and re-run the doctor's hook checks. Pass the <code>--drafter</code> that matches the model that wrote the draft.</p>
+<p><strong>Verify.</strong> Every launcher prints the same <code>--version</code>. <code>voice-doctor</code> ends <code>GREEN</code> from each shell you use. A test subagent with a model override returns text, and its transcript shows the model and version you expected.</p>
+<p><strong>Rollback.</strong> Re-link the launcher to the previous version folder (<code>ln -sfn &lt;versions&gt;/&lt;old&gt; &lt;launcher&gt;</code>) and restart the session.</p>
+<h2 id="restore-the-hook-from-backup">Restore the Hook from Backup</h2>
+<p><strong>Symptom.</strong> An edit to <code>voice-tell-gate.py</code> broke it: the hook tests fail, <code>hook-controls</code> fails, or every send is denied with <code>internal error</code>. Or you need to return to a known-good version while you debug.</p>
+<p><strong>Confirm.</strong> List the backups next to the hook and check what each one expects from the engine:</p>
+<pre><code class="language-bash">ls -la &quot;$H&quot; &quot;$H&quot;.bak*
+diff &quot;$H.bak-&lt;date&gt;&quot; &quot;$H&quot; | head -50</code></pre>
+<p>A hook backup only works with an engine from the same period. A hook that reads a normalizer field the installed engine does not print denies every send (runbook &quot;The Scorer Errored&quot;), and a hook from before the fail-closed change lets sends through when the scorer breaks. Prefer the newest backup that matches the engine you have.</p>
+<p><strong>Fix.</strong> Test the backup before it goes live, then keep the current file before you replace it:</p>
+<pre><code class="language-bash">VOICE_HOOK=&quot;$H.bak-&lt;date&gt;&quot; python3 &quot;$T/hook-tests/voice-tell-gate.test.py&quot;    # must exit 0
+cp &quot;$H&quot; &quot;$H.broken-$(date +%Y-%m-%d-%H%M)&quot;
+cp &quot;$H.bak-&lt;date&gt;&quot; &quot;$H&quot;</code></pre>
+<p>The hook tests in <code>hook-tests/</code> are versioned with the engine, so they test the backup against the engine you have installed. On a starter kit install, the kit's <code>setup.sh</code> keeps a hook you have edited. To return to the kit's version, move your copy aside and run <code>./setup.sh --dry-run</code> to confirm it will install the hook, then <code>./setup.sh</code>.</p>
+<p><strong>Verify.</strong></p>
+<pre><code class="language-bash">python3 &quot;$T/hook-tests/voice-tell-gate.test.py&quot;
+node &quot;$T/onboarding/voice-doctor.mjs&quot; --only hook-controls,send-fails-closed,write-warns</code></pre>
+<p>Both must pass. <code>user-calibration</code> then fails until you re-run <code>calibrate-user.mjs</code>, because the report records the hook's hash; that failure is expected.</p>
+<p><strong>Rollback.</strong> Copy the <code>.broken-&lt;time&gt;</code> file back over the hook. It is the version you replaced, kept byte for byte.</p>
+<nav class="pager" aria-label="Previous and next chapter"><span><a href="03-threat-model.html">Previous: Threat Model</a></span><span><a href="05-reference.html">Next: Reference</a></span></nav>
+<p class="built">Built from tools commit b4534e3 with facts from 2026-10-02.</p>
+</main>
+</div>
+<script src="search-index.js"></script>
+<script src="assets/search.js"></script>
+</body>
+</html>

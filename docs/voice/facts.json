@@ -1,0 +1,603 @@
+{
+  "schema": 1,
+  "edition": "public",
+  "generatedAt": "2026-10-02T17:39:26.265Z",
+  "date": "2026-10-02",
+  "git": {
+    "sha": "b4534e3d6bd73f57d93f16af71e633f04b774f25",
+    "short": "b4534e3"
+  },
+  "facts": [
+    {
+      "key": "corpora.18f.files",
+      "value": 429,
+      "status": "measured",
+      "source": "count of f18/ lines in calibration/public-corpora.sha256",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "files"
+    },
+    {
+      "key": "corpora.rfc.list_count",
+      "value": 18,
+      "status": "measured",
+      "source": "count of RFC numbers in calibration/fetch-public-corpora.sh RFCS",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "RFCs"
+    },
+    {
+      "key": "data.public_human",
+      "value": 2,
+      "status": "measured",
+      "source": "voice-corpus/public-human.json",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "samples"
+    },
+    {
+      "key": "detector.at_pin",
+      "value": "yes",
+      "status": "measured",
+      "source": "detector.head compared with detector.pin",
+      "sha": "b4534e3",
+      "date": "2026-10-02"
+    },
+    {
+      "key": "detector.categories",
+      "value": 51,
+      "status": "measured",
+      "source": "require detector/patterns.js TYPE_LABELS",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "categories"
+    },
+    {
+      "key": "detector.head",
+      "value": "58a95fc",
+      "status": "measured",
+      "source": "git -C avoid-ai-writing rev-parse HEAD",
+      "sha": "b4534e3",
+      "date": "2026-10-02"
+    },
+    {
+      "key": "detector.pin",
+      "value": "58a95fc",
+      "status": "recorded",
+      "source": "README.md (git -C avoid-ai-writing checkout <pin>)",
+      "sha": "b4534e3",
+      "date": "2026-10-02"
+    },
+    {
+      "key": "env.claude_code_version",
+      "value": "2.1.286",
+      "status": "measured",
+      "source": "claude --version (first token)",
+      "sha": "b4534e3",
+      "date": "2026-10-02"
+    },
+    {
+      "key": "evidence.counted",
+      "value": 9,
+      "status": "measured",
+      "source": "import ai-evidence.mjs COUNTED",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "categories"
+    },
+    {
+      "key": "evidence.not_counted",
+      "value": 42,
+      "status": "measured",
+      "source": "import ai-evidence.mjs NOT_COUNTED",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "categories"
+    },
+    {
+      "key": "evidence.not_counted.lint",
+      "value": 1,
+      "status": "measured",
+      "source": "import ai-evidence.mjs NOT_COUNTED",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "categories"
+    },
+    {
+      "key": "evidence.not_counted.noise",
+      "value": 20,
+      "status": "measured",
+      "source": "import ai-evidence.mjs NOT_COUNTED",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "categories"
+    },
+    {
+      "key": "evidence.not_counted.style",
+      "value": 2,
+      "status": "measured",
+      "source": "import ai-evidence.mjs NOT_COUNTED",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "categories"
+    },
+    {
+      "key": "evidence.not_counted.untested",
+      "value": 19,
+      "status": "measured",
+      "source": "import ai-evidence.mjs NOT_COUNTED",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "categories"
+    },
+    {
+      "key": "evidence.unclassified",
+      "value": 0,
+      "status": "measured",
+      "source": "TYPE_LABELS minus COUNTED and NOT_COUNTED",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "categories"
+    },
+    {
+      "key": "fp_budget.18f.n",
+      "value": 421,
+      "status": "measured",
+      "source": "node calibration/human-fp-budget.mjs",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "docs"
+    },
+    {
+      "key": "fp_budget.18f.rejects",
+      "value": 0,
+      "status": "measured",
+      "source": "node calibration/human-fp-budget.mjs",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "docs"
+    },
+    {
+      "key": "fp_budget.20ng.n",
+      "value": 17320,
+      "status": "measured",
+      "source": "node calibration/human-fp-budget.mjs",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "docs"
+    },
+    {
+      "key": "fp_budget.20ng.rejects",
+      "value": 0,
+      "status": "measured",
+      "source": "node calibration/human-fp-budget.mjs",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "docs"
+    },
+    {
+      "key": "fp_budget.baseline.commit",
+      "value": "892b20b",
+      "status": "recorded",
+      "source": "calibration/human-fp-budget.json",
+      "sha": "b4534e3",
+      "date": "2026-10-02"
+    },
+    {
+      "key": "fp_budget.baseline.measured_at",
+      "value": "2026-10-02T05:07:45.633Z",
+      "status": "recorded",
+      "source": "calibration/human-fp-budget.json",
+      "sha": "b4534e3",
+      "date": "2026-10-02"
+    },
+    {
+      "key": "fp_budget.margin",
+      "value": 2,
+      "status": "measured",
+      "source": "calibration/human-fp-budget.mjs margin() applied to the baseline pooledPublic.n",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "docs"
+    },
+    {
+      "key": "fp_budget.pep.n",
+      "value": 576,
+      "status": "measured",
+      "source": "node calibration/human-fp-budget.mjs",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "docs"
+    },
+    {
+      "key": "fp_budget.pep.rejects",
+      "value": 0,
+      "status": "measured",
+      "source": "node calibration/human-fp-budget.mjs",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "docs"
+    },
+    {
+      "key": "fp_budget.pooled_public.n",
+      "value": 18335,
+      "status": "measured",
+      "source": "node calibration/human-fp-budget.mjs",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "docs"
+    },
+    {
+      "key": "fp_budget.pooled_public.rejects",
+      "value": 0,
+      "status": "measured",
+      "source": "node calibration/human-fp-budget.mjs",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "docs"
+    },
+    {
+      "key": "fp_budget.rfc.n",
+      "value": 18,
+      "status": "measured",
+      "source": "node calibration/human-fp-budget.mjs",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "docs"
+    },
+    {
+      "key": "fp_budget.rfc.rejects",
+      "value": 0,
+      "status": "measured",
+      "source": "node calibration/human-fp-budget.mjs",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "docs"
+    },
+    {
+      "key": "fp_budget.run",
+      "value": "measured",
+      "status": "measured",
+      "source": "node calibration/human-fp-budget.mjs",
+      "sha": "b4534e3",
+      "date": "2026-10-02"
+    },
+    {
+      "key": "gate.aiscore_timeout_ms",
+      "value": 120000,
+      "status": "measured",
+      "source": "parse prose-gate.mjs AISCORE_TIMEOUT_MS",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "ms"
+    },
+    {
+      "key": "gate.bar",
+      "value": 50,
+      "status": "measured",
+      "source": "parse prose-gate.mjs parseArgs defaults",
+      "sha": "b4534e3",
+      "date": "2026-10-02"
+    },
+    {
+      "key": "gate.det_bar",
+      "value": 40,
+      "status": "measured",
+      "source": "parse prose-gate.mjs parseArgs defaults",
+      "sha": "b4534e3",
+      "date": "2026-10-02"
+    },
+    {
+      "key": "gate.drafters",
+      "value": [
+        "opus",
+        "sonnet",
+        "haiku",
+        "claude",
+        "gemini",
+        "gpt",
+        "grok",
+        "human",
+        "unknown"
+      ],
+      "status": "measured",
+      "source": "parse prose-gate.mjs TELL_PROFILE",
+      "sha": "b4534e3",
+      "date": "2026-10-02"
+    },
+    {
+      "key": "gate.judge_timeout_ms",
+      "value": 150000,
+      "status": "measured",
+      "source": "parse prose-gate.mjs callJudge",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "ms"
+    },
+    {
+      "key": "hook.min_file_chars",
+      "value": 400,
+      "status": "measured",
+      "source": "parse /private/tmp/vship/tools/hook/voice-tell-gate.py",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "characters"
+    },
+    {
+      "key": "hook.normalizer_timeout_cap_s",
+      "value": 10,
+      "status": "measured",
+      "source": "parse /private/tmp/vship/tools/hook/voice-tell-gate.py",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "seconds"
+    },
+    {
+      "key": "hook.not_send",
+      "value": 8,
+      "status": "measured",
+      "source": "parse /private/tmp/vship/tools/hook/voice-tell-gate.py NOT_SEND",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "substrings"
+    },
+    {
+      "key": "hook.nudge_score",
+      "value": 40,
+      "status": "measured",
+      "source": "parse /private/tmp/vship/tools/hook/voice-tell-gate.py",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "points"
+    },
+    {
+      "key": "hook.nudge_score_min_chars",
+      "value": 200,
+      "status": "measured",
+      "source": "parse /private/tmp/vship/tools/hook/voice-tell-gate.py",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "characters"
+    },
+    {
+      "key": "hook.prose_extensions",
+      "value": 7,
+      "status": "measured",
+      "source": "parse /private/tmp/vship/tools/hook/voice-tell-gate.py PROSE_EXT",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "extensions"
+    },
+    {
+      "key": "hook.scorer_timeout_max_s",
+      "value": 40,
+      "status": "measured",
+      "source": "parse /private/tmp/vship/tools/hook/voice-tell-gate.py",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "seconds"
+    },
+    {
+      "key": "hook.scorer_timeout_s",
+      "value": 20,
+      "status": "measured",
+      "source": "parse /private/tmp/vship/tools/hook/voice-tell-gate.py",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "seconds"
+    },
+    {
+      "key": "hook.send_suffixes",
+      "value": 31,
+      "status": "measured",
+      "source": "parse /private/tmp/vship/tools/hook/voice-tell-gate.py SEND_SUFFIXES",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "tool names"
+    },
+    {
+      "key": "injection.pattern_rows",
+      "value": 10,
+      "status": "measured",
+      "source": "import prose-gate.mjs INJECTION_PATTERNS",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "patterns"
+    },
+    {
+      "key": "injection.types",
+      "value": 7,
+      "status": "measured",
+      "source": "import prose-gate.mjs INJECTION_PATTERNS",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "types"
+    },
+    {
+      "key": "judges.count",
+      "value": 4,
+      "status": "measured",
+      "source": "import prose-gate.mjs JUDGES",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "judges"
+    },
+    {
+      "key": "judges.names",
+      "value": [
+        "grok",
+        "gemini",
+        "claude",
+        "gpt"
+      ],
+      "status": "measured",
+      "source": "import prose-gate.mjs JUDGES",
+      "sha": "b4534e3",
+      "date": "2026-10-02"
+    },
+    {
+      "key": "judges.vendors",
+      "value": [
+        "xai",
+        "google",
+        "anthropic",
+        "openai"
+      ],
+      "status": "measured",
+      "source": "import prose-gate.mjs JUDGES",
+      "sha": "b4534e3",
+      "date": "2026-10-02"
+    },
+    {
+      "key": "overlay.verdict_types",
+      "value": 1,
+      "status": "measured",
+      "source": "VERDICT_STRUCT_TYPES, imported from the overlay",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "structures"
+    },
+    {
+      "key": "repo.commits",
+      "value": 31,
+      "status": "measured",
+      "source": "git rev-list --count HEAD",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "commits"
+    },
+    {
+      "key": "repo.sha",
+      "value": "b4534e3",
+      "status": "measured",
+      "source": "git rev-parse HEAD",
+      "sha": "b4534e3",
+      "date": "2026-10-02"
+    },
+    {
+      "key": "tests.aiscore.passed",
+      "value": 20,
+      "status": "measured",
+      "source": "node aiscore.test.mjs",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "cases"
+    },
+    {
+      "key": "tests.aiscore.total",
+      "value": 20,
+      "status": "measured",
+      "source": "node aiscore.test.mjs",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "cases"
+    },
+    {
+      "key": "tests.docs_tools.passed",
+      "value": 69,
+      "status": "measured",
+      "source": "node --test docs/tools/test/*.test.mjs",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "cases"
+    },
+    {
+      "key": "tests.docs_tools.total",
+      "value": 69,
+      "status": "measured",
+      "source": "node --test docs/tools/test/*.test.mjs",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "cases"
+    },
+    {
+      "key": "tests.hook.passed",
+      "value": 115,
+      "status": "measured",
+      "source": "python3 hook-tests/voice-tell-gate.test.py",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "cases"
+    },
+    {
+      "key": "tests.hook.total",
+      "value": 115,
+      "status": "measured",
+      "source": "python3 hook-tests/voice-tell-gate.test.py",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "cases"
+    },
+    {
+      "key": "tests.onboarding.passed",
+      "value": 74,
+      "status": "measured",
+      "source": "node --test onboarding/test/*.test.mjs",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "cases"
+    },
+    {
+      "key": "tests.onboarding.total",
+      "value": 74,
+      "status": "measured",
+      "source": "node --test onboarding/test/*.test.mjs",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "cases"
+    },
+    {
+      "key": "tests.overlay.groups.normalization",
+      "value": 111,
+      "status": "measured",
+      "source": "the normalization cases of the overlay test suite",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "cases"
+    },
+    {
+      "key": "tests.prose_gate_unit.groups.injection_fire",
+      "value": 40,
+      "status": "measured",
+      "source": "node prose-gate.unit.test.mjs",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "cases"
+    },
+    {
+      "key": "tests.prose_gate_unit.groups.injection_silent",
+      "value": 25,
+      "status": "measured",
+      "source": "node prose-gate.unit.test.mjs",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "cases"
+    },
+    {
+      "key": "tests.prose_gate_unit.passed",
+      "value": 119,
+      "status": "measured",
+      "source": "node prose-gate.unit.test.mjs",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "cases"
+    },
+    {
+      "key": "tests.prose_gate_unit.total",
+      "value": 119,
+      "status": "measured",
+      "source": "node prose-gate.unit.test.mjs",
+      "sha": "b4534e3",
+      "date": "2026-10-02",
+      "unit": "cases"
+    },
+    {
+      "key": "tools.normalizer_has_rendered",
+      "value": "yes",
+      "status": "measured",
+      "source": "node text-normalize.mjs --json (keys of the output)",
+      "sha": "b4534e3",
+      "date": "2026-10-02"
+    }
+  ]
+}

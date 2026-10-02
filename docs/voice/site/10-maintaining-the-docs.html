@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maintaining the Docs | Voice System Docs</title>
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="layout">
+<nav class="sidebar" aria-label="Chapters">
+<div class="site-title"><a href="index.html">Voice System Docs</a></div>
+<div class="edition">Public edition</div>
+<form class="search" role="search">
+<label for="q" class="sr-only">Search the docs</label>
+<input id="q" type="search" placeholder="Search" autocomplete="off">
+<ol id="results" class="results" aria-live="polite"></ol>
+</form>
+<ol class="toc">
+<li><a href="00-overview.html">Overview</a></li>
+<li><a href="01-getting-started.html">Getting Started With /voice-setup</a></li>
+<li><a href="02-architecture.html">Architecture</a></li>
+<li><a href="03-threat-model.html">Threat Model</a></li>
+<li><a href="04-runbooks.html">Runbooks</a></li>
+<li><a href="05-reference.html">Reference</a></li>
+<li><a href="06-calibration-and-evidence.html">Calibration and Evidence</a></li>
+<li><a href="07-decision-log.html">Decision Log</a></li>
+<li><a href="09-review-packet.html">Review Packet</a></li>
+<li><a href="10-maintaining-the-docs.html" aria-current="page">Maintaining the Docs</a>
+<ol><li><a href="#one-source-three-editions">One Source, Three Editions</a></li><li><a href="#where-every-number-comes-from">Where Every Number Comes From</a></li><li><a href="#the-verify-docs-check">The verify-docs Check</a></li><li><a href="#leak-checks">Leak Checks</a></li><li><a href="#before-a-commit">Before a Commit</a></li><li><a href="#adding-a-chapter-or-a-fact">Adding a Chapter or a Fact</a></li><li><a href="#committing-a-rendered-site">Committing a Rendered Site</a></li></ol></li>
+</ol>
+</nav>
+<main id="main" class="content">
+<h1 id="maintaining-the-docs">Maintaining the Docs</h1>
+<p>These docs are built so that the generated tables, and every number in a phrase the facts file lists, fail a check when they drift from the code; other prose and commands are checked by review. This chapter explains the three mechanisms that do the checking (the facts file, the generated reference and <code>verify-docs</code>), how editions are cut from one source, and what to run before a commit.</p>
+<p>The source and the docs tools live in the private repo that holds the engine. This chapter describes what they check, so a reviewer can see what each published number is tied to and how a wrong one would be caught.</p>
+<h2 id="one-source-three-editions">One Source, Three Editions</h2>
+<p>Every chapter is a markdown file in <code>docs/src/</code>. Each starts with frontmatter that lists the editions it appears in:</p>
+<pre><code>---
+editions: [internal, public]
+---</code></pre>
+<p>A passage inside a file can be limited further with an edition block:</p>
+<pre><code>&lt;!-- edition: internal --&gt;
+Text only the internal edition renders.
+&lt;!-- /edition --&gt;</code></pre>
+<p>The rules the build enforces:</p>
+<ol>
+<li>A file without frontmatter is a build error, so nothing is published by default.</li>
+<li>A block can only narrow the file's editions. A block that names an edition missing from the frontmatter is a build error.</li>
+<li>Blocks do not nest.</li>
+<li>Files whose names start with <code>_</code> are working files and appear only in the editions their frontmatter lists.</li>
+</ol>
+<p>There are three editions: an internal one for the private engine repo, one for an internal starter kit, and the public one you are reading, which ships in the public starter kit with the review packet. The two editions outside the private repo leave out all personal voice data, and the public one also leaves out every vendor-internal term.</p>
+<p><code>node docs/tools/build-editions.mjs</code> filters the source per edition, fills in the facts and writes <code>docs/dist/&lt;edition&gt;/</code>. <code>node docs/tools/render-site.mjs</code> renders each build to a static site in <code>docs/dist/&lt;edition&gt;/site/</code>: one page per chapter, a sidebar, search, light and dark themes, print styles, and no external loads. Both run the edition's leak check before they write anything (see <a href="#leak-checks">Leak Checks</a>).</p>
+<h2 id="where-every-number-comes-from">Where Every Number Comes From</h2>
+<p>Prose holds no hand-typed counts. A number in these docs comes from one of three places:</p>
+<ul>
+<li><strong>The facts file</strong>, <code>docs/facts.json</code>, written by running the tools and tests.</li>
+<li><strong>The generated reference</strong>, <a href="05-reference.html">Reference</a>, written from the code.</li>
+<li><strong>A cited evidence file</strong>, named in the text with its commit or date.</li>
+</ul>
+<h3 id="the-facts-file">The Facts File</h3>
+<p><code>node docs/tools/facts.mjs</code> runs the local test suites, gate-eval and the human false-positive budget, reads counts from the code, and writes <code>docs/facts.json</code>. Each fact records a key, a value, a status (<code>measured</code>, <code>recorded</code>, <code>not-run</code>, <code>skipped</code> or <code>failed</code>), the command or file it came from, the tools commit, the date, and the editions that may show it. A fact with no editions list is internal only.</p>
+<p>Source text cites a fact as <code>{{fact:key}}</code>, and the build fills in the value. For example, this edition was built from facts measured at tools commit b4534e3, with the detector pinned at 58a95fc. Modifiers change the output: <code>|raw</code> (no thousands separator), <code>|sha</code>, <code>|date</code>, <code>|source</code> and <code>|status</code>. A placeholder inside inline code or a fenced block is left as written.</p>
+<p>The build fails on:</p>
+<ul>
+<li>an unknown key</li>
+<li>a fact the edition may not show</li>
+<li>a fact whose status is not <code>measured</code> or <code>recorded</code>, unless the placeholder uses <code>|status</code></li>
+<li>a facts file that records a failed suite, as <code>verify-docs</code> does (with <code>--allow-stale</code> the build goes ahead and is marked stale)</li>
+</ul>
+<p>So a suite that didn't run, or that failed, can't print a number. It can only print its status, and a failed suite also stops the build.</p>
+<p><code>facts.mjs</code> runs locally and makes no external call. Suites that call external judges are recorded as <code>not-run</code>. <code>--quick</code> skips the slow suites and records their facts as <code>skipped</code>, which a build refuses to print. <code>--skip &lt;suite,...&gt;</code> skips named suites.</p>
+<h3 id="when-the-facts-are-stale">When the Facts Are Stale</h3>
+<p><code>facts.json</code> records a sha256 of every input it describes: the tracked code outside <code>docs/</code> (<code>onboarding/</code> and the repo's copy of the send hook, <code>hook/voice-tell-gate.py</code>, included), the detector, and the docs tools themselves. When gate-eval runs, it also records hashes of the private sets gate-eval reads from outside the repo, so an edit to one of them stales the facts too. The file is stale when any input hashes differently today, when an input appeared or disappeared, or when a tracked input differs between the commit the facts were measured at and the working tree. Stale facts fail <code>verify-docs</code> and the build.</p>
+<p><code>build-editions.mjs --allow-stale</code> builds anyway, for drafting. <code>BUILD.json</code> and every site page then say the build is stale, and <code>verify-docs</code> still fails. A stale build is never the one you publish.</p>
+<h3 id="the-generated-reference">The Generated Reference</h3>
+<p><a href="05-reference.html">Reference</a> has no hand-written tables. <code>node docs/tools/gen-reference.mjs</code> writes it from the code: the check catalog with effective severities, CLI flags, exit codes, environment variables, hook tiers and matchers, and the files and tests. <code>node docs/tools/gen-reference.mjs --check</code> exits 1 when the file on disk no longer matches what the code produces. Don't edit <code>05-reference.md</code> by hand; change the code or the generator and regenerate.</p>
+<h3 id="hand-written-numbers">Hand-Written Numbers</h3>
+<p>A fact can carry <code>claims</code>: regular expressions for the phrases its number appears in, each with one capture group around the number, for example <code>(\d+) detector categories</code>. <code>verify-docs</code> strips code, comments and placeholders from each prose line, and when a line matches a claim and the captured number differs from the fact's value, it fails and names the line, the number written and the fact.</p>
+<p>The heuristic only knows the phrases listed in <code>facts.mjs</code>, so a number in an unlisted phrase passes. Use a placeholder for any number a fact already holds. To state a different number on purpose, such as a past value in the decision log, write it in words or end the line with <code>&lt;!-- verify-docs: allow-number --&gt;</code>. The build removes that marker, so it never reaches an edition.</p>
+<h2 id="the-verify-docs-check">The verify-docs Check</h2>
+<p><code>node docs/tools/verify-docs.mjs</code> is the check that fails when prose and a fresh run disagree. It runs these checks in order and exits 1 on any finding:</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Check</th><th>Fails when</th></tr></thead>
+<tbody>
+<tr><td><code>facts</code></td><td><code>docs/facts.json</code> is invalid or records a failed suite</td></tr>
+<tr><td><code>stale</code></td><td>the facts no longer describe the current code</td></tr>
+<tr><td><code>fresh</code></td><td>with <code>--fresh</code> only: <code>facts.mjs</code> runs again, and a measured value differs from the committed one</td></tr>
+<tr><td><code>sources</code></td><td>a file has bad frontmatter or edition markers, or a placeholder names an unknown fact, a fact its edition may not show, or a fact with no usable value</td></tr>
+<tr><td><code>numbers</code></td><td>a hand-written number disagrees with its fact</td></tr>
+<tr><td><code>reference</code></td><td><code>05-reference.md</code> differs from what <code>gen-reference.mjs</code> produces now</td></tr>
+<tr><td><code>vendor</code></td><td>a vendored kit file differs from <code>docs/tools/vendor/SOURCES.json</code>, or from kit clones given with the <code>--kit-*</code> flags</td></tr>
+<tr><td><code>leaks</code></td><td>an edition, assembled in memory, fails its leak check, or a fact value of 1,000 or more that the edition may not show appears in its text</td></tr>
+<tr><td><code>dist</code></td><td>unless <code>--source-only</code>: a build or site in <code>docs/dist/</code> is out of date, leaks or has a broken link</td></tr>
+</tbody></table></div>
+<p>Other flags: <code>--edition &lt;name&gt;</code> limits the run to one or more editions, <code>--denylist &lt;file&gt;</code> adds a private denylist, and <code>--json</code> prints the findings as JSON. Every check runs locally. None of them calls a model, a judge or a web tool. A finding about personal text names a label, never the text it matched.</p>
+<h2 id="leak-checks">Leak Checks</h2>
+<p>Each edition build and each rendered site is scanned before anything is written. A hit fails that edition and leaves the previous output in place. Findings name a label, never the text they matched.</p>
+<p>All editions are scanned for secrets: API keys and private keys. Every edition except internal is also scanned for personal voice data: overlay issue ids, the names of private sample and profile files, the personal overlay file name, the approved lines read from the overlay, the signature line, and any run of 12 consecutive words copied from a private source. The public edition is also scanned for vendor-internal terms and patterns.</p>
+<p>The personal check fails closed. When the approved lines can't be read from the overlay, or a private source is not on this machine, every build except internal fails with a finding that names which. <code>DOCS_ALLOW_MISSING_PRIVATE=1</code> builds without them, for test fixtures and machines that don't hold the private sources. <code>verify-docs</code> fails whenever that variable is set and the personal check had a gap, so a build made this way can't pass the release check.</p>
+<h2 id="before-a-commit">Before a Commit</h2>
+<p>Run these from the repo root, in this order, after any change to the code, the hook or the docs source:</p>
+<pre><code class="language-bash">node docs/tools/facts.mjs              # re-measure; writes docs/facts.json
+node docs/tools/gen-reference.mjs      # regenerate docs/src/05-reference.md from the code
+node docs/tools/build-editions.mjs     # cut every edition into docs/dist/&lt;edition&gt;/, with leak checks
+node docs/tools/render-site.mjs        # render each edition's static site, with link and leak checks
+node docs/tools/verify-docs.mjs        # must exit 0</code></pre>
+<p><code>facts.mjs</code> runs the slow suites (the hook suite, the docs-tools suite, the onboarding suite, gate-eval and the false-positive budget), so start it in the background and watch its log. The budget runs only when the public corpora are on disk; set <code>VOICE_CORPORA</code> to their folder if they aren't in the default cache, or its facts stay <code>recorded</code> from the stored baseline:</p>
+<pre><code class="language-bash">nohup node docs/tools/facts.mjs &gt; /tmp/facts-run.log 2&gt;&amp;1 &amp;
+tail -f /tmp/facts-run.log</code></pre>
+<p>What to run depends on what changed:</p>
+<div class="table-wrap"><table>
+<thead><tr><th>You changed</th><th>Run at least</th></tr></thead>
+<tbody>
+<tr><td>prose in <code>docs/src/</code> only</td><td><code>build-editions.mjs</code>, <code>render-site.mjs</code>, <code>verify-docs.mjs</code></td></tr>
+<tr><td>engine code, the hook or the detector</td><td>all five, starting with <code>facts.mjs</code> (the old facts are stale)</td></tr>
+<tr><td>a check, flag, exit code or env var</td><td>all five; <code>gen-reference.mjs</code> picks up the change</td></tr>
+<tr><td>the docs tools</td><td><code>node --test docs/tools/test/*.test.mjs</code>, then all five</td></tr>
+<tr><td>the onboarding tools</td><td><code>node --test onboarding/test/*.test.mjs</code>, then all five (<code>onboarding/</code> is a facts input, so the old facts are stale)</td></tr>
+</tbody></table></div>
+<p>Pass the test files, not the folder: on Node 22, <code>node --test onboarding/test/</code> fails at once with &quot;Cannot find module&quot;. The docs tools' own suite passed 69 of 69 tests at b4534e3, and the onboarding suite passed 74 of 74. Every fixture in both is synthetic and built in a temporary directory.</p>
+<p>The onboarding suite includes one test that copies the shipped send hook (<code>VOICE_HOOK</code>, else <code>hook/voice-tell-gate.py</code> in the repo) into a throwaway install and runs the doctor's wiring and fail-closed checks on it. It only reads the original. To check the copy Claude Code actually runs, set <code>VOICE_HOOK=~/.claude/hooks/scripts/voice-tell-gate.py</code>. When it fails, that hook and the engine in this checkout disagree: update one so they match, rather than editing the test.</p>
+<p><code>verify-docs.mjs --fresh</code> re-runs every suite and compares each measured value with the committed one. Run it before a release, and whenever you suspect a fact was edited by hand.</p>
+<h2 id="adding-a-chapter-or-a-fact">Adding a Chapter or a Fact</h2>
+<p>To add a chapter, create <code>docs/src/NN-name.md</code> with frontmatter that lists its editions, use Title Case headings, and cite every number with a placeholder or an evidence file. Then run the build, render and verify steps above. A chapter that should not reach an edition must leave it out of the frontmatter. Don't rely on the leak check to catch it.</p>
+<p>To add a fact, add an entry to the fact list in <code>docs/tools/facts.mjs</code> with its key, the command or file it comes from, the editions that may show it, and any <code>claims</code> phrases. Run <code>facts.mjs</code>, then use the key in the source. Give a fact the narrowest editions list that works: a fact with no list is internal only, and <code>verify-docs</code> fails when an internal-only value of 1,000 or more shows up in a wider edition.</p>
+<h2 id="committing-a-rendered-site">Committing a Rendered Site</h2>
+<p><code>docs/dist/</code> is build output, ignored by the root <code>.gitignore</code> (<code>/docs/dist/*</code>). To commit a rendered edition, add an exception line there, for example <code>!/docs/dist/public/</code>, and commit the build output together with the facts file it was built from. Commit only a build that <code>verify-docs</code> passed, never one made with <code>--allow-stale</code>. This build was made from facts measured at b4534e3.</p>
+<nav class="pager" aria-label="Previous and next chapter"><span><a href="09-review-packet.html">Previous: Review Packet</a></span><span></span></nav>
+<p class="built">Built from tools commit b4534e3 with facts from 2026-10-02.</p>
+</main>
+</div>
+<script src="search-index.js"></script>
+<script src="assets/search.js"></script>
+</body>
+</html>

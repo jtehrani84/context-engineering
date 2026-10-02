@@ -4,7 +4,9 @@
 #
 # What it does:
 #   1. Creates ~/.claude/ directory structure (won't overwrite existing)
-#   2. Copies rules, hooks, skill templates, and the voice engine + eval harness
+#   2. Copies rules, hooks, skill templates, and the voice engine + eval harness (tools/: the scorer, the
+#      normalizer, the gate, the send hook's source and tests, the calibration harness and the /voice-setup
+#      onboarding tools; the docs are in docs/voice/)
 #   3. Wires hooks into settings (merge-safe and re-runnable, so upgrades pick up new hooks).
 #      No ~/.claude/settings.json yet? It creates a minimal one.
 #   4. Points you at the personalization prompt that builds your CLAUDE.md
@@ -51,6 +53,12 @@ PRIOR_TREE_HASHES="$SCRIPT_DIR/install-prior-hashes.txt"
 is_prior_kit_version() {
     [[ -f "$PRIOR_TREE_HASHES" ]] && grep -qx "$1 $(sha256_of "$2")" "$PRIOR_TREE_HASHES"
 }
+
+# Files an earlier kit release installed and this one no longer ships (repo-relative keys, installed under
+# ~/.claude/<key>). An unedited copy is removed on install and on --uninstall; one you edited is kept and reported.
+#   tools/voice-setup.mjs, tools/voice-overlay.skeleton.mjs: replaced on 2026-10-02 by tools/onboarding/
+#   (voice-doctor.mjs, profile-build.mjs, calibrate-user.mjs) and its blank overlay template.
+RETIRED=(tools/voice-setup.mjs tools/voice-overlay.skeleton.mjs)
 
 for arg in "$@"; do
     case "$arg" in
@@ -104,11 +112,16 @@ if [[ "${1:-}" == "--check" ]]; then
         fi
     done
 
-    # 4. Voice engine (the voice-tell-gate hook calls it; without it the hook stays silent)
-    if [[ -f "$CLAUDE_DIR/tools/aiscore.mjs" ]]; then
-        echo -e "  ${GREEN}✓${NC} Voice engine installed (~/.claude/tools/aiscore.mjs)"
+    # 4. Voice engine. voice-tell-gate calls aiscore.mjs and text-normalize.mjs and fails closed without them:
+    #    a send it can't score is denied, so a missing file blocks your send tools.
+    voice_missing=()
+    for f in aiscore.mjs text-normalize.mjs prose-gate.mjs onboarding/voice-doctor.mjs; do
+        [[ -f "$CLAUDE_DIR/tools/$f" ]] || voice_missing+=("$f")
+    done
+    if [[ ${#voice_missing[@]} -eq 0 ]]; then
+        echo -e "  ${GREEN}✓${NC} Voice engine installed (~/.claude/tools); full check: node ~/.claude/tools/onboarding/voice-doctor.mjs"
     else
-        echo -e "  ${YELLOW}⚠${NC} Voice engine missing — re-run ./setup.sh so voice-tell-gate has something to call"
+        echo -e "  ${YELLOW}⚠${NC} Voice engine incomplete, missing: ${voice_missing[*]}. Re-run ./setup.sh: voice-tell-gate denies a send it can't score"
     fi
 
     # 5. python3
@@ -207,6 +220,14 @@ if [[ "${1:-}" == "--uninstall" ]]; then
         done < <(find "$SCRIPT_DIR/$tree" -type f -print0)
     done
 
+    # Files an earlier release installed and this one no longer ships: remove an unedited copy.
+    for rel in "${RETIRED[@]}"; do
+        target="$CLAUDE_DIR/$rel"
+        if [[ -f "$target" ]] && is_prior_kit_version "$rel" "$target"; then
+            FILES_TO_REMOVE+=("$target")
+        fi
+    done
+
     if [[ ${#FILES_TO_REMOVE[@]} -eq 0 ]]; then
         echo "  No starter kit files found in ~/.claude/. Nothing to remove."
         exit 0
@@ -217,8 +238,10 @@ if [[ "${1:-}" == "--uninstall" ]]; then
         echo "    $f"
     done
     echo ""
-    echo "  Note: your wiki (~/.claude/wiki) is not touched. In ~/.claude/settings.json only the hook"
-    echo "  entries that run a kit hook removed here are taken out (backed up first); the rest stays."
+    echo "  Note: your wiki (~/.claude/wiki) and your voice folder (~/.claude/voice: samples, config, calibration"
+    echo "  reports) are not touched. In ~/.claude/settings.json only the hook entries that run a kit hook removed"
+    echo "  here are taken out (backed up first); the rest stays. An overlay you installed with /voice-setup"
+    echo "  (~/.claude/tools/voice-overlay.mjs) differs from the kit's blank copy, so it is kept."
     echo ""
 
     read -p "  Remove these ${#FILES_TO_REMOVE[@]} files? (Y/n) " confirm
@@ -379,6 +402,24 @@ for tree in tools harness-evolution workflows scripts/llm-call.py scripts/llm-re
     done < <(find "$SCRIPT_DIR/$tree" -type f -print0)
     echo "  ✓ $tree: $installed installed, $upgraded upgraded, $current already current, $kept kept yours (edited)"
 done
+for rel in "${RETIRED[@]}"; do
+    dest="$CLAUDE_DIR/$rel"
+    [[ -f "$dest" ]] || continue
+    if is_prior_kit_version "$rel" "$dest"; then
+        if [[ "$DRY_RUN" == false ]]; then rm "$dest"; fi
+        echo "  ✓ removed $rel (an earlier kit release shipped it; tools/onboarding/ replaces it)"
+    else
+        echo -e "  ${YELLOW}⚠ kept $rel: this release no longer ships it and you edited it; nothing reads it now${NC}"
+    fi
+done
+# An overlay you edited before 2026-10-02 is kept, but it has the old interface: aiscore and the send hook read it,
+# while prose-gate.mjs needs VERDICT_STRUCT_TYPES, which only the new template defines.
+OVERLAY="$CLAUDE_DIR/tools/voice-overlay.mjs"
+if [[ -f "$OVERLAY" ]] && ! grep -q "VERDICT_STRUCT_TYPES" "$OVERLAY"; then
+    echo -e "  ${YELLOW}⚠ ~/.claude/tools/voice-overlay.mjs is your edited overlay in the old format. aiscore and the send hook${NC}"
+    echo -e "  ${YELLOW}  still read it; prose-gate.mjs won't load until it defines VERDICT_STRUCT_TYPES. Run /voice-setup to${NC}"
+    echo -e "  ${YELLOW}  build a reviewed overlay from the new template (your word and phrase lists carry over by hand).${NC}"
+fi
 echo ""
 
 # --- Step 6: Wire hooks into settings.json (merge-safe, idempotent, safe to re-run on upgrade) ---
@@ -464,7 +505,8 @@ echo "  Installed:"
 echo "    • Rules, hook scripts, and skills copied to ~/.claude/"
 echo "    • Voice engine + eval harness copied to ~/.claude/tools and ~/.claude/harness-evolution"
 echo "    • Audit workflows copied to ~/.claude/workflows (used by /claim-audit, /plan-audit, /execution-truth, /provenance-audit)"
-echo "    • Hooks wired into settings.json (auth key preserved)"
+echo "    • Hooks wired into settings.json (auth key preserved), including voice-tell-gate on file writes (nudges)"
+echo "      and on send tools (blocks a send with a hard tell, and any send it can't score)"
 if [[ "$WITH_WIKI" == true ]]; then
     echo "    • Wiki skeleton copied to ${WIKI_DEST:-$CLAUDE_DIR/wiki}"
 fi
@@ -474,7 +516,7 @@ echo "    1. Open Claude Code in your project directory"
 echo "    2. Paste: Read ~/context-engineering/QUICKSTART-PROMPT.md and follow the instructions."
 echo "    3. Answer Claude's 5 questions"
 echo "    4. Start using /research-prep before your next meeting"
-echo "    5. Calibrate the voice guard to YOU: node ~/.claude/tools/voice-setup.mjs (see VOICE-ONBOARDING.md)"
+echo "    5. Calibrate the voice guard to YOU: type /voice-setup in Claude Code (see VOICE-ONBOARDING.md and docs/voice/)"
 echo "    6. Want /review and the second read in /validate? Set LLM_BASE_URL and LLM_API_KEY (see scripts/llm-call.py)"
 if [[ "$WITH_WIKI" == false ]]; then
     echo "    7. Want the wiki skeleton (index, log, inbox, people templates)? Re-run: ./setup.sh --with-wiki"

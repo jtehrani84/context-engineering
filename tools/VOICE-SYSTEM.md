@@ -1,36 +1,23 @@
-# The Voice System — one pipeline
+# The Voice System
 
-The kit's answer to "does this sound human, and does it sound like *us*?" is one layered pipeline, not four disconnected checks. A text is **CLEAN only when the deterministic engine AND a gestalt judge both pass** — a clean automated score alone certifies nothing.
+The voice engine checks writing for generic AI tells before it reaches anyone else. Everything here runs locally except the optional judge panel. The full documentation is in `../docs/voice/` (rendered site: `../docs/voice/site/index.html`): architecture, threat model, runbooks, the reference generated from the code, and the calibration evidence.
 
-## The layers
+## The Pieces
 
-| Layer | What | Where | Ships |
-|---|---|---|---|
-| 0 | Generic AI-writing detector (0–100 score) | `avoid-ai-writing/` (vendored MIT, © Conor Bronsdon) | in code, generic |
-| 1–3 | Banned words / phrases / openers | `avoid-ai-writing` + your overlay | generic in code; yours once you fill the overlay |
-| 4 | **Structural** tells — parallel cards, announced hedges, aphorisms, cadence/flow | `../rules/structural-voice.md` | described in the rule; arrives in code in the next release |
-| — | **Your calibration** — your overused words, your tells, your exemptions | `voice-overlay.mjs` | **EMPTY until you onboard** |
-| 5 | **Gestalt judge** — reads a passage as an expert would; can VETO a clean score | `../skills/voice-judge.md` (`/voice-judge`) | a skill prompt, generic |
+| File | What it does |
+|---|---|
+| `aiscore.mjs` | The deterministic scorer. Wraps the vendored detector (`avoid-ai-writing/`, MIT, pinned at commit 58a95fc), adds your overlay, and prints a raw `score`, an `adjustedScore` counted only from detector categories that held up as AI evidence, and the overlay's issues as must-fix. Exits 0 on every completed scan. |
+| `text-normalize.mjs` | Canonical text for scanning: NFKC, invisible and tag characters removed, look-alike letters mapped, emphasis and inline markup reduced. `node text-normalize.mjs --json < file` prints both views. |
+| `prose-gate.mjs` | The ship gate: the deterministic layer, then an optional judge panel that never seats a judge from the drafter's lab. `--det-only` runs locally with no network call. Fails closed: exit 4 when a layer fails. |
+| `voice-overlay.mjs` | Your personal overlay. Ships blank (`REVIEWED = false`); `/voice-setup` installs your reviewed copy here. |
+| `hook/voice-tell-gate.py` | The hook source (`./setup.sh` installs it in `~/.claude/hooks/scripts/`). It nudges on file writes and blocks a send with a hard tell, and it denies any send it can't score. Tests: `hook-tests/voice-tell-gate.test.py`. |
+| `onboarding/` | `/voice-setup`'s tools: `voice-doctor.mjs`, `profile-build.mjs`, `calibrate-user.mjs`, `merge-hooks.mjs`, the config schema and example, and the blank overlay template. |
+| `calibration/` | The human false-positive budget on four public corpora (`fetch-public-corpora.sh`, then `human-fp-budget.mjs`) and `gate-eval.mjs`. |
 
-Layer 0, the rule text in layer 4 and the judge are the same for everyone. Only the overlay carries a person's voice — so it's the only piece that ships blank. Layer 4 is a written rule today, not a detector: the engine flags only what the vendored detector and your overlay catch.
+## The Rule
 
-## How the pieces connect
+A clean automated score is a signal, not a verdict. For anything a customer, a leader or the public reads, run the engine, the structural rules in `../rules/structural-voice.md`, the `/voice-judge` read and a human read. The checks catch generic AI writing; they do not catch a model told to imitate a specific person, so a clean result never shows who wrote a text. Chapter 06 of the docs gives the measurements behind both statements.
 
-- **`aiscore.mjs`** runs layers 0–3 + your overlay and prints a score + hard-bans + any cadence flags your overlay defines. It reads the fuse and, until you calibrate, labels every verdict *"generic-only, NOT calibrated to you."*
-- **`voice-setup.mjs`** is the fuse: `UNCALIBRATED / PARTIAL / CALIBRATED`. It refuses to let a clean generic score masquerade as "sounds like me."
-- **`voice-tell-gate.py`** (hook) runs `aiscore` automatically on written `.md`/`.html`/`.txt` files and nudges.
-- **`/voice-judge`** (layer 5) is the human-shaped read that catches what regex can't — and can overrule a clean score.
-- **`../harness-evolution/harness-eval.mjs`** is the evolve-and-gate loop: it lets you change the guard and prove on a held-out split that it got *better*, not just different.
+## Getting Started
 
-## The rule
-
-**CLEAN only if the engine AND the judge both pass.** This exists because of a real failure: a draft scored near-perfect on the deterministic engine and an expert reader clocked it as AI in two sentences. The number was clean; the writing wasn't. The judge is the layer that catches that; never ship on a clean engine score alone.
-
-## Stakes tiering
-
-- **Scratch / internal note** — the engine score is enough.
-- **Anything a customer, leader, or the public reads** — engine + structural rules + the judge + a human read. The bar scales with who's hurt if it's wrong.
-
-## The honest ceiling
-
-Calibration makes the guard catch lazy slop AND stop false-flagging your own clean writing. It does **not** beat someone who deliberately imitates you and adapts, and this kit has no test that says it would. Against a determined impersonator the durable answer is **provenance** (who typed it), not text detection. Calibrate for the slop and the false-positives; don't trust it past that. See `../VOICE-ONBOARDING.md`.
+Type `/voice-setup` in Claude Code, or follow `../VOICE-ONBOARDING.md`. `node ~/.claude/tools/onboarding/voice-doctor.mjs` reports what is installed and what is missing.

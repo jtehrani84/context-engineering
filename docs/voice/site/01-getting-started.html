@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Getting Started With /voice-setup | Voice System Docs</title>
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="layout">
+<nav class="sidebar" aria-label="Chapters">
+<div class="site-title"><a href="index.html">Voice System Docs</a></div>
+<div class="edition">Public edition</div>
+<form class="search" role="search">
+<label for="q" class="sr-only">Search the docs</label>
+<input id="q" type="search" placeholder="Search" autocomplete="off">
+<ol id="results" class="results" aria-live="polite"></ol>
+</form>
+<ol class="toc">
+<li><a href="00-overview.html">Overview</a></li>
+<li><a href="01-getting-started.html" aria-current="page">Getting Started With /voice-setup</a>
+<ol><li><a href="#your-writing-samples-stay-on-this-machine">Your Writing Samples Stay on This Machine</a></li><li><a href="#before-you-start">Before You Start</a></li><li><a href="#step-1-run-the-doctor">Step 1: Run the Doctor</a></li><li><a href="#step-2-create-the-config-and-wire-the-hook">Step 2: Create the Config and Wire the Hook</a></li><li><a href="#step-3-add-your-writing-samples">Step 3: Add Your Writing Samples</a></li><li><a href="#step-4-draft-a-personal-overlay">Step 4: Draft a Personal Overlay</a></li><li><a href="#step-5-review-the-draft-yourself">Step 5: Review the Draft Yourself</a></li><li><a href="#step-6-calibrate-the-draft-on-held-out-writing">Step 6: Calibrate the Draft on Held-Out Writing</a></li><li><a href="#step-7-install-the-overlay">Step 7: Install the Overlay</a></li><li><a href="#step-8-optional-measure-recall-on-ai-drafts">Step 8 (Optional): Measure Recall on AI Drafts</a></li><li><a href="#step-9-doctor-green">Step 9: Doctor GREEN</a></li><li><a href="#later-runs">Later Runs</a></li><li><a href="#terms-used-in-this-chapter">Terms Used in This Chapter</a></li></ol></li>
+<li><a href="02-architecture.html">Architecture</a></li>
+<li><a href="03-threat-model.html">Threat Model</a></li>
+<li><a href="04-runbooks.html">Runbooks</a></li>
+<li><a href="05-reference.html">Reference</a></li>
+<li><a href="06-calibration-and-evidence.html">Calibration and Evidence</a></li>
+<li><a href="07-decision-log.html">Decision Log</a></li>
+<li><a href="09-review-packet.html">Review Packet</a></li>
+<li><a href="10-maintaining-the-docs.html">Maintaining the Docs</a></li>
+</ol>
+</nav>
+<main id="main" class="content">
+<h1 id="getting-started-with-voice-setup">Getting Started With /voice-setup</h1>
+<p>This chapter takes one person from a fresh install to <code>voice-doctor</code> GREEN. It follows the <code>/voice-setup</code> skill (<code>skills/voice-setup.md</code> in the starter kit, which <code>./setup.sh</code> installs as <code>~/.claude/commands/voice-setup.md</code>) step by step, and every command below is one the onboarding tools in <code>onboarding/</code> accept as of 2026-10-02. You can type <code>/voice-setup</code> in Claude Code and let the skill run the steps, or run them yourself in a terminal. The result is the same.</p>
+<p>The setup ends with four things in place:</p>
+<ul>
+<li>the engine is the tested one (scorer, normalizer, gate, the pinned detector at commit 58a95fc)</li>
+<li>the send hook is wired into <code>settings.json</code> and fails closed</li>
+<li>a personal overlay, built from your own writing and reviewed by you, is installed</li>
+<li>your held-out writing passes the gate and the hook, recorded in a calibration report</li>
+</ul>
+<p>What GREEN does not show: that a clean score means a text is yours. The checks find generic AI writing. They do not establish who wrote something.</p>
+<h2 id="your-writing-samples-stay-on-this-machine">Your Writing Samples Stay on This Machine</h2>
+<p>Setup reads 20 to 40 pieces of your own writing. These rules hold for every step, whether you run the tools or the skill does:</p>
+<ol>
+<li>The onboarding tools print counts, statistics and sample ids (<code>s01</code> in <code>profile-build.mjs</code>, <code>h01</code> for held-out samples in <code>calibrate-user.mjs</code>, and so on), never sample text. Their output may be read into an AI session, so it carries nothing personal.</li>
+<li>No sample goes to a judge, a model, a web tool or a remote path. <code>profile-build.mjs</code> and <code>calibrate-user.mjs</code> turn off Node's network modules (<code>net</code>, <code>tls</code>, <code>http</code>, <code>https</code>, <code>http2</code>, <code>dns</code>, <code>dgram</code>) and the <code>fetch</code>, <code>WebSocket</code> and <code>EventSource</code> globals in their own processes and in the Node children they start (<code>onboarding/lib/local-only.mjs</code>). That guard covers Node code only. The send hook is a Python child; the tools start it only to run the local scorer.</li>
+<li>The config's <code>data</code> section is fixed: <code>samplesLeaveMachine</code>, <code>samplesToJudges</code> and <code>printSampleText</code> are all <code>false</code>, and the config check refuses a file that changes them.</li>
+<li>The skill never opens files in your samples folder, your AI-drafts folder, the draft overlay or the installed overlay. It never passes <code>--show-spans</code> or <code>--show-files</code>. If you want to see matched text, you run that command in your own terminal.</li>
+<li>The skill asks before it changes a file outside the voice folder (<code>settings.json</code>, the installed overlay) and backs it up first.</li>
+</ol>
+<h2 id="before-you-start">Before You Start</h2>
+<p>You need Node.js 18 or later and <code>python3</code> (the send hook runs under <code>python3</code>). The runbooks also use <code>jq</code> to build test payloads. The engine and the onboarding tools live in one folder, <code>~/.claude/tools</code> (or <code>$CLAUDE_CONFIG_DIR/tools</code>), with the onboarding tools in its <code>onboarding/</code> subfolder and the send hook's source in <code>hook/voice-tell-gate.py</code>. Claude Code runs an installed copy of the hook, <code>~/.claude/hooks/scripts/voice-tell-gate.py</code>. Your own files go in a separate folder, <code>~/.claude/voice</code>. Set three shell variables once and use them in every command:</p>
+<pre><code class="language-bash">T=&quot;${CLAUDE_CONFIG_DIR:-$HOME/.claude}/tools&quot;
+V=&quot;${CLAUDE_CONFIG_DIR:-$HOME/.claude}/voice&quot;
+H=&quot;${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/scripts/voice-tell-gate.py&quot;
+ls &quot;$T/onboarding/voice-doctor.mjs&quot; &quot;$T/aiscore.mjs&quot; &quot;$T/prose-gate.mjs&quot; &quot;$T/text-normalize.mjs&quot; &quot;$T/hook/voice-tell-gate.py&quot;</code></pre>
+<p>If a file is missing, the install is incomplete. The next paragraph says where the files come from.</p>
+<p>Where the files come from: the public starter kit, <code>https://github.com/jtehrani84/context-engineering</code>. Clone it and run <code>./setup.sh</code> from the root of the clone; it copies the kit's <code>tools/</code> folder to <code>~/.claude/tools</code>, its hooks to <code>~/.claude/hooks/scripts</code> and its skills to <code>~/.claude/commands</code>, and wires the send hook into <code>settings.json</code>. The kit ships <code>prose-gate.mjs</code>, <code>text-normalize.mjs</code>, <code>calibration/</code>, <code>onboarding/</code>, <code>hook/</code> and <code>hook-tests/</code> under <code>tools/</code> from its 2026-10-02 release that added these docs (<code>docs/voice/</code>); the kit at 9505301 and earlier does not, and its <code>voice-tell-gate.py</code> only nudges on file writes. On an older clone, run <code>git pull</code> and then <code>./setup.sh</code> again. The engine and the hook must come from the same release: the hook reads a <code>text-normalize --json</code> key that older engines don't print.</p>
+<p>The send hook must be the copy that ships with the engine. If <code>$H</code> is missing or older, install it (keep a dated copy of the old one first):</p>
+<pre><code class="language-bash">[ -f &quot;$H&quot; ] &amp;&amp; cp &quot;$H&quot; &quot;$H.bak-$(date +%Y-%m-%d)&quot;
+mkdir -p &quot;$(dirname &quot;$H&quot;)&quot; &amp;&amp; cp &quot;$T/hook/voice-tell-gate.py&quot; &quot;$H&quot;</code></pre>
+<p>Each tool prints <code>--help</code>. Their exit codes:</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Tool</th><th>0</th><th>1</th><th>2</th></tr></thead>
+<tbody>
+<tr><td><code>voice-doctor.mjs</code></td><td>no check failed</td><td>at least one check failed</td><td>usage error</td></tr>
+<tr><td><code>profile-build.mjs</code></td><td>draft written</td><td>refused (a draft exists), or a bad flag or config</td><td>couldn't run: too few or unreadable samples, or the rendered draft doesn't load</td></tr>
+<tr><td><code>calibrate-user.mjs</code></td><td>no held-out sample failed</td><td>one or more failed</td><td>it couldn't run</td></tr>
+</tbody></table></div>
+<h2 id="step-1-run-the-doctor">Step 1: Run the Doctor</h2>
+<pre><code class="language-bash">node &quot;$T/onboarding/voice-doctor.mjs&quot;</code></pre>
+<p>It prints one line per check (<code>PASS</code>, <code>FAIL</code>, <code>WARN</code> or <code>INFO</code>), a <code>fix:</code> line under each FAIL, and a summary line that reads <code>GREEN</code> or <code>RED</code>. To see what each check verifies and what it catches:</p>
+<pre><code class="language-bash">node &quot;$T/onboarding/voice-doctor.mjs&quot; --list</code></pre>
+<p>On a new install, expect three FAILs: <code>overlay</code> (no reviewed personal overlay yet), <code>hook-wiring</code> (<code>settings.json</code> doesn't run the hook yet) and <code>user-calibration</code> (no calibration report yet). Step 2 fixes <code>hook-wiring</code> and steps 4 to 7 fix the other two. Any other FAIL is an install problem. Fix it before you go on:</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Check</th><th>What a FAIL means</th><th>What to do</th></tr></thead>
+<tbody>
+<tr><td><code>runtime</code></td><td>Node.js older than 18, or no <code>python3</code></td><td>Install them and re-run</td></tr>
+<tr><td><code>engine</code>, <code>detector</code>, <code>detector-pin</code></td><td>An engine file is missing, or the detector isn't the tested commit</td><td>Reinstall the engine (see Before You Start). Never edit the pin to make it pass</td></tr>
+<tr><td><code>scorer</code>, <code>normalizer</code>, <code>gate</code></td><td>The tool runs but gives a wrong answer on a fixed probe</td><td>Reinstall the engine from one release</td></tr>
+<tr><td><code>hook-wiring</code></td><td><code>settings.json</code> doesn't run the hook for every send tool and every file write</td><td>Step 2</td></tr>
+<tr><td><code>hook-controls</code>, <code>send-fails-closed</code>, <code>write-warns</code></td><td>The hook is missing or older than the engine: it lets a tell through, or lets a send through when its scorer is broken</td><td>Install <code>$T/hook/voice-tell-gate.py</code> at <code>$H</code> (Before You Start)</td></tr>
+<tr><td><code>engine-calibration</code></td><td>The engine's human false-positive record is missing or shows rejects</td><td>Reinstall <code>calibration/</code> with the engine</td></tr>
+</tbody></table></div>
+<p><code>judges</code> is optional. <code>INFO ... det-only mode</code> is a normal result: with no judge, a clean draft is INCONCLUSIVE, never ADMIT, and the deterministic checks and the send hook still run.</p>
+<p>The doctor changes no files. It runs the scorer, the gate and the hook on fixed made-up texts. It simulates a broken scorer by pointing <code>VOICE_AISCORE</code> at a stub in a temporary folder, which it deletes afterwards.</p>
+<p>Other doctor flags you may need: <code>--only &lt;ids&gt;</code> and <code>--skip &lt;ids&gt;</code> run a subset of checks, <code>--json</code> prints machine-readable output, and <code>--config</code>, <code>--tools</code>, <code>--settings</code>, <code>--hook</code> and <code>--overlay</code> point it at non-default paths.</p>
+<h2 id="step-2-create-the-config-and-wire-the-hook">Step 2: Create the Config and Wire the Hook</h2>
+<p>Create the config if there is none. Every property has a default, so a missing file means &quot;all defaults&quot;, and the example is only a starting point:</p>
+<pre><code class="language-bash">mkdir -p &quot;$V&quot;
+[ -f &quot;$V/voice-config.json&quot; ] || cp &quot;$T/onboarding/voice-config.example.json&quot; &quot;$V/voice-config.json&quot;</code></pre>
+<p>The schema is <code>$T/onboarding/voice-config.schema.json</code>, and each property has a description there. Answer four questions and edit <code>$V/voice-config.json</code>:</p>
+<ol>
+<li><strong>Which model drafts most of your text?</strong> Set <code>judges.drafterLab</code> to its lab (<code>anthropic</code>, <code>google</code>, <code>openai</code>, <code>xai</code>) or <code>unknown</code>.</li>
+<li><strong>Can you call models from other labs?</strong> If not, set <code>judges.mode</code> to <code>none</code> and empty <code>judges.allowed</code>. The system then runs det-only, which is a complete setup. If you can, list them in <code>judges.allowed</code> with their lab, and set <code>command</code> to the judge backend CLI's path when <code>OPENCODE_BIN</code> isn't set. A judge never comes from the drafter's lab, because a model under-rates the tells in its own lab's writing; the config check refuses a judge that does. <code>consensus</code> needs two labs; <code>single</code> runs one judge, and that judge alone decides the judge layer. The example config sets <code>consensus</code> with three judges; the schema default is <code>none</code>.
+The judge entries in <code>prose-gate.mjs</code> (<code>JUDGES</code>) name example model ids in opencode's provider/model form. Before you turn judges on, set each entry's <code>model</code> to an id your <code>opencode</code> install can reach; with ids it can't reach, every juror errors and the verdict is INCONCLUSIVE.</li>
+<li><strong>Which tools send your words somewhere they can't be taken back?</strong> <code>sendTools</code> lists them: chat messages, email, shared documents and slides, comments, pull requests and issues by default. A name without the <code>mcp__</code> prefix matches that tool under any MCP server. Add your own send tools; a tool you add must also be in the hook's <code>SEND_SUFFIXES</code> list in <code>$H</code>, and the doctor's <code>hook-wiring</code> check fails until it is. Remove none unless you mean to.</li>
+<li><strong>Standard or strict?</strong> With <code>strictness.level</code> set to <code>standard</code>, a held-out sample fails when the gate rejects it or the send hook blocks it. <code>strict</code> also counts a nudge.</li>
+</ol>
+<p>The other strictness values have defaults you rarely change: <code>detBar</code> 40 (the AI-evidence score at which the deterministic layer rejects), <code>judgeBar</code> 50 (the mean judge score at which the panel rejects), <code>heldOutShare</code> 0.3 and <code>minSamples</code> 20.</p>
+<p>Check the config and the wiring:</p>
+<pre><code class="language-bash">node &quot;$T/onboarding/voice-doctor.mjs&quot; --only config,hook-wiring</code></pre>
+<p>If <code>hook-wiring</code> fails, look at what the doctor expects and what will change before you write anything:</p>
+<pre><code class="language-bash">node &quot;$T/onboarding/voice-doctor.mjs&quot; --print-hooks     # the hooks block this config needs
+node &quot;$T/onboarding/merge-hooks.mjs&quot; --dry-run          # the hooks section after the merge; nothing written
+node &quot;$T/onboarding/merge-hooks.mjs&quot;                    # writes it; an existing file is kept as settings.json.bak-&lt;time&gt;</code></pre>
+<p><code>merge-hooks.mjs</code> replaces only the entries that run <code>voice-tell-gate.py</code> and keeps every other hook and setting. If there is no <code>settings.json</code> yet it creates one, and each run that changes the file writes a new backup. It also takes <code>--settings &lt;file&gt;</code> and <code>--config &lt;file&gt;</code>.</p>
+<p>If <code>hook-wiring</code> still fails with &quot;the hook doesn't treat N of the configured send tools as sends&quot;, the hook script is the problem, not the wiring: install <code>$T/hook/voice-tell-gate.py</code> at <code>$H</code> (Before You Start), or add the name to the hook's <code>SEND_SUFFIXES</code>. Hooks older than 2026-10-02 skip <code>manage_spreadsheet_comment</code>, because they test the read marker <code>read</code> against the whole tool name and &quot;spreadsheet&quot; contains it.</p>
+<p>The send matcher it writes is a regular expression on purpose. Claude Code reads a matcher made only of letters, digits, <code>_</code>, <code>|</code>, <code>,</code>, <code>-</code> and spaces as a list of exact tool names, so an exact name like <code>send_message</code> never matches the MCP tool <code>mcp__chat__send_message</code>. The rule was read from the Claude Code 2.1.286 bundle and confirmed with a live probe on 2026-10-02; the rule and its evidence are in <code>$T/onboarding/lib/hook.mjs</code>.</p>
+<p>After a wiring change, restart the Claude Code session so it loads the new hooks. The doctor runs the hook directly, so its checks pass before the restart.</p>
+<h2 id="step-3-add-your-writing-samples">Step 3: Add Your Writing Samples</h2>
+<p>Put 20 to 40 pieces of your own writing in <code>$V/samples/</code>, one piece per <code>.txt</code> or <code>.md</code> file (<code>.mdx</code>, <code>.markdown</code> and <code>.text</code> also work). Use messages, emails, notes and documents you wrote yourself, without an AI assist, in the registers you want checked. Recent writing is better than old. With fewer than 4 the tools can't split the set. Below <code>strictness.minSamples</code> (20 by default) they still run but warn that the held-out set is small. Length matters too: each <code>REGISTER</code> habit band needs at least three tune samples long enough to measure (5 or more sentences for the sentence-length band, 150 or more words for contractions, 100 or more for em dashes), so a set of short chat messages leaves those bands off. Copy the files in; don't paste them into a chat.</p>
+<p>Count them without reading them:</p>
+<pre><code class="language-bash">ls &quot;$V/samples&quot; | wc -l</code></pre>
+<p><code>profile-build.mjs</code> and <code>calibrate-user.mjs</code> split the samples the same way, by a hash of each text. About 30% (<code>heldOutShare</code>) are held out. They are never used to build the overlay, so the test in step 6 runs on writing the overlay hasn't seen.</p>
+<h2 id="step-4-draft-a-personal-overlay">Step 4: Draft a Personal Overlay</h2>
+<pre><code class="language-bash">node &quot;$T/onboarding/profile-build.mjs&quot;</code></pre>
+<p>It reads the tune samples locally, measures your habits (sentence length, contractions, very short sentences, dash and ellipsis use, recurring phrases), runs the installed checks on them, and writes one file: <code>$V/voice-overlay.draft.mjs</code>, about 380 lines, most of them the overlay's own scanning code. It never writes the installed overlay. It prints counts and statistics only:</p>
+<ul>
+<li><code>samples</code>: how many were used, how many were skipped (shorter than 3 words, or duplicates), and the tune and held-out counts</li>
+<li><code>sentences</code> and <code>per 1,000</code>: your measured habits</li>
+<li><code>register</code>: which habit checks are on. A band is off when there aren't enough long samples to set it</li>
+<li><code>approved</code>: lines you really write that a check flagged in 2 or more tune samples. These are candidates for you to keep or delete. The same line also counts the recurring phrases recorded in <code>PROFILE</code></li>
+</ul>
+<p>If a draft already exists, <code>profile-build.mjs</code> refuses to overwrite it and exits 1. Add <code>--force</code> to replace it. Other flags: <code>--samples &lt;dir&gt;</code> (or <code>-</code> for stdin, split on <code>--sep</code>), <code>--out &lt;file.mjs&gt;</code>, <code>--no-scorer</code>, <code>--no-hook</code> and <code>--json</code>.</p>
+<h2 id="step-5-review-the-draft-yourself">Step 5: Review the Draft Yourself</h2>
+<p>Open <code>$V/voice-overlay.draft.mjs</code> in your own editor. The skill doesn't open it, because it holds phrases taken from your writing. What to look at:</p>
+<ul>
+<li><code>APPROVED_LINES</code>: keep only lines you write and delete the rest. The overlay's own checks skip these lines. The generic detector and the send hook's word list don't read this list.</li>
+<li><code>REGISTER</code>: your habit bands. A value far outside a band is listed as must-fix by the scorer and the gate, never blocked. The send hook doesn't read these checks, so they don't nudge a send. <code>null</code> turns a check off.</li>
+<li><code>TEAM_WORDS</code> and <code>TEAM_PHRASES</code>: optional. Words you never use (flagged high; the scorer and the gate count them, the send hook leaves words to its own list) and phrases you would never write (flagged critical, which the send hook blocks).</li>
+<li><code>VERDICT_STRUCT_TYPES</code>: leave it empty unless one check should reject a draft on its own.</li>
+<li><code>NOTES</code>: what <code>profile-build.mjs</code> noticed.</li>
+<li><code>PROFILE</code>: your measured habits and recurring phrases, kept for the next build. It holds phrases from your writing, so the privacy note in the file covers it. <code>ISSUE_PREFIX</code>, <code>PROBE</code> and <code>BASE_OVERLAY</code> are settings; leave them as written.</li>
+<li>Last, mark the draft reviewed: the line reads <code>export const REVIEWED = /*@REVIEWED*/false/*@END*/;</code>. Change only <code>false</code> to <code>true</code> and keep the markers.</li>
+</ul>
+<p>Confirm the review without printing the file's contents:</p>
+<pre><code class="language-bash">node --input-type=module -e &quot;const m = await import('file://$V/voice-overlay.draft.mjs'); console.log('REVIEWED', m.REVIEWED, '| approved lines', m.APPROVED_LINES.length, '| team words', m.TEAM_WORDS.length, '| team phrases', m.TEAM_PHRASES.length)&quot;</code></pre>
+<h2 id="step-6-calibrate-the-draft-on-held-out-writing">Step 6: Calibrate the Draft on Held-Out Writing</h2>
+<pre><code class="language-bash">node &quot;$T/onboarding/calibrate-user.mjs&quot; --overlay &quot;$V/voice-overlay.draft.mjs&quot; --no-report</code></pre>
+<p>It runs the gate (<code>prose-gate.mjs --det-only</code>, so no judge sees a sample) and the send hook (on a synthetic send; nothing is sent) on every held-out sample. A draft overlay is tested in a temporary copy of the engine, which is deleted afterwards. Your own writing must come through clean, so the target line is <code>HELD-OUT ... 0 failed ... PASS</code>.</p>
+<p>Each failure is listed by sample id, with the check that fired and a suggestion:</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Check</th><th>Plain meaning</th><th>Usual change</th></tr></thead>
+<tbody>
+<tr><td><code>send-hook:&lt;prefix&gt;-phrase</code></td><td>A phrase in <code>TEAM_PHRASES</code> is in your own writing</td><td>Remove it from <code>TEAM_PHRASES</code></td></tr>
+<tr><td><code>send-hook:&lt;prefix&gt;-struct-*</code></td><td>A critical structure from a base overlay fired on your writing</td><td>Lower its severity in the overlay that defines it, or add the line to <code>APPROVED_LINES</code></td></tr>
+<tr><td><code>send-hook:hard-ban</code></td><td>The hook's word list blocks a word you really use</td><td>Move the word from <code>BLOCK_WORDS</code> to <code>NUDGE_WORDS</code> in <code>$H</code>, or reword</td></tr>
+<tr><td><code>ai-evidence</code></td><td>The generic detector's categories added up past <code>strictness.detBar</code></td><td>Raise <code>detBar</code> a little, or drop the sample if it isn't really yours</td></tr>
+<tr><td><code>pinned:&lt;type&gt;</code></td><td>A type in <code>VERDICT_STRUCT_TYPES</code> fired on your writing</td><td>Remove it from that list</td></tr>
+<tr><td><code>injection:&lt;type&gt;</code></td><td>The sample reads like an instruction to a grader</td><td>Nothing exempts this; keep such text out of gated drafts</td></tr>
+</tbody></table></div>
+<p>The shipped send hook doesn't read <code>TEAM_WORDS</code> hits or the <code>REGISTER</code> checks, so those never fail a held-out sample. A hook that reads them reports them as <code>send-hook:&lt;prefix&gt;-word</code> and <code>send-hook:&lt;prefix&gt;-cadence-*</code>, and the tool's suggestion then names the list or band to change.</p>
+<p>Make the change in your editor and re-run until 0 fail. Four cautions:</p>
+<ul>
+<li>Each change you make to pass a held-out sample uses that sample for tuning. After several rounds, add a few new samples so the test stays clean.</li>
+<li>The hook's block list is short, so a block word you use now and then may be in no held-out sample. In a persona run on 2026-10-02 (one author of the public 18F blog, <code>docs/evidence/persona-2026-10-02.json</code>), the held-out set passed after one change to the block list, and the hook then blocked 4 of 14 fresh posts by the same author, each one on a block word. Check fresh writing as well: put a few pieces the overlay never saw in a new folder and run <code>node &quot;$T/onboarding/calibrate-user.mjs&quot; --overlay &quot;$V/voice-overlay.draft.mjs&quot; --tune &quot;$V/samples&quot; --held-out &lt;that folder&gt; --no-report</code>. Move every block word you use.</li>
+<li>A word you move lives in your installed copy of the hook. Reinstalling the hook replaces that copy, so keep the dated backup and re-apply your moves after an update.</li>
+<li>If the tool warns that the samples changed since the draft was built, re-run step 4 with <code>--force</code>.</li>
+</ul>
+<p>To see the matched text, run the same command with <code>--show-spans</code> in your own terminal, and don't paste the output into a chat. <code>--show-files</code> prints sample file names the same way. <code>--strict</code> counts nudges as failures for one run, and <code>--json</code> prints the report as JSON.</p>
+<h2 id="step-7-install-the-overlay">Step 7: Install the Overlay</h2>
+<p>The engine (<code>aiscore.mjs</code>, <code>prose-gate.mjs</code> and <code>calibration/</code>) imports the overlay from <code>$T/voice-overlay.mjs</code>, the default <code>paths.overlay</code>. Back up the file there if one exists, copy the reviewed draft over it, and calibrate the installed file. This run writes the report the doctor reads, <code>$V/calibration-report.json</code>:</p>
+<pre><code class="language-bash">O=&quot;$T/voice-overlay.mjs&quot;     # or the path in the doctor's overlay line
+[ -f &quot;$O&quot; ] &amp;&amp; cp &quot;$O&quot; &quot;$O.bak-$(date +%Y-%m-%d)&quot;
+cp &quot;$V/voice-overlay.draft.mjs&quot; &quot;$O&quot;
+node &quot;$T/onboarding/calibrate-user.mjs&quot;</code></pre>
+<p>The report records the hashes of the overlay, the scorer, the gate and the hook. A later change to any of them makes it stale, and the doctor's <code>user-calibration</code> check fails until <code>calibrate-user.mjs</code> runs again. <code>text-normalize.mjs</code> is not hashed, so a change to the normalizer alone does not make the report stale; re-run <code>calibrate-user.mjs</code> after updating it.</p>
+<h2 id="step-8-optional-measure-recall-on-ai-drafts">Step 8 (Optional): Measure Recall on AI Drafts</h2>
+<p>The deterministic layer is tuned so it never flags your own writing, so it catches few AI drafts by design. How many depends on the drafts: obvious marketing-style drafts are blocked, while drafts from a current model on ordinary topics mostly pass. In the 2026-10-02 persona run the hook blocked 1 of 12 such drafts and the gate rejected none (<code>docs/evidence/persona-2026-10-02.json</code>). To see how many it catches on your topics, write 10 or more AI drafts on your own topics with your own model, save them in <code>$V/ai-drafts/</code>, and run:</p>
+<pre><code class="language-bash">node &quot;$T/onboarding/calibrate-user.mjs&quot; --ai-drafts &quot;$V/ai-drafts&quot;</code></pre>
+<p>With judges configured and <code>judges.aiDraftsToJudges</code> set to <code>true</code>, add <code>--judge-drafts --drafter &lt;model&gt;</code> (for example <code>--drafter claude</code>) to let the allowed judges read the drafts. Only the AI drafts go to a judge. Your samples never do.</p>
+<h2 id="step-9-doctor-green">Step 9: Doctor GREEN</h2>
+<pre><code class="language-bash">node &quot;$T/onboarding/voice-doctor.mjs&quot;</code></pre>
+<p>Setup is done when the last line reads <code>GREEN</code> with 0 fail. WARN lines are allowed, but read each one. With judges configured, <code>--live-judges</code> sends one fixed made-up sentence to each judge to confirm it answers.</p>
+<h2 id="later-runs">Later Runs</h2>
+<ul>
+<li>After any update to the tools or the hook, run <code>node &quot;$T/onboarding/voice-doctor.mjs&quot;</code>. After a hook update, re-apply your <code>BLOCK_WORDS</code> moves.</li>
+<li>When the doctor reports <code>user-calibration</code> stale, run step 7's last command again.</li>
+<li>When your writing changes (a new role, a new kind of document), add samples and repeat steps 4 to 7.</li>
+</ul>
+<h2 id="terms-used-in-this-chapter">Terms Used in This Chapter</h2>
+<p><strong>Tune and held-out samples.</strong> Tune samples build the overlay. Held-out samples only test it, so a pass on them says something about writing the overlay hasn't seen.</p>
+<p><strong>Block and nudge.</strong> A block stops a send: the PreToolUse hook denies the tool call. A nudge lets the call through with a note to the model. File writes are only ever nudged.</p>
+<p><strong>Fails closed.</strong> If the scorer or the normalizer breaks, the hook denies a send instead of letting it through, and warns on a file write. The doctor checks this by breaking them on purpose in a temporary folder.</p>
+<p><strong>Det-only and INCONCLUSIVE.</strong> With no judge, the gate runs its deterministic checks only. A clean draft is then INCONCLUSIVE, never ADMIT, because no reader judged it as a whole.</p>
+<p><strong>Probe.</strong> A random token in the overlay. The doctor scores a text that contains it and checks that the scorer reports it, which shows the engine reads an overlay carrying that token. <code>calibrate-user.mjs</code> doesn't rely on the probe alone: unless the engine imports the file under test itself, it builds a temporary engine copy that does, so a draft copied from the installed overlay is never mistaken for it.</p>
+<nav class="pager" aria-label="Previous and next chapter"><span><a href="00-overview.html">Previous: Overview</a></span><span><a href="02-architecture.html">Next: Architecture</a></span></nav>
+<p class="built">Built from tools commit b4534e3 with facts from 2026-10-02.</p>
+</main>
+</div>
+<script src="search-index.js"></script>
+<script src="assets/search.js"></script>
+</body>
+</html>

@@ -10,7 +10,7 @@ It catches AI slop for anyone, out of the box. `../aiscore.mjs` wraps it and add
 
 ## What this is NOT
 This is the *generic* engine. It knows nothing about any specific person's voice. Your team's or
-your own voice calibration lives in **`../voice-overlay.mjs`** (copied from `voice-overlay.skeleton.mjs`),
+your own voice calibration lives in **`../voice-overlay.mjs`** (drafted from `../onboarding/templates/voice-overlay.template.mjs` by `/voice-setup`),
 **outside this vendored directory on purpose** — so that pulling a newer version of avoid-ai-writing
 can never clobber your calibration. Never put team-specific rules in here.
 

@@ -1,56 +1,39 @@
-# Voice System — Onboarding (calibrate it to YOU)
+# Voice System Onboarding
 
-The voice guard ships the detector and the calibration fuse, and it's generic until you calibrate it. Out of the box the engine runs the vendored detector (banned words, phrases and generic AI patterns), and `/voice-judge` adds a gestalt read that can veto a clean score. The structural and cadence checks (announced hedges, aphorisms, parallel cards, rhythm) are described in `rules/structural-voice.md` and arrive in code in the next release. Until then they only exist in the engine if you write them into your overlay (Step 3). The engine can't yet know *your* voice: protect your real writing from being false-flagged, or catch AI wearing *your* register specifically.
+The voice engine in `tools/` is generic until you calibrate it to your own writing. Out of the box it runs the vendored detector and the send hook's word list, with a blank personal overlay (`tools/voice-overlay.mjs`, `REVIEWED = false`). Calibration adds the words, phrases and habits that are tells in your writing, checks that your own held-out writing passes, and ends with `voice-doctor` GREEN.
 
-That last part is the only thing you have to add, and it's the only thing that couldn't ship — because a voice profile is a person, and a person doesn't transfer. Until you calibrate, the **fuse** (`tools/voice-setup.mjs`) keeps the guard honest: every verdict is labeled *"generic-only, NOT calibrated to you,"* so a clean score never gets mistaken for *"this sounds like me."*
+The full walkthrough is chapter 01 of the voice docs, [Getting Started](docs/voice/01-getting-started.md), also on the docs site under `docs/voice/site/`. This page is the short version.
 
-**Read this before you start — what calibration does and doesn't buy.** It makes the guard catch lazy slop AND stop flagging your own clean writing as AI. It does **not** make it beat someone who deliberately imitates you and adapts, and this kit has no test that says it would. Against a determined impersonator the durable answer is provenance (who typed it), not text detection. Calibrate for the slop and the false-positives; don't trust it past that.
+**What calibration does and doesn't buy.** It makes the guard catch generic AI writing and stop flagging your own writing. It does not catch a model told to imitate you: the docs report mimicry recall of 0 of 11 for the system these tools come from (chapter 06, "Calibration and Evidence"). A GREEN doctor run means the install is correct and your held-out writing passes. It does not mean a clean score proves you wrote something.
 
----
+## Run It
 
-## Step 1 — Collect 20–40 samples of your own writing
+In Claude Code, type `/voice-setup`. The skill runs the steps below in order and asks before it changes `settings.json` or installs an overlay. You can also run each command yourself, with `T=~/.claude/tools` and `V=~/.claude/voice`.
 
-Two disciplines, both learned the hard way:
+1. **Doctor.** `node "$T/onboarding/voice-doctor.mjs"` lists what is missing. On a fresh install it reports RED until the steps below are done.
+2. **Config and hook wiring.** Copy `$T/onboarding/voice-config.example.json` to `$V/voice-config.json` and answer its four questions (drafter lab, judges, send tools, strictness). `./setup.sh` already wired `voice-tell-gate.py` on file writes and on the default send tools; if you add send tools, `node "$T/onboarding/merge-hooks.mjs"` rewrites that entry.
+3. **Samples.** Put 20 to 40 pieces of your own writing, one per file, in `$V/samples`. Use text you typed yourself, not a model's draft you edited, and remove customer names, deal values, credentials and personal data first.
+4. **Draft an overlay.** `node "$T/onboarding/profile-build.mjs"` measures your samples and writes `$V/voice-overlay.draft.mjs`. It prints counts and sample ids, never sample text.
+5. **Review the draft.** Open the draft yourself, keep or cut each entry, and set `REVIEWED = true`.
+6. **Calibrate on held-out writing.** `node "$T/onboarding/calibrate-user.mjs" --overlay "$V/voice-overlay.draft.mjs" --no-report` checks that your held-out samples pass the gate and the send hook.
+7. **Install the overlay.** Back up `$T/voice-overlay.mjs`, copy the reviewed draft over it, and run `node "$T/onboarding/calibrate-user.mjs"` to write the report the doctor reads.
+8. **Doctor GREEN.** `node "$T/onboarding/voice-doctor.mjs"`.
 
-- **Authorship.** Use text *you* actually typed — Slack messages, chat, raw notes. **Not** anything a model drafted for you and you edited, even under your byline. AI-assisted prose contaminates the "human" class with the exact thing you're trying to detect. If you didn't type it, it doesn't count.
-- **Scrub.** No customer names, deal values, account IDs, credentials, or anything sensitive. You want your *voice*, not your data. Style survives scrubbing; the specifics must go.
+Your samples stay on the machine: `profile-build.mjs` and `calibrate-user.mjs` turn off Node's network modules in their own processes, the config check refuses a file that sets `samplesLeaveMachine`, `samplesToJudges` or `printSampleText` to anything but `false`, and no step sends a sample to a judge or a model.
 
-Pull across your registers — how you write thinking-out-loud, how you write to a peer, how you write when it's polished. They differ, and the guard should know all of them.
+A later `./setup.sh` keeps the overlay you installed, because it differs from the kit's blank copy. When an upgrade changes the scorer, the gate or the hook, the doctor's `user-calibration` check fails until you run `calibrate-user.mjs` again.
 
-## Step 2 — Derive your signature
+## The Eval Harness
 
-Measure, don't guess. For your samples, look at: average sentence length and how much it varies; how often you write fragments; whether you start sentences lowercase; ellipsis vs. em-dash habits; how often you open with a question; the words and openers you reach for repeatedly. These become your calibration. (This is exactly how a measured profile is built — from real usage, not a staged sample.)
-
-## Step 3 — Fill your overlay
-
-Copy `tools/voice-overlay.skeleton.mjs` → `tools/voice-overlay.mjs` and populate:
-- `TEAM_WORDS` — words *you* overuse that read as AI when stacked (your personal tells, on top of the generic banned list).
-- `TEAM_PHRASES` — openers/phrases you would never actually write.
-- `TEAM_STRUCTURES` — your structural tells as `{id, severity, test(text)}` (a cadence beat you fall into, a punctuation reflex).
-- `EXEMPTIONS` — deliberate devices to *never* flag: a signature line you genuinely use, a verbatim quote.
-
-Set `CALIBRATED = true` once the arrays are real. The engine (`aiscore.mjs`) picks the overlay up automatically.
-
-## Step 4 — Seed the eval corpus
-
-In `harness-evolution/corpus.json`, add your samples labeled `origin: 'self'` (human class) alongside some known-AI passages (ai class). The shipped seed is marked `seed: true` so it never counts as *your* calibration. Split into `tune` and `heldout` — heldout is never used to tune, so it's your overfit check.
-
-## Step 5 — Set a baseline and gate changes
+`harness-evolution/harness-eval.mjs` scores the labeled passages in `harness-evolution/corpus.json` and gates a change to your overlay against a saved baseline:
 
 ```
-node harness-evolution/harness-eval.mjs --save baseline.json     # your starting separation score
-node harness-evolution/harness-eval.mjs --gate baseline.json     # after any guard change: ADMIT / REJECT
+node ~/.claude/harness-evolution/harness-eval.mjs --save baseline.json   # starting separation score
+node ~/.claude/harness-evolution/harness-eval.mjs --gate baseline.json   # after a change: ADMIT or REJECT
 ```
-This is the evolve-by-selection loop: a change to your guard is admitted only if it improves on tune AND doesn't regress on heldout. It's what keeps the guard from rotting into a score you game instead of a guard that works. Grow the heldout split as you go — a bigger corpus is a better gate.
 
-## Step 6 — Check the fuse
+The shipped passages are a generic seed (`seed: true`). Add your own as `origin: 'self'` (human) next to known AI passages, and keep a `heldout` split you never tune on.
 
-```
-node tools/voice-setup.mjs            # human status + your next step
-node tools/voice-setup.mjs --check    # STATE: UNCALIBRATED / PARTIAL / CALIBRATED (exit 0 only when CALIBRATED)
-```
-When it reads `CALIBRATED`, the guard stops labeling its scores "generic-only" and starts standing behind them for your voice — with the ceiling above still in force.
+## Upgrading From a Release Before 2026-10-02
 
----
-
-*The detector and the fuse are the same for everyone. The calibration is yours, and it's the part that has to be earned per person — which is the whole point.*
+Earlier releases shipped `tools/voice-setup.mjs` (the calibration fuse) and `tools/voice-overlay.skeleton.mjs`. `voice-doctor.mjs` and `onboarding/templates/voice-overlay.template.mjs` replace them, and `./setup.sh` removes an unedited copy of either. If you had filled in the old `tools/voice-overlay.mjs`, setup keeps it and prints a warning: aiscore and the send hook still read it, but `prose-gate.mjs` needs `VERDICT_STRUCT_TYPES`, which only the new template defines. Run `/voice-setup` to build a reviewed overlay in the new format, and copy your old word and phrase lists into its `TEAM_WORDS` and `TEAM_PHRASES` by hand.

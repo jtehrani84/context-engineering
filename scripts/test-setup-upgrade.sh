@@ -121,8 +121,14 @@ need(s["permissions"]["allow"] == ["Bash(ls *)"], "permissions preserved")
 need(s["hooks"].get("Notification") == [{"hooks": [{"type": "command", "command": "echo mine"}]}], "other hooks preserved")
 allh = [(ev, e) for ev, es in s["hooks"].items() for e in es]
 def entries(script): return [e for ev, e in allh if script in json.dumps(e)]
-for script in ["session-init", "guardrail", "domain-verification", "/schema-check", "output-quality-gate", "voice-tell-gate", "deploy-proof-gate", "graph-auto-index"]:
+for script in ["session-init", "guardrail", "domain-verification", "/schema-check", "output-quality-gate", "deploy-proof-gate", "graph-auto-index"]:
     need(len(entries(script)) == 1, f"{script} wired exactly once (got {len(entries(script))})")
+# voice-tell-gate runs on two events: once on file writes (PostToolUse) and once on the send tools (PreToolUse)
+for ev, want in (("PostToolUse", "Write|Edit|MultiEdit"), ("PreToolUse", None)):
+    vt = [e for e in s["hooks"].get(ev, []) if "voice-tell-gate" in json.dumps(e)]
+    need(len(vt) == 1, f"voice-tell-gate wired exactly once in {ev} (got {len(vt)})")
+    if vt and want: need(vt[0].get("matcher") == want, f"voice-tell-gate {ev} matcher migrated to {want!r} (got {vt[0].get('matcher')!r})")
+    if vt and not want: need(str(vt[0].get("matcher", "")).startswith("^(?:mcp__"), f"voice-tell-gate {ev} has the send-tool matcher (got {vt[0].get('matcher')!r})")
 flat = [e for ev, e in allh if "hooks" not in e]
 need(not flat, f"no flat entries left (got {len(flat)})")
 sc = entries("/schema-check")[0]

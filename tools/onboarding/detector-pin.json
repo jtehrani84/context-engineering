@@ -1,0 +1,10 @@
+{
+  "name": "avoid-ai-writing",
+  "upstream": "https://github.com/conorbronsdon/avoid-ai-writing",
+  "license": "MIT",
+  "commit": "58a95fc9971d7af95f1f1324b8a6bc991eb8004d",
+  "patternsSha256": "00618b876e04db5edee33afde16088c07711df7190ff24baa3fbca45572bea59",
+  "recorded": "2026-10-02",
+  "evidence": "README.md (Setup) names 58a95fc as the commit every calibration number was measured on; patternsSha256 is detector/patterns.js at that commit, the same bytes as the vendored copy in both starter kits on 2026-10-02.",
+  "moving": "Before changing this pin, re-run calibration/gate-eval.mjs and calibration/human-fp-budget.mjs on the new commit."
+}

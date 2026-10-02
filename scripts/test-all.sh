@@ -1,8 +1,9 @@
 #!/bin/bash
 # Run every offline test suite the kit ships, and say plainly which ones failed.
 #
-#   bash scripts/test-all.sh          # everything (the hook self-test includes one 6-second case)
-#   bash scripts/test-all.sh --fast   # skip that slow case
+#   bash scripts/test-all.sh          # everything (the hook self-test includes one 6-second case, and the voice
+#                                     # onboarding suite takes about two minutes)
+#   bash scripts/test-all.sh --fast   # skip those two
 #
 # Nothing here needs an account, a model endpoint, or the network, and nothing touches your ~/.claude: each suite
 # uses a scratch HOME or a temp directory. Requires python3, node, git and bash.
@@ -53,6 +54,16 @@ suite "detector patterns.test.js"      bash -c 'cd tools/avoid-ai-writing/detect
 suite "detector validate.test.js"      bash -c 'cd tools/avoid-ai-writing/detector && node validate.test.js'
 suite "detector categories (known)"    categories_known
 suite "harness-eval runs"              node harness-evolution/harness-eval.mjs
+# The voice engine, its send hook and the /voice-setup onboarding tools (tools/). The onboarding suite takes about two
+# minutes, so --fast skips it.
+suite "scripts/test-voice-kit.py"      python3 scripts/test-voice-kit.py
+suite "tools/aiscore.test.mjs"         node tools/aiscore.test.mjs
+suite "tools/text-normalize.test.mjs"  node tools/text-normalize.test.mjs
+suite "tools/prose-gate.unit.test.mjs" node tools/prose-gate.unit.test.mjs
+suite "tools/hook-tests (send hook)"   python3 tools/hook-tests/voice-tell-gate.test.py
+if [[ -z "$FAST" ]]; then
+    suite "tools/onboarding/test"      bash -c 'node --test tools/onboarding/test/*.test.mjs'
+fi
 suite "README tree is current"         python3 scripts/gen-readme-tree.py --check
 suite "compound-loop example guardrail" python3 examples/compound-loop/test_guardrail_example.py
 

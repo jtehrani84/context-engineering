@@ -93,6 +93,7 @@ Claude asks 5 questions and writes your `CLAUDE.md`. It doesn't recreate the fil
 | `/review` | Adversarial review of a document by a model from a different lab than the one that drafted it |
 | `/voice-check` | Anti-slop scanner: banned words with line numbers and replacements (for a 0-100 score, run `node ~/.claude/tools/aiscore.mjs <file>`) |
 | `/voice-judge` | The gestalt read: can veto a clean voice score when the text still reads as generated |
+| `/voice-setup` | Calibrates the voice engine to your writing, step by step, ending with `voice-doctor` GREEN (`VOICE-ONBOARDING.md`) |
 | `/content-review` | 6-dimension reviewer: accuracy, voice, specificity, focus, actionability, credibility |
 | `/claim-audit` | Re-verify every factual and causal claim in an external-facing artifact against its source |
 | `/plan-audit` | Try to refute a "code-verified" plan's claims against the real code before anyone builds from it |
@@ -120,7 +121,7 @@ Claude asks 5 questions and writes your `CLAUDE.md`. It doesn't recreate the fil
 | `domain-verification.py` | PreToolUse (Edit/Write) | Flags hallucinated domain terms before they reach output |
 | `schema-check.py` | PreToolUse (Bash) | Checks column names in SQL commands against `~/.claude/schema.json`; silent without that file |
 | `output-quality-gate.py` | PostToolUse (Write) | Scans written content for AI-slop words and reports violations |
-| `voice-tell-gate.py` | PostToolUse (Write) | Runs the voice engine on written `.md`, `.html` and `.txt` files |
+| `voice-tell-gate.py` | PostToolUse (Write/Edit/MultiEdit), PreToolUse (send tools) | Nudges on written `.md`, `.mdx`, `.html`, `.htm`, `.txt`, `.rtf` and `.docx` files; blocks a chat, email, document or pull-request send with a hard tell, and denies a send it can't score |
 | `deploy-proof-gate.py` | PostToolUse (Bash) | After a deploy or publish command, reminds Claude to prove the change on the running system |
 | `claim-faithfulness-gate.py` | PostToolUse, opt-in | On an external-facing doc with over-confident claim language, asks for a re-read against sources |
 | `refutation-oracle-gate.py` | PostToolUse, opt-in | On an audit that calls something fabricated, asks for a check of the source where it would be true |
@@ -181,7 +182,7 @@ See `examples/compound-loop/` for a complete walkthrough showing one real correc
 |   |-- refutation-oracle-gate.py                     # PostToolUse, opt-in: check the right source before calling something fabricated
 |   |-- schema-check.py                               # PreToolUse: check SQL columns against your schema
 |   |-- session-init.py                               # SessionStart: context routing
-|   +-- voice-tell-gate.py                            # PostToolUse: voice engine on written .md/.html/.txt
+|   +-- voice-tell-gate.py                            # Pre+PostToolUse: voice engine on sends (blocks) and written files (nudges)
 |-- commands/
 |   |-- action-plan.md
 |   |-- claim-audit.md
@@ -208,10 +209,11 @@ See `examples/compound-loop/` for a complete walkthrough showing one real correc
 |   |-- validate.md
 |   |-- voice-check.md
 |   |-- voice-judge.md
+|   |-- voice-setup.md
 |   |-- week-plan.md
 |   |-- weekly-report.md
 |   +-- wiki-lint.md
-|-- tools/  (22 files)                                # Voice engine (aiscore.mjs + vendored MIT detector + your overlay), RAG-quality and transcript-export tools
+|-- tools/  (59 files)                                # Voice engine (scorer, normalizer, gate, send hook source, /voice-setup tools, calibration), RAG-quality and transcript-export tools
 |-- harness-evolution/  (4 files)                     # Held-out eval harness + your voice corpus
 |-- workflows/  (4 files)                             # Multi-agent audit workflows behind /claim-audit, /plan-audit, /execution-truth, /provenance-audit
 |-- scripts/  (llm-call.py, llm-review.py, review-prompts/)  # llm-call.py + llm-review.py back /review and /validate (LLM_BASE_URL, LLM_API_KEY)
@@ -240,7 +242,7 @@ In the repo, not installed by setup
 |   |   |-- memory-decay-check.sh                     # Flags memory files unchanged for 45+ days (no plist)
 |   |   +-- morning-digest.sh                         # Synthesizes gathered files into wiki/inbox.md
 |   +-- manage.sh                                     # Install / uninstall / status / test (launchd)
-|-- docs/                                             # Inventory page, recommended plugins, Apps Script guide  (3 files)
+|-- docs/                                             # Inventory page, recommended plugins, Apps Script guide, voice system docs and site (docs/voice/)  (31 files)
 |-- examples/                                         # Worked examples  (4 files)
 |-- guards/                                           # Working controls for agents (egress, broker, reducer, path protection, leak scan) with tests  (23 files)
 |-- hooks/                                            # Hook sources (setup installs hooks/scripts/)
@@ -248,7 +250,7 @@ In the repo, not installed by setup
 |   |   +-- test_proof_gates.py                       # Tests for the three proof-family hooks
 |   +-- selftest.py                                   # Feeds synthetic payloads to every hook and checks the output contract
 |-- rules-optional/                                   # Opt-in design rules (Tailwind, Delta); setup never copies them  (3 files)
-|-- scripts/                                          # Repo-only helpers: hook wiring, manifest and tree generators, install, cron and script tests  (9 files)
+|-- scripts/                                          # Repo-only helpers: hook wiring, manifest and tree generators, install, cron and script tests  (10 files)
 |-- site/                                             # The GitHub Pages site (the Part 6 article)  (2 files)
 |-- templates/                                        # CLAUDE.md, memory, wiki log and report templates
 |   |-- apps-script/
@@ -288,7 +290,7 @@ In the repo, not installed by setup
 |   +-- index.md                                      # Wiki index (setup --with-wiki copies it)
 |-- QUICKSTART-PROMPT.md                              # Paste into Claude Code to write your CLAUDE.md
 |-- README.md
-|-- VOICE-ONBOARDING.md                               # Calibrate the voice guard to you
+|-- VOICE-ONBOARDING.md                               # Calibrate the voice guard to you (/voice-setup, short version)
 |-- WHAT-YOU-GET.md                                   # Full inventory
 |-- settings.json.example                             # Reference only; setup wires hooks for you. Merge by hand, never copy over yours
 +-- setup.sh                                          # Installer (safe to re-run: upgrades what you never edited)
@@ -312,7 +314,7 @@ Edit `CLAUDE.md` — replace the placeholder sections with YOUR:
 The domain verification hook reads `~/.claude/domain-terms.json`. Add your field's commonly hallucinated terms — product names, API endpoints, technical terminology that LLMs get wrong — as `{"wrong term": "correction"}` pairs. The schema check reads `~/.claude/schema.json` the same way.
 
 ### For your voice
-The voice engine is generic until you calibrate it. `VOICE-ONBOARDING.md` walks you through collecting your own samples, filling `tools/voice-overlay.mjs`, and running `node ~/.claude/tools/voice-setup.mjs`.
+The voice engine is generic until you calibrate it. Type `/voice-setup` in Claude Code: it collects your own samples, drafts an overlay you review, checks it on held-out writing, and ends with `voice-doctor` GREEN. `VOICE-ONBOARDING.md` is the short version; the full docs are in `docs/voice/` (rendered at `docs/voice/site/`).
 
 ### For your workflows
 Skills are templates. Edit them to match YOUR processes, YOUR tools, YOUR output formats. An edited skill is never overwritten on upgrade.

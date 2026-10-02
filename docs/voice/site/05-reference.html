@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference | Voice System Docs</title>
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="layout">
+<nav class="sidebar" aria-label="Chapters">
+<div class="site-title"><a href="index.html">Voice System Docs</a></div>
+<div class="edition">Public edition</div>
+<form class="search" role="search">
+<label for="q" class="sr-only">Search the docs</label>
+<input id="q" type="search" placeholder="Search" autocomplete="off">
+<ol id="results" class="results" aria-live="polite"></ol>
+</form>
+<ol class="toc">
+<li><a href="00-overview.html">Overview</a></li>
+<li><a href="01-getting-started.html">Getting Started With /voice-setup</a></li>
+<li><a href="02-architecture.html">Architecture</a></li>
+<li><a href="03-threat-model.html">Threat Model</a></li>
+<li><a href="04-runbooks.html">Runbooks</a></li>
+<li><a href="05-reference.html" aria-current="page">Reference</a>
+<ol><li><a href="#check-catalog">Check Catalog</a></li><li><a href="#cli-flags">CLI Flags</a></li><li><a href="#exit-codes">Exit Codes</a></li><li><a href="#environment-variables">Environment Variables</a></li><li><a href="#hook-tiers-and-matchers">Hook Tiers and Matchers</a></li><li><a href="#files-and-tests">Files and Tests</a></li></ol></li>
+<li><a href="06-calibration-and-evidence.html">Calibration and Evidence</a></li>
+<li><a href="07-decision-log.html">Decision Log</a></li>
+<li><a href="09-review-packet.html">Review Packet</a></li>
+<li><a href="10-maintaining-the-docs.html">Maintaining the Docs</a></li>
+</ol>
+</nav>
+<main id="main" class="content">
+<h1 id="reference">Reference</h1>
+<p>This chapter is generated from the code. Counts come from the facts file, measured at tools commit b4534e3.</p>
+<h2 id="check-catalog">Check Catalog</h2>
+<h3 id="text-normalization">Text Normalization</h3>
+<p>Every scan reads canonical text from <code>text-normalize.mjs</code>, so a tell cannot be hidden by typing it with invisible or look-alike characters. Its exports:</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Export</th><th>Does</th></tr></thead>
+<tbody>
+<tr><td><code>canonicalForScan</code></td><td>normalizeForScan, then stripEmphasis. The CLI prints this.</td></tr>
+<tr><td><code>normalizationStats</code></td><td>Counts of zero-width, bidi, other invisible and look-alike characters, for the report.</td></tr>
+<tr><td><code>normalizeForDetector</code></td><td>The lighter form the detector gets, since it counts some of these characters itself.</td></tr>
+<tr><td><code>normalizeForScan</code></td><td>Unicode canonical form for the overlay and the injection check: hidden characters removed, NFKC, look-alike letters folded, quote, dash and space variants unified.</td></tr>
+<tr><td><code>renderedView</code></td><td>The text as a reader sees it: markup rendered, entities decoded, combining marks and look-alikes folded.</td></tr>
+<tr><td><code>revealTags</code></td><td>Decode Unicode tag characters (U+E0000 block) into the ASCII they spell.</td></tr>
+<tr><td><code>stripEmphasis</code></td><td>Remove markdown and inline-HTML emphasis markers so they cannot split a phrase.</td></tr>
+<tr><td><code>stripHidden</code></td><td>Remove invisible characters: zero-width, bidi, tag, variation selectors and other format characters.</td></tr>
+</tbody></table></div>
+<h3 id="generic-detector-categories">Generic Detector Categories</h3>
+<p>The pinned detector (commit 58a95fc) defines 51 categories. 9 of them count toward <code>adjustedScore</code>, the number the gate rejects on, at the weight shown. The other 42 still print in the report and move only the raw <code>score</code>, which the send hook reads. Reason codes for categories that do not count:</p>
+<ul>
+<li><code>NOISE</code>: fires on human documents at least as often as on same-length AI drafts.</li>
+<li><code>STYLE</code>: a writing rule, not evidence of AI.</li>
+<li><code>LINT</code>: weight 0 in the detector itself.</li>
+<li><code>UNTESTED</code>: no hit on a fresh AI draft, at least one on a human document.</li>
+</ul>
+<div class="table-wrap"><table>
+<thead><tr><th>Category</th><th>Label</th><th>Weight in adjustedScore</th><th>Reason Not Counted</th></tr></thead>
+<tbody>
+<tr><td><code>tier1</code></td><td>AI vocabulary</td><td>not counted</td><td><code>NOISE</code></td></tr>
+<tr><td><code>tier1-clarity</code></td><td>Wordiness</td><td>not counted</td><td><code>STYLE</code></td></tr>
+<tr><td><code>tier2</code></td><td>Word cluster</td><td>not counted</td><td><code>UNTESTED</code></td></tr>
+<tr><td><code>tier3</code></td><td>Overused word</td><td>not counted</td><td><code>UNTESTED</code></td></tr>
+<tr><td><code>transition</code></td><td>AI transition</td><td>not counted</td><td><code>NOISE</code></td></tr>
+<tr><td><code>chatbot</code></td><td>Chatbot artifact</td><td>not counted</td><td><code>UNTESTED</code></td></tr>
+<tr><td><code>sycophantic</code></td><td>Sycophantic tone</td><td>not counted</td><td><code>UNTESTED</code></td></tr>
+<tr><td><code>filler</code></td><td>Filler phrase</td><td>not counted</td><td><code>NOISE</code></td></tr>
+<tr><td><code>generic-conclusion</code></td><td>Generic conclusion</td><td>not counted</td><td><code>UNTESTED</code></td></tr>
+<tr><td><code>lets-construction</code></td><td>&quot;Let's&quot; opener</td><td>not counted</td><td><code>NOISE</code></td></tr>
+<tr><td><code>reasoning-artifact</code></td><td>Reasoning artifact</td><td>6</td><td></td></tr>
+<tr><td><code>acknowledgment-loop</code></td><td>Acknowledgment loop</td><td>not counted</td><td><code>NOISE</code></td></tr>
+<tr><td><code>significance-inflation</code></td><td>Significance inflation</td><td>not counted</td><td><code>UNTESTED</code></td></tr>
+<tr><td><code>vague-attribution</code></td><td>Vague attribution</td><td>not counted</td><td><code>NOISE</code></td></tr>
+<tr><td><code>hollow-intensifier</code></td><td>Hollow intensifier</td><td>not counted</td><td><code>NOISE</code></td></tr>
+<tr><td><code>emotional-flatline</code></td><td>Emotional flatline</td><td>not counted</td><td><code>UNTESTED</code></td></tr>
+<tr><td><code>lingering-attention</code></td><td>Lingering-attention claim</td><td>not counted</td><td><code>UNTESTED</code></td></tr>
+<tr><td><code>novelty-inflation</code></td><td>Novelty inflation</td><td>3</td><td></td></tr>
+<tr><td><code>cutoff-disclaimer</code></td><td>Cutoff disclaimer</td><td>10</td><td></td></tr>
+<tr><td><code>template-phrase</code></td><td>Template phrase</td><td>not counted</td><td><code>UNTESTED</code></td></tr>
+<tr><td><code>false-concession</code></td><td>False concession</td><td>not counted</td><td><code>UNTESTED</code></td></tr>
+<tr><td><code>rhetorical-question</code></td><td>Rhetorical question</td><td>not counted</td><td><code>UNTESTED</code></td></tr>
+<tr><td><code>confidence-calibration</code></td><td>Confidence stacking</td><td>not counted</td><td><code>NOISE</code></td></tr>
+<tr><td><code>em-dash</code></td><td>Em dash overuse</td><td>not counted</td><td><code>STYLE</code></td></tr>
+<tr><td><code>uniformity</code></td><td>Rhythm uniformity</td><td>not counted</td><td><code>NOISE</code></td></tr>
+<tr><td><code>formatting</code></td><td>Formatting</td><td>3</td><td></td></tr>
+<tr><td><code>tier3-phrase</code></td><td>Boilerplate phrase</td><td>not counted</td><td><code>UNTESTED</code></td></tr>
+<tr><td><code>tier3-phrase-cluster</code></td><td>Boilerplate cluster</td><td>12</td><td></td></tr>
+<tr><td><code>hashtag-stuff</code></td><td>Hashtag stuffing</td><td>not counted</td><td><code>NOISE</code></td></tr>
+<tr><td><code>bullet-np-list</code></td><td>Bullet-NP list</td><td>not counted</td><td><code>NOISE</code></td></tr>
+<tr><td><code>hedge-stack</code></td><td>Hedge-stacked prediction</td><td>not counted</td><td><code>NOISE</code></td></tr>
+<tr><td><code>future-narrative</code></td><td>Generic future narrative</td><td>12</td><td></td></tr>
+<tr><td><code>real-actual-inflation</code></td><td>&quot;Real/actual&quot; inflation</td><td>not counted</td><td><code>NOISE</code></td></tr>
+<tr><td><code>social-cta-closer</code></td><td>Engagement-bait closer</td><td>not counted</td><td><code>UNTESTED</code></td></tr>
+<tr><td><code>formulaic-opener</code></td><td>Formulaic opener</td><td>not counted</td><td><code>UNTESTED</code></td></tr>
+<tr><td><code>speculative-opener</code></td><td>Speculative scenario opener</td><td>not counted</td><td><code>UNTESTED</code></td></tr>
+<tr><td><code>title-case-header</code></td><td>Title Case header</td><td>not counted</td><td><code>NOISE</code></td></tr>
+<tr><td><code>parenthetical-hedge</code></td><td>Parenthetical hedge</td><td>not counted</td><td><code>NOISE</code></td></tr>
+<tr><td><code>smart-punct-signature</code></td><td>Smart-punct signature</td><td>not counted</td><td><code>NOISE</code></td></tr>
+<tr><td><code>punct-distribution</code></td><td>Punctuation distribution</td><td>not counted</td><td><code>NOISE</code></td></tr>
+<tr><td><code>fnword-trigram-entropy</code></td><td>Grammar repetition</td><td>not counted</td><td><code>NOISE</code></td></tr>
+<tr><td><code>cross-para-burstiness</code></td><td>Cross-paragraph rhythm</td><td>not counted</td><td><code>NOISE</code></td></tr>
+<tr><td><code>normalization-flag</code></td><td>Bypass-trick chars</td><td>not counted</td><td><code>UNTESTED</code></td></tr>
+<tr><td><code>low-ttr</code></td><td>Low vocabulary diversity</td><td>not counted</td><td><code>NOISE</code></td></tr>
+<tr><td><code>ai-placeholder</code></td><td>Unfilled placeholder</td><td>10</td><td></td></tr>
+<tr><td><code>ai-citation-markup</code></td><td>Chatbot citation markup leak</td><td>15</td><td></td></tr>
+<tr><td><code>ai-utm-source</code></td><td>AI-tool URL parameter</td><td>12</td><td></td></tr>
+<tr><td><code>unnecessary-hyphenation</code></td><td>Unnecessary hyphenation</td><td>not counted</td><td><code>LINT</code></td></tr>
+<tr><td><code>performed-insight</code></td><td>Performed-insight phrase</td><td>not counted</td><td><code>UNTESTED</code></td></tr>
+<tr><td><code>negation-chain</code></td><td>Negation chain</td><td>not counted</td><td><code>UNTESTED</code></td></tr>
+<tr><td><code>dev-blog-boilerplate</code></td><td>Dev-blog boilerplate</td><td>not counted</td><td><code>UNTESTED</code></td></tr>
+</tbody></table></div>
+<h3 id="judge-directed-injection-patterns">Judge-Directed Injection Patterns</h3>
+<p>Text addressed to a grader or an AI rejects on its own, before any judge is called, on <code>--det-only</code> too. <code>prose-gate.mjs</code> holds 10 pattern rows of 7 types. Each row runs on the canonical text and on the rendered view; text spelled in Unicode tag characters is decoded and checked again, and those hits carry a <code>hidden-</code> prefix.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Type</th><th>Rows</th></tr></thead>
+<tbody>
+<tr><td><code>override-instructions</code></td><td>2</td></tr>
+<tr><td><code>grader-address</code></td><td>3</td></tr>
+<tr><td><code>role-assignment</code></td><td>1</td></tr>
+<tr><td><code>verdict-request</code></td><td>1</td></tr>
+<tr><td><code>score-request</code></td><td>1</td></tr>
+<tr><td><code>smuggled-verdict</code></td><td>1</td></tr>
+<tr><td><code>system-prompt</code></td><td>1</td></tr>
+</tbody></table></div>
+<p>The patterns, as compiled (case-insensitive):</p>
+<pre><code class="language-text">override-instructions: \b(?:ignore|disregard|forget|override|bypass)\s+(?:all\s+|any\s+|each\s+)?(?:of\s+)?(?:the\s+|your\s+|my\s+|these\s+|those\s+)?(?:previous|prior|above|earlier|preceding|foregoing|original|initial|system|grading|scoring|evaluation|judging)\s+(?:instructions?|prompts?|directions|directives|rules|guidelines|rubrics?|criteria|context|messages?)\b
+override-instructions: \b(?:ignore|disregard|forget|override)\s+(?:all\s+)?(?:of\s+)?your\s+(?:instructions|rubric|guidelines|criteria|system\s+prompt|programming)\b
+grader-address: \b(?:note|message|instructions?|reminder)\s+(?:to|for)\s+(?:the\s+|any\s+|all\s+)?(?:ai|a\.i\.|llm|language\s+model|grader|evaluator|classifier|ai[- ]?(?:text\s+)?detector|detector|rater|scorer|chatbot|assistant)s?\b
+grader-address: (?:^|[\n.!?]\s*)(?:dear|attention|hey|hello|hi|to)\s+(?:the\s+)?(?:(?:ai|a\.i\.|llm|language\s+model|grader|evaluator|classifier|ai[- ]?(?:text\s+)?detector|detector|rater|scorer|chatbot|assistant)|chatgpt|gpt(?:-?\d[\w.]*)?)\s*[,:!]
+grader-address: \b(?:scoring|grading|evaluation|calibration|judging|rating)\s+(?:notes?|instructions?|guidance|override)\s+(?:from|for|to)\s+(?:the\s+)?(?:operator|grader|evaluator|judge|rater|scorer|ai|model|detector)s?\b|\bnote\s+from\s+the\s+operator\b
+role-assignment: (?:^|[\n.!?:]\s*)you\s+are\s+(?:now\s+)?(?:an?|acting\s+as\s+an?)\s+(?:(?:impartial|neutral|expert|strict|lenient|helpful)\s+)?(?:judge|(?:ai|a\.i\.|llm|language\s+model|grader|evaluator|classifier|ai[- ]?(?:text\s+)?detector|detector|rater|scorer|chatbot|assistant)|ai\s+(?:model|judge))\b
+verdict-request: \b(?:rate|score|grade|classify|label|mark|judge)\s+(?:this|it|the\s+(?:following|above|document|text|essay|piece|passage))\b[^.\n]{0,40}?\bas\s+(?:human[- ]written|written\s+by\s+a\s+(?:human|person)|not\s+(?:ai|machine)(?:[- ](?:written|generated))?|non[- ]ai|human(?![- ]?(?:error|nature|being|life|lives|rights|resource|capital|interest|behaviou?r|factor|condition|race|kind|body|history|activity)))\b
+score-request: \bgive\s+(?:this|it|the\s+(?:document|text|essay|piece|passage|draft))\s+(?:an?\s+)?(?:(?:low|zero|perfect|clean|human)\s+)?(?:score|rating|grade|ai[_ -]?ness)\s+of\s+(?:0|zero)(?![.,]?\d)\b|\bgive\s+this\s+(?:text|document|essay|piece|passage|draft|submission|response)\s+(?:an?\s+)?(?:(?:low|zero|perfect|clean|human)\s+)?(?:score|rating|grade)\b
+smuggled-verdict: [&quot;'`]?\b(?:clockable|ai_ness|loudest_tell)\b[&quot;'`]?\s*[:=]
+system-prompt: (?:^|\n)[ \t]*(?:#{1,6}[ \t]*|\[|&lt;)?[ \t]*(?:new[ \t]+|updated[ \t]+|real[ \t]+)?system[ \t]*(?:prompt|message)[ \t]*(?:\]|&gt;)?[ \t]*:|\b(?:new|updated|override|real|hidden|actual)\s+system\s+prompt\b|&lt;\|im_start\|&gt;|&lt;\|system\|&gt;|\[\/?INST\]|&lt;&lt;\/?SYS&gt;&gt;</code></pre>
+<h3 id="blank-overlay-template">Blank Overlay Template</h3>
+<p>The overlay is the only layer that carries a person's voice, so it ships blank, as <code>onboarding/templates/voice-overlay.template.mjs</code>. <code>profile-build.mjs</code> drafts a personal copy from it, and the reviewed copy is installed as <code>voice-overlay.mjs</code>, the file the engine imports. Until <code>REVIEWED</code> is set to true, <code>CALIBRATED</code> is false and the engine treats every clean score as generic-only. Its exports, as shipped:</p>
+<pre><code class="language-js">export const REVIEWED = /*@REVIEWED*/false/*@END*/;
+export const ISSUE_PREFIX = /*@ISSUE_PREFIX*/'voice'/*@END*/;
+export const PROBE = /*@PROBE*/'voice-probe-0000000000000000'/*@END*/;
+export const APPROVED_LINES = /*@APPROVED_LINES*/[]/*@END*/;
+export const TEAM_WORDS = /*@TEAM_WORDS*/[]/*@END*/;
+export const TEAM_PHRASES = /*@TEAM_PHRASES*/[]/*@END*/;
+export const REGISTER = /*@REGISTER*/{
+export const VERDICT_STRUCT_TYPES = /*@VERDICT_STRUCT_TYPES*/[]/*@END*/;
+export const BASE_OVERLAY = /*@BASE_OVERLAY*/null/*@END*/;
+export const PROFILE = /*@PROFILE*/null/*@END*/;
+export const NOTES = /*@NOTES*/[]/*@END*/;
+export const EXEMPTIONS = APPROVED_LINES;
+export const CALIBRATED = REVIEWED === true;
+export function normalize(text = '') {
+export const words = (s) =&gt; s.match(WORD) || [];
+export function sentences(text) {
+export function measureDoc(text) {
+export const median = (a) =&gt; { if (!a.length) return 0; const s = [...a].sort((x, y) =&gt; x - y), m = s.length &gt;&gt; 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+export function scanVoice(text = '', opts = {}) {
+export const hardBanCount = (issues = []) =&gt; issues.filter((i) =&gt; /-(word|phrase)$|-struct-/.test(i.type)).length;
+export const cadenceCount = (issues = []) =&gt; issues.filter((i) =&gt; /-cadence-/.test(i.type)).length;</code></pre>
+<p>Interface contract, from the template's header:</p>
+<pre><code class="language-text">scanVoice(text) -&gt; [{ type, text, severity, fix }]   type is `${ISSUE_PREFIX}-word|phrase|struct-*|cadence-*|probe`
+hardBanCount(issues), cadenceCount(issues)           counts by type
+CALIBRATED, VERDICT_STRUCT_TYPES, EXEMPTIONS         flags and lists the engine reads
+measureDoc(text)                                     the measurements profile-build used, so a check and its
+threshold always share one definition</code></pre>
+<h3 id="judge-panel">Judge Panel</h3>
+<p>No juror shares the vendor of the drafter named with <code>--drafter</code>. With the default drafter, <code>unknown</code>, no vendor is excluded, so an undeclared draft can be judged by its own lab. The registry holds 4 judges. With the default consensus panel, the panel for each drafter vendor is the first two neutral jurors in a fixed order, the rest are spares asked only when a juror errors, and a lone surviving juror cannot reject. With <code>--judge &lt;name&gt;</code>, that one judge is the panel and its answer alone decides the judge layer. A judge reply without a clockable YES or NO and a numeric <code>ai_ness</code> counts as a failed juror, never as a vote.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Judge</th><th>Vendor</th></tr></thead>
+<tbody>
+<tr><td><code>grok</code></td><td>xai</td></tr>
+<tr><td><code>gemini</code></td><td>google</td></tr>
+<tr><td><code>claude</code></td><td>anthropic</td></tr>
+<tr><td><code>gpt</code></td><td>openai</td></tr>
+</tbody></table></div>
+<div class="table-wrap"><table>
+<thead><tr><th>Drafter</th><th>Vendor</th><th>Panel</th><th>Spares</th></tr></thead>
+<tbody>
+<tr><td><code>opus</code></td><td>anthropic</td><td><code>grok</code>, <code>gpt</code></td><td><code>gemini</code></td></tr>
+<tr><td><code>sonnet</code></td><td>anthropic</td><td><code>grok</code>, <code>gpt</code></td><td><code>gemini</code></td></tr>
+<tr><td><code>haiku</code></td><td>anthropic</td><td><code>grok</code>, <code>gpt</code></td><td><code>gemini</code></td></tr>
+<tr><td><code>claude</code></td><td>anthropic</td><td><code>grok</code>, <code>gpt</code></td><td><code>gemini</code></td></tr>
+<tr><td><code>gemini</code></td><td>google</td><td><code>grok</code>, <code>claude</code></td><td><code>gpt</code></td></tr>
+<tr><td><code>gpt</code></td><td>openai</td><td><code>grok</code>, <code>gemini</code></td><td><code>claude</code></td></tr>
+<tr><td><code>grok</code></td><td>xai</td><td><code>gemini</code>, <code>claude</code></td><td><code>gpt</code></td></tr>
+<tr><td><code>human</code></td><td>human</td><td><code>grok</code>, <code>gpt</code></td><td><code>gemini</code></td></tr>
+<tr><td><code>unknown</code></td><td>unknown</td><td><code>grok</code>, <code>gpt</code></td><td><code>gemini</code></td></tr>
+</tbody></table></div>
+<h2 id="cli-flags">CLI Flags</h2>
+<h3 id="aiscoremjs">aiscore.mjs</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>--json</code></td><td></td><td>Print one JSON line: raw score, evidence score, adjusted score, cadence penalty, label, classification, overlay issues, word count and normalization counts.</td></tr>
+<tr><td><code>--technical</code></td><td></td><td>Run the detector in technical context mode. Default: general.</td></tr>
+<tr><td><code>--plain</code></td><td></td><td>Read the input as plain text. Default: rendered markdown, which masks frontmatter and comments.</td></tr>
+<tr><td><code>--no-overlay</code></td><td></td><td>Skip the voice overlay.</td></tr>
+<tr><td><code>--raw</code></td><td></td><td>Score the bytes as given. Default: an HTML document is first reduced to its visible prose.</td></tr>
+<tr><td><code>--no-normalize</code></td><td></td><td>Scan the input without text-normalize.mjs canonicalization.</td></tr>
+<tr><td><code>--cadence-weight</code></td><td></td><td>Add capped cadence points to adjustedScore. For calibration comparisons only.</td></tr>
+<tr><td><code>--no-cadence-weight</code></td><td></td><td>Accepted; this is the default.</td></tr>
+</tbody></table></div>
+<h3 id="prose-gatemjs">prose-gate.mjs</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>--drafter</code></td><td><code>unknown</code></td><td>The model that wrote the text. Its vendor is excluded from the judge panel. Values: opus, sonnet, haiku, claude, gemini, gpt, grok, human, unknown.</td></tr>
+<tr><td><code>--judge</code></td><td><code>consensus</code></td><td>One judge by name, or consensus. A judge that shares the drafter's vendor falls back to consensus with a warning. Values: grok, gemini, claude, gpt, consensus.</td></tr>
+<tr><td><code>--register</code></td><td><code>external</code></td><td>Register named in the judge prompt. Values: internal, external. Changes only the prompt wording.</td></tr>
+<tr><td><code>--bar</code></td><td>50</td><td>Mean judge ai_ness at or above which the judges reject.</td></tr>
+<tr><td><code>--det-bar</code></td><td>40</td><td>adjustedScore at or above which the deterministic layer rejects.</td></tr>
+<tr><td><code>--det-only</code></td><td></td><td>Run the deterministic layer only. No judge is called and no text leaves the machine. A pass returns INCONCLUSIVE.</td></tr>
+<tr><td><code>--json</code></td><td></td><td>Print the full result as JSON.</td></tr>
+</tbody></table></div>
+<h3 id="text-normalizemjs">text-normalize.mjs</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>--json</code></td><td></td><td>Print one JSON object instead of the canonical text. Keys: <code>canonical</code>, the canonical text (<code>canonicalForScan</code>); <code>rendered</code>, the rendered view (<code>renderedView</code>), which the send hook's word list also reads; <code>inputCodePoints</code>, the number of code points read, so a caller can check the whole input arrived.</td></tr>
+</tbody></table></div>
+<h3 id="calibrationhuman-fp-budgetmjs">calibration/human-fp-budget.mjs</h3>
+<div class="table-wrap"><table>
+<thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>--write-baseline</code></td><td></td><td>Record the current counts to calibration/human-fp-budget.json instead of checking them. Review the diff before committing it.</td></tr>
+</tbody></table></div>
+<h3 id="onboarding-tools">Onboarding Tools</h3>
+<p>From each tool's <code>--help</code> output. Their exit codes are in Getting Started.</p>
+<h4 id="onboardingvoice-doctormjs">onboarding/voice-doctor.mjs</h4>
+<pre><code class="language-text">usage: node voice-doctor.mjs [--config &lt;file&gt;] [--tools &lt;dir&gt;] [--settings &lt;file&gt;[,&lt;file&gt;]] [--hook &lt;file&gt;] [--overlay &lt;file&gt;]
+                          [--only &lt;ids&gt;] [--skip &lt;ids&gt;] [--live-judges] [--slow] [--json]
+       node voice-doctor.mjs --list [--json]
+       node voice-doctor.mjs --print-hooks
+exit: 0 no check failed; 1 at least one check failed; 2 the doctor couldn't run (usage error)</code></pre>
+<h4 id="onboardingprofile-buildmjs">onboarding/profile-build.mjs</h4>
+<div class="table-wrap"><table>
+<thead><tr><th>Flag</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>--samples</code></td><td>folder of samples, or - for stdin (default: paths.samplesDir)</td></tr>
+<tr><td><code>--out</code></td><td>draft overlay to write, a .mjs file (default: paths.draftOverlay); never the installed overlay</td></tr>
+<tr><td><code>--force</code></td><td>overwrite an existing draft</td></tr>
+<tr><td><code>--config</code></td><td>config file (default: VOICE_CONFIG, else {claude}/voice/voice-config.json)</td></tr>
+<tr><td><code>--tools</code></td><td>the voice engine folder (default: paths.toolsDir)</td></tr>
+<tr><td><code>--no-scorer</code></td><td>don't run the scorer on the samples (approved-line candidates then come from the detector and hook only)</td></tr>
+<tr><td><code>--no-hook</code></td><td>don't run the send hook on the samples</td></tr>
+<tr><td><code>--sep</code></td><td>separator line for stdin samples (default ---8&lt;---)</td></tr>
+<tr><td><code>--json</code></td><td>print the summary as JSON</td></tr>
+<tr><td><code>--help</code></td><td>this text</td></tr>
+</tbody></table></div>
+<h4 id="onboardingcalibrate-usermjs">onboarding/calibrate-user.mjs</h4>
+<div class="table-wrap"><table>
+<thead><tr><th>Flag</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>--overlay</code></td><td>overlay to test (default: the installed overlay, paths.overlay); a draft is tested in a temporary engine copy</td></tr>
+<tr><td><code>--samples</code></td><td>folder of your samples (default: paths.samplesDir), split into tune and held-out</td></tr>
+<tr><td><code>--tune</code></td><td>an explicit tune folder (use with --held-out instead of --samples)</td></tr>
+<tr><td><code>--held-out</code></td><td>an explicit held-out folder</td></tr>
+<tr><td><code>--strict</code></td><td>count nudges as failures too (default: config strictness.level)</td></tr>
+<tr><td><code>--ai-drafts</code></td><td>folder of AI drafts in your topics, for the recall check (default: none)</td></tr>
+<tr><td><code>--judge-drafts</code></td><td>also send the AI drafts (never your samples) to the judges your config allows; needs judges.aiDraftsToJudges</td></tr>
+<tr><td><code>--drafter</code></td><td>the model that wrote the AI drafts (prose-gate drafter name), required with --judge-drafts</td></tr>
+<tr><td><code>--no-hook</code></td><td>don't run the send hook</td></tr>
+<tr><td><code>--report</code></td><td>where to write the report (default: paths.calibrationReport)</td></tr>
+<tr><td><code>--no-report</code></td><td>don't write a report</td></tr>
+<tr><td><code>--config</code></td><td>config file (default: VOICE_CONFIG, else {claude}/voice/voice-config.json)</td></tr>
+<tr><td><code>--tools</code></td><td>the voice engine folder (default: paths.toolsDir)</td></tr>
+<tr><td><code>--json</code></td><td>print the report as JSON</td></tr>
+<tr><td><code>--show-files</code></td><td>print sample file names (for your own terminal)</td></tr>
+<tr><td><code>--show-spans</code></td><td>print the matched text (for your own terminal; never paste it into a chat)</td></tr>
+<tr><td><code>--help</code></td><td>this text</td></tr>
+</tbody></table></div>
+<h4 id="onboardingmerge-hooksmjs">onboarding/merge-hooks.mjs</h4>
+<pre><code class="language-text">usage: node merge-hooks.mjs [--settings &lt;file&gt;] [--config &lt;file&gt;] [--dry-run]</code></pre>
+<h2 id="exit-codes">Exit Codes</h2>
+<div class="table-wrap"><table>
+<thead><tr><th>Tool</th><th>Code</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>aiscore.mjs</code></td><td>0</td><td>Always on a completed scan, including when tells are found. The score is a signal, not a verdict.</td></tr>
+<tr><td><code>aiscore.mjs</code></td><td>1</td><td>Uncaught error (node default), for example an unreadable file or a missing detector. Callers treat any non-zero exit as a scorer failure.</td></tr>
+<tr><td><code>prose-gate.mjs</code></td><td>0</td><td>ADMIT: both layers passed.</td></tr>
+<tr><td><code>prose-gate.mjs</code></td><td>1</td><td>Usage error: empty input, a non-numeric --bar or --det-bar, or an uncaught error.</td></tr>
+<tr><td><code>prose-gate.mjs</code></td><td>2</td><td>REJECT.</td></tr>
+<tr><td><code>prose-gate.mjs</code></td><td>3</td><td>INCONCLUSIVE: the deterministic layer passed and fewer jurors answered than the panel needs. Every passing --det-only run ends here.</td></tr>
+<tr><td><code>prose-gate.mjs</code></td><td>4</td><td>ERROR: the deterministic layer, or the gate itself, failed or returned unusable output. The gate fails closed; after a deterministic failure it calls no judge.</td></tr>
+<tr><td><code>text-normalize.mjs</code></td><td>0</td><td>Canonical text written.</td></tr>
+<tr><td><code>text-normalize.mjs</code></td><td>1</td><td>Unknown argument.</td></tr>
+<tr><td><code>calibration/human-fp-budget.mjs</code></td><td>0</td><td>Budget met, or baseline written.</td></tr>
+<tr><td><code>calibration/human-fp-budget.mjs</code></td><td>1</td><td>Budget exceeded, a pinned tell or injection pattern hit a human document, a corpus is missing or has a different document count, or the in-process verdict disagrees with the CLI.</td></tr>
+<tr><td><code>voice-tell-gate.py</code></td><td>0</td><td>Normal. The decision is in the JSON on stdout: a deny for a blocked send, or added context for a nudge.</td></tr>
+<tr><td><code>voice-tell-gate.py</code></td><td>2</td><td>Unreadable hook input. The tier cannot be told, so the hook returns Claude Code's blocking code.</td></tr>
+</tbody></table></div>
+<h2 id="environment-variables">Environment Variables</h2>
+<p>Variables read by the engine, the hook, calibration and the docs tools. Research scripts are not scanned. Defaults are the values in the code.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Variable</th><th>Read By</th><th>Default</th><th>Purpose</th></tr></thead>
+<tbody>
+<tr><td><code>AVOID_AI_DETECTOR</code></td><td><code>aiscore.mjs</code></td><td><code>./avoid-ai-writing/detector/patterns.js</code></td><td>Path to the detector <code>patterns.js</code>.</td></tr>
+<tr><td><code>PROSE_GATE_AISCORE_TIMEOUT_MS</code></td><td><code>prose-gate.mjs</code></td><td><code>120000</code></td><td>Milliseconds before the gate kills aiscore and returns ERROR.</td></tr>
+<tr><td><code>VOICE_AISCORE</code></td><td><code>voice-tell-gate.py</code></td><td><code>~/.claude/tools/aiscore.mjs</code></td><td>Path to the aiscore.mjs the hook runs.</td></tr>
+<tr><td><code>VOICE_CORPORA</code></td><td><code>calibration/human-fp-budget.mjs</code>, <code>calibration/fetch-public-corpora.sh</code></td><td><code>~/.cache/voice-system/corpora</code></td><td>Directory that holds the public corpora for the false-positive budget.</td></tr>
+<tr><td><code>VOICE_HOOK</code></td><td><code>hook-tests/voice-tell-gate.test.py</code></td><td></td><td>The hook copy the hook test and the onboarding test run, and the docs tools read. Default: <code>hook/voice-tell-gate.py</code> in the repo.</td></tr>
+<tr><td><code>VOICE_NORMALIZE</code></td><td><code>voice-tell-gate.py</code></td><td><code>~/.claude/tools/text-normalize.mjs</code></td><td>Path to the text-normalize.mjs the hook runs.</td></tr>
+<tr><td><code>VOICE_SCORER_TIMEOUT</code></td><td><code>voice-tell-gate.py</code></td><td><code>20</code></td><td>Seconds the hook waits for the scorer. A value outside 0 &lt; x &lt;= 40 falls back to the default.</td></tr>
+<tr><td><code>VOICE_TOOLS</code></td><td><code>hook-tests/voice-tell-gate.test.py</code></td><td></td><td>Checkout of this repo whose scorer the hook test uses.</td></tr>
+</tbody></table></div>
+<h2 id="hook-tiers-and-matchers">Hook Tiers and Matchers</h2>
+<p><code>voice-tell-gate.py</code> runs on tool calls, never on conversation text. It has two tiers, matched to whether the action can be undone. It keys on the raw detector <code>score</code>, not <code>adjustedScore</code>, and calls no judge.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Event</th><th>Matcher</th><th>Tier</th></tr></thead>
+<tbody>
+<tr><td>PostToolUse</td><td><code>Write|Edit|MultiEdit</code></td><td>NUDGE: a file write is never blocked</td></tr>
+<tr><td>PreToolUse</td><td>the send tools below</td><td>BLOCK or NUDGE</td></tr>
+</tbody></table></div>
+<p>A send tool name is matched as a substring of the tool name, so one entry covers every MCP server prefix (31 names): <code>slack_send_message</code>, <code>slack_send_message_draft</code>, <code>slack_schedule_message</code>, <code>slack_create_canvas</code>, <code>slack_update_canvas</code>, <code>send_gmail_message</code>, <code>draft_gmail_message</code>, <code>create_doc</code>, <code>import_to_google_doc</code>, <code>batch_update_doc</code>, <code>insert_doc_elements</code>, <code>modify_doc_text</code>, <code>find_and_replace_doc</code>, <code>update_doc_headers_footers</code>, <code>create_presentation</code>, <code>import_to_google_slides</code>, <code>batch_update_presentation</code>, <code>create_form</code>, <code>batch_update_form</code>, <code>manage_document_comment</code>, <code>manage_presentation_comment</code>, <code>manage_spreadsheet_comment</code>, <code>create_pull_request</code>, <code>create_issue</code>, <code>add_issue_comment</code>, <code>create_pull_request_review</code>, <code>update_pull_request</code>, <code>update_issue</code>, <code>add_comment_to_pending_review</code>, <code>add_reply_to_pull_request_comment</code>, <code>pull_request_review_write</code>.</p>
+<p>A tool whose own name (the part after the last <code>__</code>) has any of <code>read</code>, <code>search</code>, <code>list</code>, <code>get</code>, <code>fetch</code>, <code>download</code>, <code>poll</code>, <code>branch</code> as a whole word is never treated as a send, so <code>list_spreadsheet_comments</code> is a read and <code>manage_spreadsheet_comment</code> is a send.</p>
+<p>File writes are checked only for <code>.html</code>, <code>.htm</code>, <code>.md</code>, <code>.mdx</code>, <code>.txt</code>, <code>.rtf</code>, <code>.docx</code> files, and only when the text written (the content, the edit's new text, or a MultiEdit's new texts joined) is at least 400 characters. A send is checked when its harvested prose is at least 3 characters; keys that hold plumbing (channel, id, url, path and 26 others) are skipped.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Surface</th><th>Outcome</th><th>Trigger</th></tr></thead>
+<tbody>
+<tr><td>Send</td><td>BLOCK</td><td>A critical-severity overlay structure (<code>&lt;prefix&gt;-struct-*</code>, any issue prefix); an overlay phrase (<code>&lt;prefix&gt;-phrase</code>) the overlay marks critical or the lexicon blocks; a lexicon block word or block phrase; the scorer or normalizer failing, timing out or returning unusable output</td></tr>
+<tr><td>Send</td><td>NUDGE</td><td>A high or medium overlay structure; a lexicon nudge word; any other overlay phrase the lexicon does not exempt; raw score at or above 40 on text longer than 200 characters</td></tr>
+<tr><td>File write</td><td>NUDGE</td><td>Any flagged item, or raw score at or above 40. A scorer failure adds a visible warning that the structure checks did not run</td></tr>
+</tbody></table></div>
+<p>Timeouts: the scorer gets 20 seconds by default (<code>VOICE_SCORER_TIMEOUT</code>, valid range above 0 up to 40); the normalizer gets the smaller of that and 10 seconds.</p>
+<p>The hook does not read overlay word hits (<code>&lt;prefix&gt;-word</code>) or cadence and register checks (<code>&lt;prefix&gt;-cadence-*</code>); those show in the scorer's and the gate's output only.</p>
+<h3 id="lexicon">Lexicon</h3>
+<p>The hook carries its own word and phrase list, the lexicon, because the generic detector scores single slop words near 0 on short text, which is the send surface. Overlay word hits are ignored in favor of it. The tiers are block words, block phrases, nudge words and never-flagged words; edit them in your copy of the hook.</p>
+<h2 id="files-and-tests">Files and Tests</h2>
+<h3 id="files">Files</h3>
+<p>Files of the repo outside <code>docs/</code> and <code>onboarding/</code> that this edition describes. The send hook's source is <code>hook/voice-tell-gate.py</code>; the detector is a pinned clone in <code>avoid-ai-writing/</code>.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>File</th><th>Role</th></tr></thead>
+<tbody>
+<tr><td><code>ai-evidence.mjs</code></td><td>Which detector categories count toward adjustedScore, and at what weight.</td></tr>
+<tr><td><code>aiscore.mjs</code></td><td>Deterministic scorer CLI and <code>scoreText()</code>: HTML reduction, normalization, the pinned detector, the overlay, the evidence score.</td></tr>
+<tr><td><code>aiscore.test.mjs</code></td><td>aiscore tests.</td></tr>
+<tr><td><code>calibration/fetch-public-corpora.sh</code></td><td>Downloads the public corpora at pinned versions and checks each file's sha256.</td></tr>
+<tr><td><code>calibration/human-fp-budget.json</code></td><td>Recorded baseline counts for the budget.</td></tr>
+<tr><td><code>calibration/human-fp-budget.mjs</code></td><td>Standing gate: the deterministic layer must not start rejecting human documents.</td></tr>
+<tr><td><code>calibration/public-corpora.sha256</code></td><td>Checksums for the public corpora.</td></tr>
+<tr><td><code>hook-tests/voice-tell-gate.test.py</code></td><td>Send hook tests, run against <code>hook/voice-tell-gate.py</code> and this repo's scorer.</td></tr>
+<tr><td><code>hook/voice-tell-gate.py</code></td><td>The send and write hook. Claude Code runs an installed copy at <code>~/.claude/hooks/scripts/voice-tell-gate.py</code>.</td></tr>
+<tr><td><code>prose-gate.mjs</code></td><td>The gate: aiscore, the injection check and the judge panel combined into ADMIT, REJECT, INCONCLUSIVE or ERROR.</td></tr>
+<tr><td><code>prose-gate.unit.test.mjs</code></td><td>Gate tests with no judge call: injection, prompt framing, combine, CLI, fail-closed.</td></tr>
+<tr><td><code>skills/</code></td><td>Claude Code skills for new users: <code>/voice-setup</code> runs the onboarding tools in order.</td></tr>
+<tr><td><code>text-normalize.mjs</code></td><td>Canonical text for every scan; also a CLI the hook calls.</td></tr>
+<tr><td><code>voice-overlay.mjs</code></td><td>The overlay file the engine imports, under the kit names. An install puts the user's reviewed overlay here; in the voice-system repo it re-exports the owner's overlay.</td></tr>
+</tbody></table></div>
+<h3 id="tests">Tests</h3>
+<p>Results are from the facts file. A build fails when a suite in this table was skipped or failed when the facts were written.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Suite</th><th>Command</th><th>Passed</th></tr></thead>
+<tbody>
+<tr><td><code>aiscore.test.mjs</code></td><td><code>node aiscore.test.mjs</code></td><td>20 of 20</td></tr>
+<tr><td><code>prose-gate.unit.test.mjs</code></td><td><code>node prose-gate.unit.test.mjs</code></td><td>119 of 119</td></tr>
+<tr><td><code>hook-tests/voice-tell-gate.test.py</code></td><td><code>python3 hook-tests/voice-tell-gate.test.py</code></td><td>115 of 115</td></tr>
+<tr><td><code>onboarding/test/</code></td><td><code>node --test onboarding/test/*.test.mjs</code></td><td>74 of 74</td></tr>
+</tbody></table></div>
+<p>The human false-positive budget (<code>calibration/human-fp-budget.mjs</code>) needs the public corpora on disk: measured at b4534e3 on 2026-10-02.</p>
+<nav class="pager" aria-label="Previous and next chapter"><span><a href="04-runbooks.html">Previous: Runbooks</a></span><span><a href="06-calibration-and-evidence.html">Next: Calibration and Evidence</a></span></nav>
+<p class="built">Built from tools commit b4534e3 with facts from 2026-10-02.</p>
+</main>
+</div>
+<script src="search-index.js"></script>
+<script src="assets/search.js"></script>
+</body>
+</html>

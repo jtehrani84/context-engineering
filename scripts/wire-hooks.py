@@ -33,6 +33,25 @@ import sys
 
 CMD_PREFIX = "python3 ~/.claude/hooks/scripts/"
 
+# voice-tell-gate runs on two events. PostToolUse on file writes nudges; PreToolUse on the send tools blocks a send
+# with a hard tell (and any send it can't check). VOICE_SEND_TOOLS is the default sendTools list of the voice config
+# (tools/onboarding/lib/config.mjs), and VOICE_SEND_MATCHER is the matcher `voice-doctor --print-hooks` prints for it:
+# a regular expression, because Claude Code reads a matcher of only letters, digits, _ and | as exact tool names, and
+# the MCP tools are named mcp__<server>__<tool>. scripts/test-voice-kit.py fails when the two drift apart. If you add
+# send tools in ~/.claude/voice/voice-config.json, run tools/onboarding/merge-hooks.mjs to rewrite this entry; a
+# matcher you changed is kept on the next ./setup.sh run.
+VOICE_SEND_TOOLS = (
+    "slack_send_message", "slack_send_message_draft", "slack_schedule_message", "slack_create_canvas",
+    "slack_update_canvas", "send_gmail_message", "draft_gmail_message", "create_doc", "import_to_google_doc",
+    "batch_update_doc", "insert_doc_elements", "modify_doc_text", "find_and_replace_doc",
+    "update_doc_headers_footers", "create_presentation", "import_to_google_slides",
+    "batch_update_presentation", "create_form", "batch_update_form", "manage_document_comment",
+    "manage_presentation_comment", "manage_spreadsheet_comment", "create_pull_request", "create_issue",
+    "add_issue_comment", "create_pull_request_review", "update_pull_request", "update_issue",
+    "add_comment_to_pending_review", "add_reply_to_pull_request_comment", "pull_request_review_write",
+)
+VOICE_SEND_MATCHER = "^(?:mcp__.+__(?:" + "|".join(VOICE_SEND_TOOLS) + "))$"
+
 # (event, matcher, script, prior_matchers)
 # prior_matchers = matchers an earlier kit release wired for this script and that are safe to replace.
 HOOKS = [
@@ -41,7 +60,8 @@ HOOKS = [
     ("PreToolUse", "Edit|Write", "domain-verification.py", []),
     ("PreToolUse", "Bash", "schema-check.py", []),
     ("PostToolUse", "Write", "output-quality-gate.py", []),
-    ("PostToolUse", "Write", "voice-tell-gate.py", []),
+    ("PostToolUse", "Write|Edit|MultiEdit", "voice-tell-gate.py", ["Write"]),
+    ("PreToolUse", VOICE_SEND_MATCHER, "voice-tell-gate.py", []),
     # Proof family. deploy-proof-gate only speaks after a deploy or publish command, so it is on by default.
     ("PostToolUse", "Bash", "deploy-proof-gate.py", []),
 ]

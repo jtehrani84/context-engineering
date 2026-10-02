@@ -12,7 +12,8 @@ Exit code 0 = every check passed, 1 = at least one failed. Nothing here touches 
 or the network: each run gets a scratch HOME and a restricted PATH.
 
 What "valid" means here (the Claude Code hooks reference):
-  - exit code 0 (exit 2 would block the tool call, which no kit hook does)
+  - exit code 0 (exit 2 would block the tool call). One exception, on purpose: voice-tell-gate exits 2 on
+    unreadable hook input, because it can't tell a send from a file write and it fails closed
   - stdout is empty, or one JSON object
   - PreToolUse:  hookSpecificOutput.permissionDecision is "deny" or "ask" (with a reason) or absent;
                  additionalContext is a nudge. "allow" is never emitted: say nothing instead, so the
@@ -37,6 +38,10 @@ import textwrap
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PY = sys.executable
+# The engine voice-tell-gate scores with: the kit's tools/ for a repo run, ~/.claude/tools with --installed. Resolved
+# before the scratch HOME is set, and passed to the hook as VOICE_AISCORE / VOICE_NORMALIZE.
+VOICE_TOOLS_DIR = (os.path.expanduser("~/.claude/tools") if "--installed" in sys.argv
+                   else os.path.join(os.path.dirname(HERE), "tools"))
 
 ALLOWED_PRE_KEYS = {"hookEventName", "permissionDecision", "permissionDecisionReason", "additionalContext", "updatedInput"}
 ALLOWED_POST_KEYS = {"hookEventName", "additionalContext"}
@@ -270,12 +275,23 @@ def cases(env):
     add(Q, "short file skipped", "PostToolUse", write("/x/post.md", "leverage synergy"), "silent")
     add(Q, "non-content extension skipped", "PostToolUse", write("/x/post.py", SLOP), "silent")
 
-    # ---- voice-tell-gate (needs node + tools/aiscore.mjs; checks contract only) ----
+    # ---- voice-tell-gate (needs node; scores with the engine in VOICE_TOOLS_DIR below). The full suite is
+    # tools/hook-tests/voice-tell-gate.test.py; these check the contract and each tier once. ----
     V = "voice-tell-gate.py"
-    add(V, "slop in a long .md -> valid answer", "PostToolUse", write("/x/post.md", SLOP), "any", None, keep_path=True)
-    add(V, "plain long .md -> valid answer", "PostToolUse", write("/x/post.md", PLAIN), "any", None, keep_path=True)
-    add(V, "short file -> silent", "PostToolUse", write("/x/post.md", "short"), "silent", None, keep_path=True)
-    add(V, "non-Write tool -> silent", "PostToolUse", bash("ls"), "silent", None, keep_path=True)
+    vt = {"VOICE_AISCORE": os.path.join(VOICE_TOOLS_DIR, "aiscore.mjs"), "VOICE_NORMALIZE": os.path.join(VOICE_TOOLS_DIR, "text-normalize.mjs")}
+    send = lambda tool, text: {"hook_event_name": "PreToolUse", "tool_name": tool, "tool_input": {"owner": "o", "repo": "r", "body": text}}
+    add(V, "slop in a long .md -> nudge", "PostToolUse", write("/x/post.md", SLOP), "context", "AI-TELL CHECK", keep_path=True, extra_env=vt)
+    add(V, "plain long .md -> silent", "PostToolUse", write("/x/post.md", PLAIN), "silent", None, keep_path=True, extra_env=vt)
+    add(V, "short file -> silent", "PostToolUse", write("/x/post.md", "short"), "silent", None, keep_path=True, extra_env=vt)
+    add(V, "non-Write tool -> silent", "PostToolUse", bash("ls"), "silent", None, keep_path=True, extra_env=vt)
+    add(V, "send with a block word -> deny", "PreToolUse", send("mcp__github__create_issue", "Our seamless rollout lands Thursday."),
+        "deny", "seamless", keep_path=True, extra_env=vt)
+    add(V, "clean send -> silent", "PreToolUse", send("mcp__github__create_issue", "The rollout lands Thursday after the review."),
+        "silent", None, keep_path=True, extra_env=vt)
+    add(V, "a read tool is not a send -> silent", "PreToolUse", send("mcp__github__get_issue", "Our seamless rollout lands Thursday."),
+        "silent", None, keep_path=True, extra_env=vt)
+    add(V, "send with the scorer missing -> deny (fails closed)", "PreToolUse", send("mcp__github__create_issue", "The rollout lands Thursday."),
+        "deny", "couldn't run its scorer", keep_path=True, extra_env={**vt, "VOICE_AISCORE": os.path.join(VOICE_TOOLS_DIR, "no-such-aiscore.mjs")})
 
     # ---- session-init ----
     add("session-init.py", "SessionStart in a repo -> context", "SessionStart",
@@ -319,7 +335,9 @@ def cases(env):
     return out
 
 
-# Every hook also gets these: unreadable input must never break the session (exit 0, no bad output).
+# Every hook also gets these: unreadable input must never break the session (exit 0, no bad output), except a hook
+# in FAIL_CLOSED_ON_BAD_INPUT, which must block (exit 2) with a message instead.
+FAIL_CLOSED_ON_BAD_INPUT = {"voice-tell-gate.py"}
 BAD_INPUTS = [("empty stdin", ""), ("not JSON", "this is not json"), ("JSON array", "[1,2]"), ("JSON null", "null")]
 EVENT_OF = {"schema-check.py": "PreToolUse", "guardrail.py": "PreToolUse", "domain-verification.py": "PreToolUse",
             "output-quality-gate.py": "PostToolUse", "voice-tell-gate.py": "PostToolUse",
@@ -413,17 +431,22 @@ def main(argv):
                     errs.append(f"output missing {needle!r}: {text_of(out)[:160]!r}")
             record(not errs, name, "; ".join(errs))
 
-        # unreadable input: never break the session
+        # unreadable input: never break the session. voice-tell-gate is the exception: it can't tell a send from a
+        # file write, so it exits 2 (Claude Code's blocking code) with a message on stderr and nothing on stdout.
         for hook, path in hooks.items():
             for label, text in BAD_INPUTS:
-                name = f"{hook}: {label} -> exits 0, no bad output"
+                fails_closed = hook in FAIL_CLOSED_ON_BAD_INPUT
+                name = f"{hook}: {label} -> " + ("exits 2 with a message, no stdout" if fails_closed else "exits 0, no bad output")
                 try:
                     rc, out, err = run_hook(path, text, env.env(keep_path=True))
                 except subprocess.TimeoutExpired:
                     record(False, name, "hook timed out")
                     continue
-                errs = [] if rc == 0 else [f"exit code {rc} (stderr: {err.strip()[-160:]})"]
-                errs += contract_errors(out, EVENT_OF.get(hook, "PreToolUse"))
+                if fails_closed:
+                    errs = [] if rc == 2 and not out.strip() and err.strip() else [f"exit code {rc}, stdout {out.strip()[:80]!r}, stderr {err.strip()[-120:]!r}"]
+                else:
+                    errs = [] if rc == 0 else [f"exit code {rc} (stderr: {err.strip()[-160:]})"]
+                    errs += contract_errors(out, EVENT_OF.get(hook, "PreToolUse"))
                 record(not errs, name, "; ".join(errs))
     finally:
         env.cleanup()

@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overview | Voice System Docs</title>
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="layout">
+<nav class="sidebar" aria-label="Chapters">
+<div class="site-title"><a href="index.html">Voice System Docs</a></div>
+<div class="edition">Public edition</div>
+<form class="search" role="search">
+<label for="q" class="sr-only">Search the docs</label>
+<input id="q" type="search" placeholder="Search" autocomplete="off">
+<ol id="results" class="results" aria-live="polite"></ol>
+</form>
+<ol class="toc">
+<li><a href="00-overview.html" aria-current="page">Overview</a>
+<ol><li><a href="#what-the-system-does">What the System Does</a></li><li><a href="#what-the-system-cannot-do">What the System Cannot Do</a></li><li><a href="#where-it-runs">Where It Runs</a></li><li><a href="#how-well-it-does-on-human-writing">How Well It Does on Human Writing</a></li><li><a href="#the-overlay-in-this-edition">The Overlay in This Edition</a></li><li><a href="#reading-order">Reading Order</a></li></ol></li>
+<li><a href="01-getting-started.html">Getting Started With /voice-setup</a></li>
+<li><a href="02-architecture.html">Architecture</a></li>
+<li><a href="03-threat-model.html">Threat Model</a></li>
+<li><a href="04-runbooks.html">Runbooks</a></li>
+<li><a href="05-reference.html">Reference</a></li>
+<li><a href="06-calibration-and-evidence.html">Calibration and Evidence</a></li>
+<li><a href="07-decision-log.html">Decision Log</a></li>
+<li><a href="09-review-packet.html">Review Packet</a></li>
+<li><a href="10-maintaining-the-docs.html">Maintaining the Docs</a></li>
+</ol>
+</nav>
+<main id="main" class="content">
+<h1 id="overview">Overview</h1>
+<p>The voice system is a set of local command-line tools and one Claude Code hook that check prose for the patterns of generic AI writing: before a send, and right after a prose file is written. It scores text with fixed rules, can ask a panel of language models for a second opinion, and blocks a send when the text carries a hard-ban pattern. This chapter says what the system does, what it cannot do, and where to read next. Numbers in this edition come from a facts file written at tools commit b4534e3 on 2026-10-02. A number recorded at an earlier commit names that commit where it appears.</p>
+<h2 id="what-the-system-does">What the System Does</h2>
+<p>Five parts make up the system. The first four run on the text being checked; the fifth measures them.</p>
+<ol>
+<li><strong>Normalization</strong> (<code>text-normalize.mjs</code>). Every scan first reduces the text to a canonical form: invisible, bidirectional and tag characters removed, Unicode compatibility forms folded (NFKC), look-alike letters mapped to their Latin form, quote, dash and space variants unified, and emphasis markers stripped. A second view renders markup the way a reader sees it. These steps cover the character and markup tricks the test suites exercise (Threat Model); a spelling outside the tables can still hide a pattern.</li>
+<li><strong>Deterministic scoring</strong> (<code>aiscore.mjs</code>). The scorer runs a vendored open-source detector, pinned at commit 58a95fc, with 51 pattern categories, then a personal overlay of structural checks. Only 9 detector categories count toward <code>adjustedScore</code>, the number the gate rejects on; the rest print in the report with no weight. The scorer exits 0 whatever the score and leaves the decision to its callers; it exits non-zero only when it cannot run, for example on an unreadable input file.</li>
+<li><strong>The gate</strong> (<code>prose-gate.mjs</code>). The gate combines the deterministic score, a check for text addressed to a grader, and a panel of model judges into one verdict: ADMIT, REJECT, INCONCLUSIVE or ERROR. When the caller names the drafter with <code>--drafter</code>, no judge from the drafter's lab sits on the panel; with the default drafter, <code>unknown</code>, no lab is left out (Architecture, The Gate). With <code>--det-only</code> no judge is called and nothing leaves the machine.</li>
+<li><strong>The send hook</strong> (<code>voice-tell-gate.py</code>, versioned in the repo as <code>hook/voice-tell-gate.py</code>). A Claude Code hook runs the scorer on the send-tool calls its PreToolUse matcher reaches and on prose file writes. On a send it blocks hard-ban patterns; on a file write it only adds a note. If the scorer fails, the send is denied. <code>onboarding/merge-hooks.mjs</code> writes a matcher that reaches every configured send tool, and <code>voice-doctor.mjs</code> checks it (Architecture, The Send Hook).</li>
+<li><strong>Calibration</strong> (<code>calibration/</code>). Scripts measure how often the checks reject writing by people, using public corpora written before 2022, and hold that count to a stored budget.</li>
+</ol>
+<h2 id="what-the-system-cannot-do">What the System Cannot Do</h2>
+<p>The system is built to catch generic AI writing while rejecting almost no human writing. It cannot catch AI text that deliberately imitates a particular person, and it cannot prove who wrote something.</p>
+<p>A passing result means &quot;not obviously AI.&quot; It never means &quot;written by this person.&quot; Authorship is a provenance question (who typed the text, on what device, with what history), and no detector in this repository answers it. Two measurements set this limit:</p>
+<ul>
+<li>On a set of 30 drafts written by a model following a written anti-AI style guide, the judge panel caught between 23% and 43% depending on the panel configuration (judge study, 2026-10-02, <code>judge/JUDGE.md</code>; Calibration and Evidence says where the study files live).</li>
+<li>The deterministic layer is built to reject almost no human writing. That design choice leaves most carefully prompted AI drafts to the judges, and the judges miss many of them. In a persona test on 2026-10-02, the deterministic gate rejected none of 12 drafts from a current model and the send hook blocked 1 of them (<code>docs/evidence/persona-2026-10-02.json</code>).</li>
+</ul>
+<p>Other limits a reader should know before relying on a result:</p>
+<ul>
+<li><strong>Unlisted injection wordings.</strong> The deterministic injection check matches 10 patterns. Text addressed to a grader in a wording outside that list passes it by design; the judge prompt's fence and the jurors' own behavior are the backstop. See the Threat Model chapter.</li>
+<li><strong>Normalization is a fixed table.</strong> It folds the look-alike characters it knows. A new spelling class can get past it until the table and the tests are extended.</li>
+<li><strong>Judges are not validated against human labels.</strong> The judge false-positive rate was measured on public prose that carries era and medium cues, and no held-out set of AI drafts exists yet. Treat judge numbers as optimistic for modern business writing.</li>
+<li><strong>The overlay is personal.</strong> The overlay encodes one writer's banned words and structures. A new user builds an overlay from the blank template and calibrates it on their own writing; the Getting Started chapter covers that.</li>
+<li><strong>The send hook's word list is one writer's too.</strong> The hook carries its own fixed list of blocked words, separate from the overlay, and the overlay can't exempt them. In the persona test, a public 18F author's 10 held-out posts passed after one edit to that list, and the hook still blocked 4 of 14 further posts by the same author, each on a word from the list (<code>docs/evidence/persona-2026-10-02.json</code>). Getting Started, Step 6, covers checking the list against fresh writing of your own.</li>
+</ul>
+<h2 id="where-it-runs">Where It Runs</h2>
+<p>Everything runs on the user's machine. The engine is plain Node ES modules with no npm dependencies and no <code>package.json</code>; the hook and its tests need Python 3. The detector is a separate MIT-licensed project cloned beside the tools and pinned to one commit. The gate, the hook and the onboarding tools send text off the machine only when judges are on, and then only the text given to that run. The Architecture chapter draws the data flow, and its data boundary lists every path that calls a model, the opt-in ones included, with how to keep each local.</p>
+<h2 id="how-well-it-does-on-human-writing">How Well It Does on Human Writing</h2>
+<p>The standing gate runs the deterministic layer over public human writing from before 2022 and fails if the reject count rises above the stored budget. The run measured at b4534e3 on 2026-10-02 rejected 0 of 18,335 pooled public documents: the 18F blog, Python PEPs, RFCs and the 20 Newsgroups set. Anyone can reproduce this with <code>bash calibration/fetch-public-corpora.sh &amp;&amp; node calibration/human-fp-budget.mjs</code>. Per-set counts, the judge panel's numbers and their limits are in Calibration and Evidence.</p>
+<h2 id="the-overlay-in-this-edition">The Overlay in This Edition</h2>
+<p>The onboarding flow uses a blank overlay template (<code>onboarding/templates/voice-overlay.template.mjs</code>) instead of anyone's personal overlay, and the engine reads the reviewed copy as <code>voice-overlay.mjs</code>. The public starter kit carries the template and the onboarding tools under <code>tools/</code> from its 2026-10-02 release that added these docs (<code>docs/voice/</code>); Getting Started, &quot;Before You Start&quot;, gives the install status. The template's lists of words, phrases, approved lines and verdict-driving structures start empty, and <code>REVIEWED</code> starts <code>false</code>. <code>onboarding/profile-build.mjs</code> drafts a filled copy from the user's own samples, and the user reviews it before it is used. Because the template's <code>VERDICT_STRUCT_TYPES</code> list starts empty, no overlay structure moves the gate verdict until the user adds one; overlay hits print as must-fix. The overlay these docs were measured on pins 1 structure.</p>
+<h2 id="reading-order">Reading Order</h2>
+<ul>
+<li><p><strong>Getting Started</strong> says where the tools come from, checks the install, wires the hook, and builds and calibrates a personal overlay, either with <code>/voice-setup</code> or step by step in a terminal.</p></li>
+<li><p><strong>Architecture</strong> covers the layers, the data flow, the data boundary, and the dependencies and pins.</p></li>
+<li><p><strong>Threat Model</strong> lists each way a check can be evaded or fail open, its control, and the test that proves the control.</p></li>
+<li><p><strong>Runbooks</strong> cover tests, moving the detector pin, a blocked send, and gate exit 4.</p></li>
+<li><p><strong>Reference</strong> is generated from the code: checks, flags, exit codes, environment variables, hook tiers, files and tests.</p></li>
+<li><p><strong>Calibration and Evidence</strong> and the <strong>Decision Log</strong> hold every measured number with its source and its reopen condition.</p></li>
+<li><p><strong>Review Packet</strong> is for outside reviewers: the claims, how to reproduce each public number, the known limits and where to send findings.</p></li>
+<li><p><strong>Maintaining the Docs</strong> covers edition markers, the facts file, the generated reference and <code>verify-docs</code>.</p></li>
+</ul>
+<nav class="pager" aria-label="Previous and next chapter"><span></span><span><a href="01-getting-started.html">Next: Getting Started With /voice-setup</a></span></nav>
+<p class="built">Built from tools commit b4534e3 with facts from 2026-10-02.</p>
+</main>
+</div>
+<script src="search-index.js"></script>
+<script src="assets/search.js"></script>
+</body>
+</html>

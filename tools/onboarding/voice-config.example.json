@@ -1,0 +1,48 @@
+{
+  "$schema": "./voice-config.schema.json",
+  "version": 1,
+  "paths": {
+    "toolsDir": "{claude}/tools",
+    "voiceDir": "{claude}/voice",
+    "overlay": "{toolsDir}/voice-overlay.mjs",
+    "draftOverlay": "{voiceDir}/voice-overlay.draft.mjs",
+    "samplesDir": "{voiceDir}/samples",
+    "aiDraftsDir": "{voiceDir}/ai-drafts",
+    "calibrationReport": "{voiceDir}/calibration-report.json",
+    "settings": ["{claude}/settings.json"],
+    "hook": "{claude}/hooks/scripts/voice-tell-gate.py"
+  },
+  "sendTools": [
+    "slack_send_message", "slack_send_message_draft", "slack_schedule_message", "slack_create_canvas", "slack_update_canvas",
+    "send_gmail_message", "draft_gmail_message",
+    "create_doc", "import_to_google_doc", "batch_update_doc", "insert_doc_elements", "modify_doc_text", "find_and_replace_doc", "update_doc_headers_footers",
+    "create_presentation", "import_to_google_slides", "batch_update_presentation",
+    "create_form", "batch_update_form",
+    "manage_document_comment", "manage_presentation_comment", "manage_spreadsheet_comment",
+    "create_pull_request", "create_issue", "add_issue_comment", "create_pull_request_review", "update_pull_request", "update_issue",
+    "add_comment_to_pending_review", "add_reply_to_pull_request_comment", "pull_request_review_write"
+  ],
+  "nudgeGlobs": ["**/*.md", "**/*.mdx", "**/*.txt", "**/*.html", "**/*.htm", "**/*.rtf", "**/*.docx"],
+  "judges": {
+    "mode": "consensus",
+    "drafterLab": "anthropic",
+    "allowed": [
+      { "name": "grok", "lab": "xai" },
+      { "name": "gpt", "lab": "openai" },
+      { "name": "gemini", "lab": "google" }
+    ],
+    "aiDraftsToJudges": false
+  },
+  "data": {
+    "samplesLeaveMachine": false,
+    "samplesToJudges": false,
+    "printSampleText": false
+  },
+  "strictness": {
+    "level": "standard",
+    "detBar": 40,
+    "judgeBar": 50,
+    "heldOutShare": 0.3,
+    "minSamples": 20
+  }
+}

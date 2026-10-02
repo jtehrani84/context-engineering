@@ -1,0 +1,27 @@
+{
+ "measuredAt": "2026-10-02T05:07:45.633Z",
+ "toolsCommit": "892b20b",
+ "note": "post-fix rates after rule C, cadence out of the score, AI-evidence classification, normalization and the injection check (2026-10-02). Re-record only with a reviewed reason.",
+ "sets": {
+  "18F": {
+   "n": 421,
+   "rejects": 0
+  },
+  "PEP": {
+   "n": 576,
+   "rejects": 0
+  },
+  "RFC": {
+   "n": 18,
+   "rejects": 0
+  },
+  "20NG": {
+   "n": 17320,
+   "rejects": 0
+  }
+ },
+ "pooledPublic": {
+  "n": 18335,
+  "rejects": 0
+ }
+}
