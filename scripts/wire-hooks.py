@@ -26,6 +26,7 @@ as they are). The file is backed up once to settings.json.pre-kit-backup before 
 """
 import json
 import os
+import re
 import shutil
 import sys
 
@@ -85,6 +86,13 @@ def _commands(entry):
     return cmds
 
 
+def _runs(command, script):
+    """True when the command runs this exact script. It compares file names, not substrings, so a hook
+    of your own whose name only contains the kit's (architecture-guardrail.py, deploy-guardrail.py,
+    my-schema-check.py) is never mistaken for the kit hook, which would leave the kit hook unwired."""
+    return re.search(r"(?:^|[\s/\\'\"=])" + re.escape(script) + r"(?=$|[\s'\";|&)<>])", command) is not None
+
+
 def _matcher_text(matcher):
     """Legacy entries stored a matcher as {'tool_name': 'Bash'} or {'tool_name': ['Edit','Write']}."""
     if isinstance(matcher, dict):
@@ -111,7 +119,7 @@ def wire(settings):
         if not isinstance(entries, list):
             continue
         idx = [i for i, e in enumerate(entries)
-               if isinstance(e, dict) and any(script in c for c in _commands(e))]
+               if isinstance(e, dict) and any(_runs(c, script) for c in _commands(e))]
         if not idx:
             if not may_add:
                 continue

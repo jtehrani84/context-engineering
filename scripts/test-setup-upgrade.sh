@@ -186,6 +186,32 @@ PYEOF
 then ok "matcher migration: shipped matcher moves, your matcher stays, shared entries untouched"
 else bad "matcher migration (details above)"; fi
 
+if python3 - "$TMP/new/scripts" <<'PYEOF'
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("wire_hooks", sys.argv[1] + "/wire-hooks.py")
+wh = importlib.util.module_from_spec(spec); spec.loader.exec_module(wh)
+fails = []
+def need(cond, msg):
+    if not cond: fails.append(msg)
+event, matcher = [(h[0], h[1]) for h in wh.HOOKS if h[2] == "guardrail.py"][0]
+# a hook of your own whose file name merely CONTAINS the kit's must not stop the kit hook being wired
+for own in ("architecture-guardrail.py", "deploy-guardrail.py"):
+    s = {"hooks": {event: [{"matcher": matcher, "hooks": [{"type": "command", "command": "python3 ~/.claude/hooks/scripts/" + own}]}]}}
+    added, migrated, kept = wh.wire(s)
+    cmds = [h["command"] for e in s["hooks"][event] for h in e["hooks"]]
+    need("guardrail.py" in added and cmds.count(wh.CMD_PREFIX + "guardrail.py") == 1, f"kit guardrail.py wired next to your {own}")
+    need(any(c.endswith(own) for c in cmds), f"your {own} kept")
+# a kit hook that is already wired is still recognized (no duplicate), however the command spells its path
+for cmd in (wh.CMD_PREFIX + "guardrail.py", 'python3 "$HOME/.claude/hooks/scripts/guardrail.py"', wh.CMD_PREFIX + "guardrail.py || true"):
+    s = {"hooks": {event: [{"matcher": matcher, "hooks": [{"type": "command", "command": cmd}]}]}}
+    added, migrated, kept = wh.wire(s)
+    need("guardrail.py" not in added, f"already-wired guardrail recognized: {cmd}")
+for f in fails: print("        name match:", f)
+sys.exit(1 if fails else 0)
+PYEOF
+then ok "a hook of yours named like a kit hook (architecture-guardrail.py) doesn't stop the kit hook being wired"
+else bad "hook name matching (details above)"; fi
+
 echo; echo "== 5. --check is offline and reports the model endpoint"
 check "setup.sh hard-codes no URL at all" '! grep -Eq "https?://[A-Za-z0-9]" "$TMP/new/setup.sh"'
 check "README has no copy-paste installer URL piped into bash" '! grep -Eq "curl[^|]*https?://[^ ]+[^|]*\| *bash" "$TMP/new/README.md"'
