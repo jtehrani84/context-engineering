@@ -14,7 +14,7 @@
 #        - rewrites an old flat-format hook entry, migrates a matcher the kit used to ship,
 #          and keeps a matcher you set yourself
 #   3. a second run changes nothing; --dry-run writes nothing
-#   4. --uninstall removes unedited kit files and keeps edited ones
+#   4. --uninstall removes unedited kit files, keeps edited ones, and unwires only the hooks it removed
 #   5. --check makes no network call and reports whether the model endpoint is configured
 set -uo pipefail
 
@@ -231,6 +231,29 @@ check "edited skill survives uninstall" '[[ -f "$C/commands/design-doc.md" ]]'
 check "your own rule survives uninstall" '[[ -f "$C/rules/my-own-rule.md" ]]'
 check "an unedited kit rule is removed" '[[ ! -f "$C/rules/proof-before-claim.md" ]]'
 check "an unedited kit skill is removed" '[[ ! -f "$C/commands/morning-brief.md" ]]'
+check "an unedited kit hook is removed and unwired" '[[ ! -f "$C/hooks/scripts/guardrail.py" ]] && ! grep -q "scripts/guardrail.py" "$C/settings.json"'
+check "the hook you edited is kept and still wired" '[[ -f "$C/hooks/scripts/output-quality-gate.py" ]] && grep -q "scripts/output-quality-gate.py" "$C/settings.json"'
+check "settings.json backed up before unwiring" '[[ -f "$C/settings.json.pre-uninstall-backup" ]]'
+if python3 - "$C" <<'PYEOF'
+import json, os, re, sys
+c = sys.argv[1]
+s = json.load(open(os.path.join(c, "settings.json")))
+bad = []
+for entries in s.get("hooks", {}).values():
+    for e in entries:
+        for h in e.get("hooks", []) + ([e] if "command" in e else []):
+            m = re.search(r"\.claude/hooks/scripts/([\w.-]+\.py)", h.get("command", ""))
+            if m and not os.path.exists(os.path.join(c, "hooks", "scripts", m.group(1))):
+                bad.append(m.group(1))
+mine = s.get("hooks", {}).get("Notification") == [{"hooks": [{"type": "command", "command": "echo mine"}]}]
+for b in bad:
+    print("        dangling hook entry (python3 exits 2, Claude Code blocks the tool):", b)
+if not mine:
+    print("        your own Notification hook was not kept")
+sys.exit(1 if bad or not mine else 0)
+PYEOF
+then ok "uninstall leaves no hook entry pointing at a removed file, and keeps your own hook"
+else bad "uninstall hook unwiring (details above)"; fi
 
 echo; echo "== $PASS passed, $FAIL failed"
 [[ $FAIL -eq 0 ]]

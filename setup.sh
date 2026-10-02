@@ -217,7 +217,8 @@ if [[ "${1:-}" == "--uninstall" ]]; then
         echo "    $f"
     done
     echo ""
-    echo "  Note: ~/.claude/settings.json and your wiki (~/.claude/wiki) will NOT be touched."
+    echo "  Note: your wiki (~/.claude/wiki) is not touched. In ~/.claude/settings.json only the hook"
+    echo "  entries that run a kit hook removed here are taken out (backed up first); the rest stays."
     echo ""
 
     read -p "  Remove these ${#FILES_TO_REMOVE[@]} files? (Y/n) " confirm
@@ -226,6 +227,11 @@ if [[ "${1:-}" == "--uninstall" ]]; then
             rm "$f"
             echo -e "  ${GREEN}✓${NC} Removed: $f"
         done
+        # A hook entry left pointing at a deleted script makes python3 exit 2, and Claude Code reads exit 2
+        # from a PreToolUse hook as "block this tool call", so unwire the hooks whose files were just removed.
+        if [[ -f "$CLAUDE_DIR/settings.json" ]]; then
+            python3 "$SCRIPT_DIR/scripts/wire-hooks.py" "$CLAUDE_DIR/settings.json" --unwire-missing || true
+        fi
         echo ""
         echo -e "${GREEN}Uninstall complete. ${#FILES_TO_REMOVE[@]} files removed.${NC}"
     else

@@ -3,6 +3,7 @@
 Wire the kit's hooks into ~/.claude/settings.json. Merge-safe, idempotent, safe to re-run on upgrade.
 
     python3 scripts/wire-hooks.py <settings.json> [--dry-run]
+    python3 scripts/wire-hooks.py <settings.json> --unwire-missing   # used by --uninstall
 
 What it does for each hook in HOOKS below (plus OPTIONAL_PROOF_GATES when KIT_WIRE_PROOF_GATES=1):
   - not wired yet            -> adds it (nested {matcher, hooks:[...]} form, which is what Claude Code reads)
@@ -148,6 +149,65 @@ def wire(settings):
     return added, migrated, kept
 
 
+def kit_hook_names():
+    """File names of every hook this kit ships: wired by default, opt-in, or never wired for you."""
+    kit = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    names = {row[2] for row in HOOKS + OPTIONAL_PROOF_GATES + MIGRATE_ONLY}
+    for sub in ("hooks/scripts", "hooks/scripts-optional"):
+        d = os.path.join(kit, sub)
+        if os.path.isdir(d):
+            names.update(f for f in os.listdir(d) if f.endswith(".py"))
+    return names
+
+
+def unwire_missing(settings, claude_dir, names=None):
+    """For --uninstall: drop each hook command that runs one of the kit's hooks from
+    <claude_dir>/hooks/scripts/ when that file no longer exists. python3 exits 2 on a missing script, and
+    Claude Code reads exit 2 from a PreToolUse hook as "block this tool call", so an entry left behind
+    would block every Bash, Edit and Write. A kit hook you edited (uninstall keeps the file) stays wired,
+    and so does every hook of your own. Returns the names it unwired."""
+    names = kit_hook_names() if names is None else names
+    hooks_dir = os.path.join(claude_dir, "hooks", "scripts")
+
+    def dangling(command):
+        for name in names:
+            if re.search(r"\.claude[/\\]hooks[/\\]scripts[/\\]" + re.escape(name) + r"(?=$|[\s'\";|&)<>])", command) \
+                    and not os.path.exists(os.path.join(hooks_dir, name)):
+                return name
+        return None
+
+    removed = []
+    hooks = settings.get("hooks", {})
+    for event in list(hooks):
+        entries = hooks[event]
+        if not isinstance(entries, list):
+            continue
+        keep = []
+        for e in entries:
+            if isinstance(e, dict) and "hooks" not in e and isinstance(e.get("command"), str):
+                name = dangling(e["command"])          # old flat entry
+                if name:
+                    removed.append(name)
+                    continue
+            elif isinstance(e, dict) and isinstance(e.get("hooks"), list) and e["hooks"]:
+                left = []
+                for h in e["hooks"]:
+                    name = dangling(h["command"]) if isinstance(h, dict) and isinstance(h.get("command"), str) else None
+                    if name:
+                        removed.append(name)
+                    else:
+                        left.append(h)
+                if not left:
+                    continue
+                e["hooks"] = left
+            keep.append(e)
+        if entries and not keep:
+            del hooks[event]
+        else:
+            hooks[event] = keep
+    return removed
+
+
 def main(argv):
     args = [a for a in argv[1:] if not a.startswith("--")]
     dry = "--dry-run" in argv
@@ -155,6 +215,29 @@ def main(argv):
         print(__doc__)
         return 2
     path = args[0]
+    if "--unwire-missing" in argv:
+        try:
+            settings = load_settings(path)
+        except Exception:
+            print("  Could not parse settings.json, so no hook entries were removed. Take out any hook entry", file=sys.stderr)
+            print("  that runs a script under ~/.claude/hooks/scripts/ that no longer exists.", file=sys.stderr)
+            return 0
+        if not isinstance(settings, dict) or not isinstance(settings.get("hooks", {}), dict):
+            return 0
+        removed = unwire_missing(settings, os.path.dirname(os.path.abspath(path)))
+        if not removed:
+            print("  settings.json: no hook entry points at a removed kit hook.")
+            return 0
+        if dry:
+            print("  [dry-run] Would unwire: " + ", ".join(removed))
+            return 0
+        backup = path + ".pre-uninstall-backup"
+        shutil.copy2(path, backup)
+        with open(path, "w") as f:
+            json.dump(settings, f, indent=2)
+        print("  Unwired from settings.json (their files were removed): " + ", ".join(removed))
+        print(f"  Backed up your settings to {backup}")
+        return 0
     try:
         settings = load_settings(path)
     except Exception:
