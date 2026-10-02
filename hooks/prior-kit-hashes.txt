@@ -1,0 +1,9 @@
+# sha256 of every hook version this kit has shipped (filename sha256).
+# setup.sh upgrades an installed hook only when it matches one of these, i.e. you never edited it.
+# Regenerate with: python3 scripts/gen-install-prior-hashes.py
+domain-verification.py 73ce1536145a3414b92a2623def94ae3be27e37c467fe34a6e9a5b3eb8201a5a
+graph-auto-index.py e4a2730354442b58c4cb7e327e3c79b50305b2544e187633b6b94ab84908d73f
+guardrail.py 6d3b9a7280a144ad4e913fd6ce7302ab87692b62c311cc93c532e89fb6a9c4f1
+output-quality-gate.py 0e8018571fb79e0db56644e5a8e2b2208fd0f764bf7505b601b9faea3c0673c6
+schema-check.py 572d1d6905af809a5c64b2538afb6bbabb878309bb2325ff7309deaf09b1261d
+session-init.py 97b5ce16ff259be5015c12823204c3f43d4063bab893d26eabd48a3ea57928b3

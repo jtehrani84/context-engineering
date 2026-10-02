@@ -4,9 +4,10 @@ Knowledge Graph Auto-Indexer — PostToolUse hook on Write|Edit
 
 When any wiki, memory, or entity page is written/edited, this hook:
 1. Upserts a node for the file in the local SQLite graph
-2. Scans content for entity mentions (people, companies, concepts)
+2. Scans content for entity mentions (people, companies, products)
 3. Creates REFERENCES edges between the file and mentioned entities
 4. Computes RELATES_TO edges between files sharing 3+ entities
+5. Removes nodes whose file was deleted or renamed (a guarded sweep after each write)
 
 The graph grows automatically from your work. No manual maintenance.
 Runs in <100ms for a single file.
@@ -273,12 +274,54 @@ def update_file_in_graph(file_path: str, node_type: str):
         conn.close()
 
 
+def remove_deleted_files(conn):
+    """Drop nodes whose backing file no longer exists on disk.
+
+    Edits and writes only ever touch files that exist, so without this sweep a page you
+    delete or rename stays in the graph as a ghost node with stale edges. The sweep runs
+    after each indexed write and only trusts a 'missing' verdict for files that sit under
+    a tracked folder that is itself present (an unmounted drive or a moved wiki must not
+    wipe the graph). Returns the number of nodes removed.
+    """
+    roots = [r for r in (MEMORY_DIR, WIKI_DIR, RULES_DIR) if r and os.path.isdir(r)]
+    if not roots:
+        return 0
+    removed = 0
+    for node_id, fp in conn.execute(
+        "SELECT id, file_path FROM nodes WHERE file_path IS NOT NULL"
+    ).fetchall():
+        if not any(fp.startswith(r.rstrip("/") + "/") for r in roots):
+            continue
+        if not os.path.exists(fp):
+            conn.execute("DELETE FROM nodes WHERE id = ?", (node_id,))
+            removed += 1
+    if removed:
+        conn.commit()
+    return removed
+
+
+def sweep_deleted():
+    """Open the graph (if it exists) and remove nodes for files that are gone."""
+    if not GRAPH_DB.exists():
+        return
+    try:
+        conn = sqlite3.connect(str(GRAPH_DB), timeout=3)
+        conn.execute("PRAGMA foreign_keys = ON")
+        ensure_schema(conn)
+        remove_deleted_files(conn)
+        conn.close()
+    except Exception:
+        pass
+
+
 def main():
     hook_input = read_stdin_safe()
-    if not hook_input:
+    if not hook_input or not isinstance(hook_input, dict):
         sys.exit(0)
 
     tool_input = hook_input.get("tool_input", {})
+    if not isinstance(tool_input, dict):
+        sys.exit(0)
     file_path = tool_input.get("file_path", "")
     if not file_path:
         sys.exit(0)
@@ -290,7 +333,7 @@ def main():
     if os.path.exists(file_path):
         update_file_in_graph(file_path, node_type)
     else:
-        # File was deleted — clean up
+        # The path we were handed is gone: drop its node directly.
         if GRAPH_DB.exists():
             try:
                 conn = sqlite3.connect(str(GRAPH_DB), timeout=3)
@@ -301,6 +344,10 @@ def main():
                 conn.close()
             except Exception:
                 pass
+
+    # Either way, sweep out nodes for any other file that was deleted or renamed since
+    # the last run.
+    sweep_deleted()
 
     sys.exit(0)
 

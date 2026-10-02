@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Label must match the filename (minus .plist) -->
+    <key>Label</key>
+    <string>com.context.synthesize.morning</string>
+
+    <!-- Synthesizes the day's raw gather files into ~/.claude/wiki/inbox.md using `claude -p`.
+         It needs the `claude` CLI on PATH (see the PATH entry below) and skips quietly when
+         there are no raw files for the day. -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <!-- __SCRIPT_DIR__ is replaced by manage.sh install -->
+        <string>__SCRIPT_DIR__/synthesize/morning-digest.sh</string>
+    </array>
+
+    <!-- Schedule: 5:00 AM daily, after the 4:30 and 4:45 gather jobs. launchd runs a missed job
+         when the Mac wakes. -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>5</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <!-- __HOME__ is replaced by manage.sh install. launchd starts with a minimal PATH, so the
+             directories where `claude` usually lives are listed explicitly. If yours lives
+             elsewhere, add that directory here. -->
+        <key>PATH</key>
+        <string>__HOME__/.local/bin:__HOME__/.claude/local:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <!-- Logging -->
+    <key>StandardOutPath</key>
+    <string>/tmp/context-crons-digest-stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/context-crons-digest-stderr.log</string>
+
+    <key>WorkingDirectory</key>
+    <string>__SCRIPT_DIR__</string>
+
+    <!-- Don't keep running: one-shot -->
+    <key>KeepAlive</key>
+    <false/>
+</dict>
+</plist>

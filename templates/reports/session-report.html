@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session Report — {{DATE}}</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            font-size: 16px;
+            line-height: 1.7;
+            color: #E2E8F0;
+            background: #0F172A;
+            overflow-x: hidden;
+            padding: 48px 24px;
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #1E293B; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+
+        .header-badge {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 20px;
+            background: rgba(129, 140, 248, 0.1);
+            border: 1px solid rgba(129, 140, 248, 0.3);
+            color: #818CF8;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 16px;
+        }
+
+        .header h1 {
+            font-size: clamp(28px, 5vw, 40px);
+            font-weight: 800;
+            color: #F8FAFC;
+            margin-bottom: 8px;
+        }
+
+        .duration-badge {
+            display: inline-block;
+            padding: 4px 14px;
+            border-radius: 16px;
+            background: rgba(34, 211, 238, 0.1);
+            border: 1px solid rgba(34, 211, 238, 0.3);
+            color: #22D3EE;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        /* Metrics Row */
+        .metrics-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 40px;
+        }
+
+        .metric-card {
+            background: #1E293B;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            opacity: 0;
+            transform: translateY(16px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+
+        .metric-card.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .metric-value {
+            font-size: 32px;
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 6px;
+        }
+
+        .metric-value.cyan { color: #22D3EE; }
+        .metric-value.indigo { color: #818CF8; }
+        .metric-value.pink { color: #F472B6; }
+        .metric-value.amber { color: #FBBF24; }
+
+        .metric-label {
+            font-size: 11px;
+            color: #64748B;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        /* Sections */
+        .report-section {
+            background: #1E293B;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 28px 32px;
+            margin-bottom: 24px;
+            opacity: 0;
+            transform: translateY(16px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+
+        .report-section.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .report-section h2 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #F8FAFC;
+            margin-bottom: 16px;
+        }
+
+        .report-section ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .report-section li {
+            padding: 8px 0;
+            border-bottom: 1px solid #334155;
+            color: #94A3B8;
+            font-size: 14px;
+        }
+
+        .report-section li:last-child { border-bottom: none; }
+
+        .report-section li code {
+            background: rgba(34, 211, 238, 0.1);
+            color: #22D3EE;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+        }
+
+        /* Layers Used */
+        .layers-section {
+            margin-bottom: 24px;
+        }
+
+        .layers-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .layer-pill {
+            display: inline-block;
+            padding: 5px 14px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        }
+
+        .pill-memory { background: rgba(244, 114, 182, 0.15); color: #F472B6; }
+        .pill-wiki { background: rgba(34, 211, 238, 0.15); color: #22D3EE; }
+        .pill-skills { background: rgba(129, 140, 248, 0.15); color: #818CF8; }
+        .pill-mcp { background: rgba(251, 191, 36, 0.15); color: #FBBF24; }
+        .pill-rules { background: rgba(52, 211, 153, 0.15); color: #34D399; }
+        .pill-hooks { background: rgba(251, 146, 60, 0.15); color: #FB923C; }
+        .pill-graph { background: rgba(167, 139, 250, 0.15); color: #A78BFA; }
+        .pill-crons { background: rgba(56, 189, 248, 0.15); color: #38BDF8; }
+        .pill-default { background: rgba(148, 163, 184, 0.15); color: #94A3B8; }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding-top: 32px;
+            border-top: 1px solid #1E293B;
+            font-size: 12px;
+            color: #475569;
+        }
+
+        /* Print */
+        @media print {
+            body { background: #fff; color: #1a1a1a; }
+            .metric-card, .report-section { background: #f9fafb; border-color: #e5e7eb; }
+            .report-section h2, .header h1 { color: #111827; }
+            .report-section li { color: #4b5563; }
+            .metric-value { color: #111827 !important; }
+            .footer { color: #9ca3af; }
+        }
+
+        @media (max-width: 480px) {
+            .metrics-row { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-badge">Session Report</div>
+            <h1>Session Report &mdash; {{DATE}}</h1>
+            <div class="duration-badge">{{DURATION}}</div>
+        </div>
+
+        <div class="metrics-row">
+            <div class="metric-card">
+                <div class="metric-value cyan">{{TOKENS}}</div>
+                <div class="metric-label">Token Usage</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value indigo">{{FILES_TOUCHED}}</div>
+                <div class="metric-label">Files Touched</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value pink">{{COMMITS}}</div>
+                <div class="metric-label">Commits</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value amber">{{DECISIONS}}</div>
+                <div class="metric-label">Decisions Made</div>
+            </div>
+        </div>
+
+        <div class="report-section">
+            <h2>Work Completed</h2>
+            <ul>
+                {{WORK_SUMMARY}}
+            </ul>
+        </div>
+
+        <div class="report-section">
+            <h2>Decisions &amp; Corrections</h2>
+            <ul>
+                {{DECISIONS_LIST}}
+            </ul>
+        </div>
+
+        <div class="report-section">
+            <h2>Files Modified</h2>
+            <ul>
+                {{FILES_LIST}}
+            </ul>
+        </div>
+
+        <div class="report-section layers-section">
+            <h2>Context Layers Used</h2>
+            <div class="layers-pills" id="layersPills">
+                <!-- Populated by JS from {{LAYERS_USED}} -->
+            </div>
+        </div>
+
+        <div class="footer">Generated by /session-report &mdash; {{DATE}}</div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Render layer pills
+            const layersRaw = '{{LAYERS_USED}}';
+            const container = document.getElementById('layersPills');
+            const pillColors = {
+                memory: 'pill-memory', wiki: 'pill-wiki', skills: 'pill-skills',
+                mcp: 'pill-mcp', rules: 'pill-rules', hooks: 'pill-hooks',
+                graph: 'pill-graph', crons: 'pill-crons'
+            };
+
+            if (layersRaw && layersRaw !== '{{LAYERS_USED}}') {
+                layersRaw.split(',').map(l => l.trim()).filter(Boolean).forEach(layer => {
+                    const pill = document.createElement('span');
+                    pill.className = 'layer-pill ' + (pillColors[layer.toLowerCase()] || 'pill-default');
+                    pill.textContent = layer;
+                    container.appendChild(pill);
+                });
+            }
+
+            // Scroll-triggered fade-in
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach((entry, i) => {
+                    if (entry.isIntersecting) {
+                        setTimeout(() => entry.target.classList.add('visible'), i * 80);
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.1 });
+
+            document.querySelectorAll('.metric-card, .report-section').forEach(el => observer.observe(el));
+        });
+    </script>
+</body>
+</html>

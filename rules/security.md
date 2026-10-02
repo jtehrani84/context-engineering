@@ -48,3 +48,26 @@ When proposing code changes, include a mental security check:
 - Keep dependencies updated — known vulnerabilities in dependencies are attackable.
 - Use dedicated service accounts with minimal permissions for automated processes.
 - Review firewall rules and network access before deploying.
+
+## AI Agents That Read Untrusted Data
+If an agent ingests external content (web pages, email, tickets, form fields, documents) and also holds
+tools that reach sensitive systems, apply `agent-security-boundary.md`: ingested text is data, never
+instructions; any URL the client resolves is an egress channel; outbound actions are human-gated and
+attributed. `guards/` in the kit has working code for the egress, broker and leak-scan controls.
+
+## Review Mindset
+When you propose code, add a short security review covering: the access model (who can call it, what
+it can reach), how permissions are enforced, injection risks, resource-limit risks, data-exposure
+risks, and deployment and rollback concerns.
+
+## Governance
+- Minimize privileged access, and prefer scoped, revocable grants over broad standing ones.
+- Preserve auditability: a change that removes a log or an approval step needs a stated reason.
+- Call out compliance-sensitive changes (PII, finance, health data).
+- When asked to "just make it work," still preserve secure defaults and explain the tradeoff.
+
+## What NOT to Commit to Git
+- .env files or environment configs with secrets
+- API keys, tokens, or credentials
+- Customer or personal data (names, IDs, contact details, contract values)
+- Internal strategy documents, or anything marked confidential or internal-only

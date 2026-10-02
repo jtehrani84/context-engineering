@@ -1,28 +1,64 @@
 {
-  // ~/.claude/settings.json — Claude Code configuration
-  // Copy this file to ~/.claude/settings.json and customize for your environment.
+  // ╔══════════════════════════════════════════════════════════════════════╗
+  // ║  REFERENCE ONLY. DO NOT COPY THIS FILE OVER ~/.claude/settings.json ║
+  // ║                                                                     ║
+  // ║  Your settings.json may already hold an auth key, a model, or       ║
+  // ║  endpoint env vars your install wrote. Copying this file over it    ║
+  // ║  erases them.                                                       ║
+  // ║                                                                     ║
+  // ║  ./setup.sh MERGES the kit's hooks into your existing file.         ║
+  // ║  For everything else, copy individual blocks from here by hand.     ║
+  // ╚══════════════════════════════════════════════════════════════════════╝
   //
-  // This controls hooks, permissions, environment variables, and model selection.
-  // Changes here take effect on the next Claude Code session.
+  // Whole-line // comments are allowed here so the file can explain itself. Claude Code's own
+  // settings.json must be plain JSON, so drop the comments when you copy a block.
 
-  // Model selection — use your preferred model
-  "model": "claude-sonnet-4-20250514",
+  // Model selection. Use whatever your account serves; an alias such as "opus" or "sonnet" keeps this
+  // file from going stale when model versions change.
+  "model": "opus",
+
+  // Reasoning effort: low, medium, high, xhigh, or max. Higher is slower and costs more tokens, and a
+  // model that doesn't support a level falls back to the highest one it does. Set it with /effort (press
+  // Enter to save it as your default) or the CLAUDE_CODE_EFFORT_LEVEL env var. How a top-level
+  // "effortLevel" here interacts with per-model defaults has changed between Claude Code versions, so
+  // check /effort in your own session before relying on it.
+  // "effortLevel": "high",
 
   // Environment variables available to hooks and scripts
   "env": {
-    // Your Anthropic API key (if using direct API)
-    // "ANTHROPIC_API_KEY": "sk-ant-...",
+    // The endpoint /review, the second read in /validate, and tools/llm.mjs call (see scripts/llm-call.py).
+    // Any OpenAI-compatible endpoint or the Anthropic API works. Keep the key out of git.
+    // "LLM_BASE_URL": "https://api.example.com/v1",
+    // "LLM_API_KEY": "your-key-here",
+    // "LLM_MODEL": "your-default-model-id",
 
-    // Exa API key for web intelligence crons
+    // Exa API key for the web-scan cron
     // "EXA_API_KEY": "exa-...",
 
     // Custom variables for your hooks
-    "CLAUDE_WIKI_DIR": "~/.claude/wiki",
-    "CLAUDE_MEMORY_DIR": "~/.claude/memory"
+    "CLAUDE_WIKI_DIR": "~/.claude/wiki"
+
+    // Auto-compact tip (long sessions on a large-context model).
+    // Claude Code compacts at CLAUDE_CODE_AUTO_COMPACT_WINDOW (tokens, plain integer), not at the model's
+    // real context size. CLAUDE_AUTOCOMPACT_PCT_OVERRIDE (1 to 100) then sets what percentage of that window
+    // triggers compaction, and it can only lower the trigger, never raise it. If compaction fires far earlier
+    // than you expect, print both values in a session before changing anything:
+    //   echo $CLAUDE_CODE_AUTO_COMPACT_WINDOW $CLAUDE_AUTOCOMPACT_PCT_OVERRIDE
+    // If a management tool rewrites the "env" block of ~/.claude/settings.json on refresh, a window you set
+    // here can be reset. A project-level <project>/.claude/settings.local.json is a safer place for the
+    // override. Re-check after any upgrade.
+    // "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "1000000",
   },
 
   // Permissions — tools Claude can use without asking each time
   "permissions": {
+    // Starting permission mode for every session. This key lives UNDER "permissions" (not top level).
+    // Values: "default" (ask before edits and commands), "acceptEdits" (auto-approve file edits), "plan"
+    // (read-only planning), "auto" (a classifier reviews each action; availability depends on your plan),
+    // "dontAsk" (deny anything not pre-approved), "bypassPermissions" (never prompt; only inside a
+    // disposable container or VM). Start at "default" until you trust your allow and ask lists below.
+    "defaultMode": "default",
+
     "allow": [
       // Read-only operations (safe to auto-approve)
       "Bash(git status)",
@@ -37,16 +73,45 @@
       "Bash(wc *)",
       "Bash(which *)",
 
-      // MCP tools you trust (add your own)
+      // MCP tools you trust (read-only ones)
       "mcp__github__get_file_contents",
       "mcp__github__list_issues",
 
-      // File operations in safe directories
+      // File operations in safe directories.
+      // Edit(path) governs every built-in tool that writes files, Write included. A Write(path) rule is never
+      // matched by the file permission checks, so don't write one. "**" matches recursively, "*" one level.
+      // Auto memory lives under ~/.claude/projects/<project>/memory/ and Claude Code writes it without a rule.
       "Read",
-      "Write(~/.claude/memory/*)",
-      "Write(~/.claude/wiki/*)",
-      "Edit(~/.claude/memory/*)",
-      "Edit(~/.claude/wiki/*)"
+      "Edit(~/.claude/wiki/**)"
+    ],
+
+    // Outbound actions that leave your machine or speak in your name. "ask" makes Claude stop and show you the
+    // exact call before it runs, even when a narrower allow rule also matches. Rules are evaluated deny, then
+    // ask, then allow, and the first match wins. This is the config form of "a human approves every send".
+    // A Bash prefix rule only matches the command as written, so "git -C <dir> push" slips past "git push *".
+    // If a push must never go through unseen, back the rule with a PreToolUse hook (guardrail.py is the starting point).
+    // MCP tool names follow mcp__<server name in your .mcp.json>__<tool>. Rename these to match your servers.
+    "ask": [
+      // Chat: anything that posts, schedules, or edits a shared surface
+      "mcp__slack__slack_send_message",
+      "mcp__slack__slack_schedule_message",
+      "mcp__slack__slack_add_reaction",
+
+      // Code hosting: anything visible to other people
+      "mcp__github__create_issue",
+      "mcp__github__add_issue_comment",
+      "mcp__github__create_pull_request",
+      "mcp__github__create_pull_request_review",
+      "mcp__github__merge_pull_request",
+      "mcp__github__push_files",
+      "mcp__github__create_or_update_file",
+      "Bash(git push *)",
+      "Bash(gh pr create *)",
+      "Bash(gh pr merge *)"
+
+      // Email and calendar: add the send and invite tools of whichever server you install, for example
+      // "mcp__<your-mail-server>__send_message",
+      // "mcp__<your-calendar-server>__create_event"
     ],
     "deny": [
       // Never auto-approve destructive operations
@@ -57,65 +122,111 @@
     ]
   },
 
-  // Hooks — scripts that fire at specific lifecycle events
+  // Hooks — scripts that fire at specific lifecycle events. ./setup.sh wires the default set for you.
+  // Format: "matcher" is a string (tool name, pipe-separated list, or omitted to match everything)
+  //         "hooks" is an array of command objects
+  // The May 2026 version of this file showed a flat {"type", "command", "matcher": {"tool_name": ...}} shape
+  // that Claude Code does not read. ./setup.sh rewrites those entries into the nested form below.
   "hooks": {
     // Fires once at the start of every session
     "SessionStart": [
       {
-        "type": "command",
-        "command": "python3 ~/.claude/hooks/scripts/session-init.py"
+        "hooks": [
+          { "type": "command", "command": "python3 ~/.claude/hooks/scripts/session-init.py" }
+        ]
       }
     ],
 
     // Fires before Claude executes any tool
     "PreToolUse": [
       {
-        // Block dangerous bash commands
-        "type": "command",
-        "command": "python3 ~/.claude/hooks/scripts/guardrail.py",
-        "matcher": {
-          "tool_name": "Bash"
-        }
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "python3 ~/.claude/hooks/scripts/guardrail.py" }
+        ]
       },
       {
-        // Check for hallucinated domain terms on file writes
-        "type": "command",
-        "command": "python3 ~/.claude/hooks/scripts/domain-verification.py",
-        "matcher": {
-          "tool_name": ["Edit", "Write"]
-        }
+        // Flags commonly hallucinated terms from your field (list them in ~/.claude/domain-terms.json)
+        "matcher": "Edit|Write",
+        "hooks": [
+          { "type": "command", "command": "python3 ~/.claude/hooks/scripts/domain-verification.py" }
+        ]
       },
       {
-        // Validate schema/types before queries
-        "type": "command",
-        "command": "python3 ~/.claude/hooks/scripts/schema-check.py",
-        "matcher": {
-          "tool_name": "Bash"
-        }
+        // Checks column names in SQL commands against ~/.claude/schema.json (silent without that file)
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "python3 ~/.claude/hooks/scripts/schema-check.py" }
+        ]
       }
     ],
 
     // Fires after Claude completes a tool execution
     "PostToolUse": [
       {
-        // Scan written content for AI-sounding language
-        "type": "command",
-        "command": "python3 ~/.claude/hooks/scripts/output-quality-gate.py",
-        "matcher": {
-          "tool_name": "Write"
-        }
+        "matcher": "Write",
+        "hooks": [
+          { "type": "command", "command": "python3 ~/.claude/hooks/scripts/output-quality-gate.py" }
+        ]
       },
       {
-        // Auto-index entities into knowledge graph
-        "type": "command",
-        "command": "python3 ~/.claude/hooks/scripts/graph-auto-index.py",
-        "matcher": {
-          "tool_name": ["Write", "Edit"]
-        }
+        // Voice engine (~/.claude/tools/aiscore.mjs: the generic detector plus your overlay). Silent if node or the engine is missing.
+        "matcher": "Write",
+        "hooks": [
+          { "type": "command", "command": "python3 ~/.claude/hooks/scripts/voice-tell-gate.py" }
+        ]
+      },
+      {
+        // After a deploy or publish command, reminds Claude to prove the change on the running system
+        // before saying "shipped". Silent on everything else. Set KIT_PROOF_GATES=block to feed the
+        // reminder back as a block instead of a nudge.
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "python3 ~/.claude/hooks/scripts/deploy-proof-gate.py" }
+        ]
+      },
+      {
+        // Opt-in (setup.sh wires it with KIT_WIRE_PROOF_GATES=1): on an external-facing doc that carries
+        // over-confident claim language, reminds Claude to re-read the claims against their sources.
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": "python3 ~/.claude/hooks/scripts/claim-faithfulness-gate.py" }
+        ]
+      },
+      {
+        // Opt-in (same switch): on an audit that calls something fabricated, reminds Claude to check the
+        // source where the claim would be true before the verdict stands.
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": "python3 ~/.claude/hooks/scripts/refutation-oracle-gate.py" }
+        ]
+      },
+      {
+        // Opt-in, not wired by setup: indexes entities from the files you write into a local SQLite graph
+        // that /graph-query reads. Needs only python3.
+        "matcher": "Write|Edit",
+        "hooks": [
+          { "type": "command", "command": "python3 ~/.claude/hooks/scripts/graph-auto-index.py" }
+        ]
+      }
+    ],
+
+    // Fires when Claude needs you: a permission prompt, or a long task that finished while you were away.
+    // Opt-in; setup.sh does NOT wire this one. A Notification hook can't block or change anything, it only
+    // alerts you, so it is safe to try. This is the macOS form. On Linux use notify-send, in a terminal
+    // multiplexer use its own display-message command. The event payload arrives as JSON on stdin with
+    // "message", "title" and "notification_type" if you want the real text instead of this fixed string.
+    "Notification": [
+      {
+        "hooks": [
+          { "type": "command", "command": "osascript -e 'display notification \"Claude Code needs your attention\" with title \"Claude Code\"'" }
+        ]
       }
     ],
 
     // Fires when Claude's stop turn completes
     "Stop": []
   }
+
+  // MCP servers live in ~/.claude/.mcp.json (a separate file). See README "Recommended MCP Servers".
 }

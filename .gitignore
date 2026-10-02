@@ -27,3 +27,10 @@ domain-terms.json
 
 # Logs
 *.log
+
+# Node
+node_modules/
+
+# Guards: your private leak-scan denylist and protected-paths list never get committed
+guards/denylist.local.json
+guards/protected-paths.txt

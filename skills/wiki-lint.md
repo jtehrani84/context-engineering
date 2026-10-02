@@ -1,66 +1,84 @@
-# /wiki-lint
+Health-check the wiki. Find issues and fix them.
 
-Wiki health check. Finds broken links, orphaned pages, stale content, and structural issues.
+## Checks to Run
 
-## Trigger
-When the user says: "wiki lint", "check the wiki", "wiki health", "broken links?", "wiki maintenance"
+Read every file in `~/[YOUR-PROJECT]/wiki/` and analyze:
 
-## Workflow
+### 1. Orphan Pages
+Pages with NO inbound links from other wiki pages. Every page should be reachable from at least one other page.
 
-### 1. Structural check
-- Does wiki/index.md exist and list all pages?
-- Are all directories populated (people, entities, concepts, projects, tools, events, insights)?
-- Are template files present in wiki/people/?
+### 2. Dead Links
+Links that point to pages that don't exist. Either the target was never created or was renamed.
 
-### 2. Link validation
-For every wiki page:
-- Extract all internal links (relative paths)
-- Verify each target exists
-- Report dead links with source -> broken target
+### 3. Contradictions
+Facts stated differently on different pages. Flag with specific file paths and line numbers.
 
-### 3. Orphan detection
-- Pages that exist but aren't linked from index.md
-- Pages that exist but aren't linked from any other page
-- People pages never referenced in memory or other wiki pages
+### 4. Stale Information
+Pages that reference dates, versions, or statuses that may be outdated. Cross-reference with:
+- Current git state
+- Memory files in `~/.claude/projects/[YOUR-PROJECT-PATH]/memory/`
+- Actual file system state
 
-### 4. Content quality
-- Pages with no content beyond the template structure
-- Pages not modified in 90+ days (potentially stale)
-- Duplicate content (same entity described in two places)
+### 5. Missing Pages
+Concepts, tools, or entities mentioned repeatedly across wiki pages but with no dedicated page.
 
-### 5. Report
+### 6. Thin Pages
+Pages with less than 5 lines of content. These should either be expanded or merged into a parent page.
 
+### 7. Index Completeness
+Compare `wiki/index.md` entries against actual files in the wiki directories. Flag:
+- Files that exist but aren't in the index
+- Index entries that point to files that don't exist
+
+### 8. Cross-Reference Density
+Pages in `wiki/concepts/` and `wiki/projects/` should have at least 2 outbound links. Isolated pages aren't contributing to the knowledge graph.
+
+## Report Format
+
+Write the report to `wiki/lint-report.md`:
+
+```markdown
+# Wiki Lint Report — YYYY-MM-DD
+
+## Summary
+- Total pages: N
+- Orphan pages: N
+- Dead links: N  
+- Contradictions: N
+- Stale entries: N
+- Missing pages: N
+- Thin pages: N
+- Index gaps: N
+
+## Health Score: X/10
+
+## Issues Found
+
+### Critical (fix now)
+...
+
+### Warning (fix soon)
+...
+
+### Info (nice to have)
+...
+
+## Suggested Actions
+1. ...
 ```
-## Wiki Health Report: [date]
 
-### Structure: [PASS/FAIL]
-- Index: [exists/missing]
-- Directories: [all present / missing: X]
-- Templates: [present/missing]
+After writing the report, offer to fix the issues automatically.
 
-### Links: [N broken / N total]
-| Source | Broken Link |
-|--------|-------------|
-| [page] | [target that doesn't exist] |
+## Write Nudge Timestamp
 
-### Orphans: [N found]
-- [page not linked from anywhere]
-
-### Stale Pages: [N pages >90 days]
-- [page] — last modified [date]
-
-### Empty Pages: [N]
-- [page with only template content]
-
-### Suggested Actions
-1. [Fix broken link: source -> correct target]
-2. [Link orphan from index.md]
-3. [Review/update stale page]
+```bash
+echo "YYYY-MM-DDTHH:MM:SS" > ~/.claude/projects/[YOUR-PROJECT-PATH]/memory/.last-wiki-lint
 ```
 
-## Rules
-- Run after any bulk wiki update (post /ingest, post /curate)
-- Don't auto-delete orphans — they might be intentionally standalone
-- Stale doesn't mean wrong — some reference pages don't change often
-- Always suggest the fix, don't just report the problem
-- Keep report concise — focus on actionable issues only
+## Append to Log
+```
+## [YYYY-MM-DD] lint | Wiki health check
+- Health score: X/10
+- Issues found: N (N critical, N warning, N info)
+- Auto-fixed: N
+```

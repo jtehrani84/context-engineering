@@ -1,31 +1,40 @@
 # Wiki Index
 
-Master catalog of all knowledge pages. Claude uses this to navigate.
+Master index of every page in this wiki. Claude keeps it current when it adds a page (`/ingest` does this), and you prune it. Pages load on demand, so an entry here costs one line of context and the page itself costs nothing until it is opened.
 
-## People
-- [_template-colleague.md](people/_template-colleague.md) — Template for colleague pages
-- [_template-external.md](people/_template-external.md) — Template for external contact pages
+Last updated: [YYYY-MM-DD]
 
-## Entities
-*(Companies, products, organizations — add pages as you encounter them)*
-
-## Concepts
-*(Patterns, frameworks, methodologies — grows from /ingest and /scan-intel)*
+## How to Use
+- Each entry is one line: a link and a sentence that says when to open the page.
+- Run `/curate` weekly to flag stale entries, or `/wiki-lint` to find dead links and unlisted pages.
+- Every change to the wiki gets a line in `log.md`, newest at the bottom.
+- Pages you don't want listed, routed to or shared are local-only. See the convention in `README.md`.
 
 ## Projects
-*(One page per active project — status, key decisions, context)*
+<!-- Active engagements and builds: what, why, status, key links -->
+
+## Concepts
+<!-- Architecture patterns, standards and frameworks you reference repeatedly -->
+
+## Entities
+<!-- Companies, products and competitors. See entities/README.md -->
+
+## People
+<!-- Stakeholder profiles. See people/README.md. Keep these local-only -->
 
 ## Tools
-*(Tool documentation, setup guides, integration notes)*
+<!-- Tool configs, CLI notes, integration how-tos -->
 
 ## Events
-*(Conference notes, event summaries, key takeaways)*
+<!-- Conferences, launches, customer workshops -->
 
 ## Insights
-*(Research findings, analytical work, non-obvious conclusions)*
+<!-- Articles and sources you have processed, with what you took from them -->
 
----
+## Decisions
+<!-- Architectural decision records: the reasoning behind settled debates -->
+<!-- Example: decisions/ADR-001-auth-approach.md -->
 
-**To add a page:** Create the .md file in the appropriate directory, then add a link here.
+## Inbox
 
-**To find something:** Tell Claude what you're looking for — it reads this index to route to the right page.
+Unprocessed items live in `inbox.md`. Crons and sessions append there, and `/curate` turns each item into a page or discards it.

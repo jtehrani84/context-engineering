@@ -1,0 +1,6 @@
+{
+  "_note": "Copy to denylist.local.json (gitignored) and fill in YOUR private terms: customer and account names, internal hostnames, project IDs, codenames, people. publicTerms are names that are fine inside your company but must not reach a public audience (checked only with --tier anyone). Keep the real file out of every repo. This example ships empty on purpose.",
+  "terms": [],
+  "patterns": [],
+  "publicTerms": []
+}

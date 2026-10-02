@@ -12,7 +12,12 @@ This is a TEMPLATE. Customize for your tech stack:
 - CLI tools: validate flag names against known options
 
 By default, this validates SQL-style queries against a schema file.
-Create ~/.claude/schema.json with your schema definition.
+Create ~/.claude/schema.json with your schema definition. With no schema file the hook says nothing.
+
+What it answers (Claude Code hooks contract):
+  - a misspelled column on a table your schema knows -> deny, with "Did you mean" suggestions
+  - a table your schema doesn't list                -> a note, never a deny (your schema may be partial)
+  - everything else, including any error            -> no output, so the command runs normally
 
 Schema file format:
 {
@@ -34,17 +39,19 @@ from pathlib import Path
 # Schema file location (customize this)
 SCHEMA_FILE = Path.home() / ".claude" / "schema.json"
 
-# Load schema if it exists
+# Load schema if it exists. A malformed file is ignored (fail open), never a reason to block.
 SCHEMA = {}
 if SCHEMA_FILE.exists():
     try:
         with open(SCHEMA_FILE) as f:
             SCHEMA = json.load(f)
-    except (json.JSONDecodeError, IOError):
-        pass
+        if not isinstance(SCHEMA, dict) or not isinstance(SCHEMA.get("tables", {}), dict):
+            SCHEMA = {}
+    except (ValueError, IOError):
+        SCHEMA = {}
 
 
-def extract_sql_info(command: str) -> dict | None:
+def extract_sql_info(command):
     """
     Extract table name and fields from a SQL-style query command.
     Returns None if command doesn't contain a query.
@@ -82,8 +89,8 @@ def extract_sql_info(command: str) -> dict | None:
     }
 
 
-def validate_against_schema(query_info: dict) -> list:
-    """Validate table and field names against loaded schema."""
+def validate_against_schema(query_info):
+    """Return (field_issues, table_note). Field issues deny; an unknown table is only a note."""
     issues = []
     tables = SCHEMA.get("tables", {})
 
@@ -96,8 +103,7 @@ def validate_against_schema(query_info: dict) -> list:
         # Try fuzzy match
         matches = difflib.get_close_matches(table, list(tables.keys()), n=3, cutoff=0.6)
         suggestion = f" Did you mean: {', '.join(matches)}?" if matches else ""
-        issues.append(f"Table '{table}' not found in schema.{suggestion}")
-        return issues
+        return [], f"Table '{table}' is not in ~/.claude/schema.json.{suggestion} Columns were not checked."
 
     # Get actual table name and its fields
     actual_table = table_lower[table.lower()]
@@ -111,59 +117,52 @@ def validate_against_schema(query_info: dict) -> list:
             suggestion = f" Did you mean: {', '.join(matches)}?" if matches else ""
             issues.append(f"Field '{field}' not found on {actual_table}.{suggestion}")
 
-    return issues
+    return issues, ""
 
 
 def main():
     """Main entry point."""
-    # Read hook input
-    if sys.stdin.isatty():
-        print(json.dumps({"result": "continue"}))
-        sys.exit(0)
-
     try:
-        hook_input = json.load(sys.stdin)
+        hook_input = json.loads(sys.stdin.read())
     except Exception:
-        print(json.dumps({"result": "continue"}))
+        sys.exit(0)
+    if not isinstance(hook_input, dict):
         sys.exit(0)
 
     tool_name = hook_input.get("tool_name", "")
     tool_input = hook_input.get("tool_input", {})
 
-    # Only process Bash commands
-    if tool_name != "Bash":
-        print(json.dumps({"result": "continue"}))
+    # Only process Bash commands, and only when a schema is configured
+    if tool_name != "Bash" or not SCHEMA:
         sys.exit(0)
 
     command = tool_input.get("command", "") if isinstance(tool_input, dict) else str(tool_input)
-    if not command:
-        print(json.dumps({"result": "continue"}))
+    if not command or not isinstance(command, str):
         sys.exit(0)
 
-    # Skip if no schema loaded
-    if not SCHEMA:
-        print(json.dumps({"result": "continue"}))
-        sys.exit(0)
-
-    # Extract query info
-    query_info = extract_sql_info(command)
-    if not query_info:
-        print(json.dumps({"result": "continue"}))
-        sys.exit(0)
-
-    # Validate against schema
-    issues = validate_against_schema(query_info)
+    try:
+        query_info = extract_sql_info(command)
+        if not query_info:
+            sys.exit(0)
+        issues, note = validate_against_schema(query_info)
+    except Exception:
+        sys.exit(0)  # fail open: a bug here must never block a valid query
 
     if issues:
-        reason = " | ".join(issues)
-        output = {
-            "result": "block",
-            "reason": f"Schema validation failed: {reason}",
-        }
-    else:
-        output = {"result": "continue"}
-
-    print(json.dumps(output))
+        print(json.dumps({
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "deny",
+                "permissionDecisionReason": "Schema validation failed: " + " | ".join(issues),
+            }
+        }))
+    elif note:
+        print(json.dumps({
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "additionalContext": "Schema check: " + note,
+            }
+        }))
     sys.exit(0)
 
 

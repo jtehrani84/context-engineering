@@ -1,54 +1,68 @@
-# /context-load
+Load key state from another project into the current session. Gives cross-project awareness without switching directories.
 
-Cross-project context restore. Loads relevant state from another project into the current session.
+Takes project name or path as argument. Examples:
+- `/context-load "my-project"` — load project state
+- `/context-load "~/other-repo"` — load from explicit path
 
-## Trigger
-When the user says: "context load", "load context from [project]", "switch context", "bring in [project] context", "what was I doing on [project]?"
+## Step 1: Resolve Project Directory
 
-## Workflow
+Search for matching directory in your common project locations (home dir, ~/projects/, ~/repos/). If an explicit path is given, use it directly.
 
-### 1. Identify the source project
-- Check `~/.claude/projects/` for available project memory directories
-- If ambiguous, list available projects and ask which one
+## Step 2: Load Context (run ALL in parallel)
 
-### 2. Load relevant context
-From the source project's memory:
-- Read MEMORY.md (index of all topic files)
-- Identify the 3-5 most recently modified memory files
-- Scan for active decisions, open questions, and blockers
+### 1. Project CLAUDE.md (first 100 lines for key context)
+Read `[PROJECT_DIR]/CLAUDE.md` if it exists.
 
-### 3. Surface the state
-
-```
-## Context Load: [Project Name]
-
-### Last Session
-- Date: [last modified date of memory files]
-- Focus: [what was being worked on]
-- Status: [where things left off]
-
-### Active Decisions
-- [Decision 1 from memory]
-- [Decision 2 from memory]
-
-### Key Context (carry forward)
-- [Important fact/constraint from memory]
-- [Important fact/constraint from memory]
-- [Important fact/constraint from memory]
-
-### Open Questions
-- [Anything unresolved]
-
-### Suggested First Action
-[What to do to pick up where you left off]
+### 2. Recent Git Activity
+```bash
+cd [PROJECT_DIR] && git log --oneline -10 2>/dev/null
 ```
 
-### 4. Offer to set routing
-"Should I add this project to your session-init routing table so this context loads automatically when you work in that directory?"
+### 3. Current Branch & Status
+```bash
+cd [PROJECT_DIR] && git branch --show-current && git status --short 2>/dev/null
+```
 
-## Rules
-- Only load the most relevant 3-5 items — don't dump the entire memory
-- Focus on decisions and state, not history
-- If the project has been dormant for 30+ days, mention that (context may be stale)
-- Don't modify the source project's memory — read only
-- Suggest updating stale items if they look outdated
+### 4. Deployment Status (if applicable)
+Check for health endpoints, deployment configs, or CI status if the project has them.
+
+### 5. Key Files & Structure
+```bash
+cd [PROJECT_DIR] && ls -la 2>/dev/null
+```
+
+### 6. Related Memory Files
+Search `~/.claude/projects/[YOUR-PROJECT-PATH]/memory/` for files mentioning the project name.
+
+## Step 3: Output Summary
+
+```
+====================================
+  CONTEXT LOADED — [Project Name]
+====================================
+
+STATUS: [active development / complete / exploring]
+BRANCH: [current branch]
+LAST COMMIT: [hash] — [message] — [date]
+UNCOMMITTED: [yes/no, count of changes]
+
+KEY FACTS:
+  - [Most important thing to know about current state]
+  - [Second most important]
+  - [Third]
+
+DEPLOYMENT:
+  [Status if applicable, or "N/A — not deployed"]
+
+RECENT ACTIVITY (last 10 commits):
+  [commit list]
+
+ACTIVE ISSUES / NEXT STEPS:
+  [From CLAUDE.md or memory files]
+
+RELATED MEMORY FILES:
+  [List of relevant memory files with one-line summaries]
+====================================
+```
+
+This context is now available in the current session. Reference it when working on cross-project tasks.

@@ -30,31 +30,44 @@
 <p class="subtitle">Complete inventory of what you get. Print this for reference.</p>
 
 <div class="section">
-<h2>Rules (4 files)</h2>
+<h2>Rules (13 files)</h2>
 <table>
     <tr><th>File</th><th>What It Does</th></tr>
-    <tr><td><code>communication.md</code></td><td>Voice standards, anti-slop (50+ banned words), email rules, writing rules</td></tr>
-    <tr><td><code>security.md</code></td><td>Access control, secrets handling, input validation, security review</td></tr>
+    <tr><td><code>communication.md</code></td><td>Voice standards, anti-slop (50+ banned words), email rules, executive summaries, follow-ups</td></tr>
+    <tr><td><code>security.md</code></td><td>Access control, secrets handling, input validation, security review, governance</td></tr>
     <tr><td><code>architecture.md</code></td><td>Decision framework, preferred patterns, anti-patterns, change design</td></tr>
     <tr><td><code>code-quality.md</code></td><td>Testing behavior, error handling, separation of concerns, review mindset</td></tr>
+    <tr><td><code>testing-quality.md</code></td><td>Meaningful tests, plus proof-artifact and persistence-proof rules</td></tr>
+    <tr><td><code>proof-before-claim.md</code></td><td>"Done" needs a signal from the running system</td></tr>
+    <tr><td><code>findings-are-perishable.md</code></td><td>Re-verify an old finding against the current artifact before acting</td></tr>
+    <tr><td><code>claims-faithful-to-source.md</code></td><td>Re-read claims against their sources before an external doc ships</td></tr>
+    <tr><td><code>refutation-needs-the-right-oracle.md</code></td><td>Check the source where a claim would be true before calling it false</td></tr>
+    <tr><td><code>structural-voice.md</code></td><td>Structure-level anti-AI rules: symmetry, cadence, calibrated hedging</td></tr>
+    <tr><td><code>agent-security-boundary.md</code></td><td>Agents that read outside data and hold tools: data is not instructions, default-deny egress</td></tr>
+    <tr><td><code>tiered-orchestration.md</code></td><td>Vendor-neutral model tiers: cheap for fan-out, strongest for the judge, a check on anything cheap</td></tr>
+    <tr><td><code>context-mode-policy.md</code></td><td>When to compress tool output and when to read directly</td></tr>
 </table>
 </div>
 
 <div class="section">
-<h2>Hooks (6 scripts)</h2>
+<h2>Hooks (10 scripts: 7 wired by setup, 3 opt-in)</h2>
 <table>
     <tr><th>File</th><th>When</th><th>What</th></tr>
     <tr><td><code>session-init.py</code></td><td>Session start</td><td>Routes context from directory + git branch</td></tr>
-    <tr><td><code>guardrail.py</code></td><td>Before Bash</td><td>Blocks dangerous commands</td></tr>
+    <tr><td><code>guardrail.py</code></td><td>Before Bash</td><td>Blocks force-push to main, rm -rf on home or root; warns on secrets</td></tr>
     <tr><td><code>domain-verification.py</code></td><td>Before Edit/Write</td><td>Catches hallucinated domain terms</td></tr>
+    <tr><td><code>schema-check.py</code></td><td>Before Bash</td><td>Checks SQL column names against your schema file</td></tr>
     <tr><td><code>output-quality-gate.py</code></td><td>After Write</td><td>Scans for AI-slop words</td></tr>
-    <tr><td><code>graph-auto-index.py</code></td><td>After Write/Edit</td><td>Indexes entities into knowledge graph</td></tr>
-    <tr><td><code>schema-check.py</code></td><td>Before Bash</td><td>Validates schema/types before queries</td></tr>
+    <tr><td><code>voice-tell-gate.py</code></td><td>After Write</td><td>Runs the voice engine on written docs</td></tr>
+    <tr><td><code>deploy-proof-gate.py</code></td><td>After Bash</td><td>After a deploy, asks for proof on the running system</td></tr>
+    <tr><td><code>claim-faithfulness-gate.py</code></td><td>After Write/Edit (opt-in)</td><td>Re-read claims against sources</td></tr>
+    <tr><td><code>refutation-oracle-gate.py</code></td><td>After Write/Edit (opt-in)</td><td>Check the right source before "fabricated"</td></tr>
+    <tr><td><code>graph-auto-index.py</code></td><td>After Write/Edit (opt-in)</td><td>Indexes entities into the knowledge graph</td></tr>
 </table>
 </div>
 
 <div class="section">
-<h2>Skills (21 commands)</h2>
+<h2>Skills (28 commands)</h2>
 <table>
     <tr><th>Skill</th><th>Purpose</th></tr>
     <tr><td><code>/research-prep</code></td><td>Pre-meeting intelligence gathering</td></tr>
@@ -64,9 +77,16 @@
     <tr><td><code>/presentation-prep</code></td><td>Talk/demo prep with delivery coaching</td></tr>
     <tr><td><code>/action-plan</code></td><td>Multi-step initiative planning</td></tr>
     <tr><td><code>/design-doc</code></td><td>Architecture/design document</td></tr>
-    <tr><td><code>/validate</code></td><td>Cross-model quality gate (SHIP/FIX/REWRITE)</td></tr>
-    <tr><td><code>/voice-check</code></td><td>Anti-slop scanner with replacements</td></tr>
+    <tr><td><code>/gas-deploy</code></td><td>Apps Script push + deploy + verify</td></tr>
+    <tr><td><code>/validate</code></td><td>Quality gate with a second lab's read (SHIP/FIX/REWRITE)</td></tr>
+    <tr><td><code>/review</code></td><td>Adversarial review by a model from another lab</td></tr>
+    <tr><td><code>/voice-check</code></td><td>Anti-slop scan through the voice engine</td></tr>
+    <tr><td><code>/voice-judge</code></td><td>Gestalt read that can veto a clean voice score</td></tr>
     <tr><td><code>/content-review</code></td><td>6-dimension scoring rubric</td></tr>
+    <tr><td><code>/claim-audit</code></td><td>Re-verify claims against their sources</td></tr>
+    <tr><td><code>/plan-audit</code></td><td>Refute a plan's code claims before building</td></tr>
+    <tr><td><code>/execution-truth</code></td><td>Runtime-prove writes, endpoints and steps</td></tr>
+    <tr><td><code>/provenance-audit</code></td><td>Right-source check before any "fabricated" verdict</td></tr>
     <tr><td><code>/morning-brief</code></td><td>Daily context load</td></tr>
     <tr><td><code>/scan-intel</code></td><td>Intelligence sweep (ADOPT/EVALUATE/WATCH)</td></tr>
     <tr><td><code>/ingest</code></td><td>Process source into wiki pages</td></tr>
@@ -87,9 +107,24 @@
     <tr><th>Script</th><th>Schedule</th><th>What</th></tr>
     <tr><td><code>web-scan.py</code></td><td>4:30 AM daily</td><td>5-query web intelligence via Exa API</td></tr>
     <tr><td><code>hn-scan.py</code></td><td>4:45 AM daily</td><td>HN Algolia search (free, no auth)</td></tr>
-    <tr><td><code>github-scan.py</code></td><td>4:45 AM daily</td><td>Trending repos + release monitoring</td></tr>
+    <tr><td><code>github-scan.py</code></td><td>4:50 AM daily</td><td>Trending repos + release monitoring</td></tr>
     <tr><td><code>morning-digest.sh</code></td><td>5:00 AM daily</td><td>Claude synthesizes raw into wiki/inbox.md</td></tr>
-    <tr><td><code>memory-decay-check.sh</code></td><td>Sunday weekly</td><td>Flags memory files >45 days old</td></tr>
+    <tr><td><code>curate-prep.py</code></td><td>Sunday 11:00 PM</td><td>Read-only prep for /curate</td></tr>
+    <tr><td><code>memory-decay-check.sh</code></td><td>By hand</td><td>Flags memory files >45 days old</td></tr>
+    <tr><td><code>backup-sessions.sh</code></td><td>Opt-in, twice daily</td><td>Local snapshots of session transcripts</td></tr>
+</table>
+</div>
+
+<div class="section">
+<h2>Also in the Kit</h2>
+<table>
+    <tr><th>Component</th><th>What</th></tr>
+    <tr><td><code>tools/aiscore.mjs</code></td><td>Voice engine: vendored MIT detector + your overlay + a calibration fuse</td></tr>
+    <tr><td><code>harness-evolution/</code></td><td>Held-out eval harness for guard changes</td></tr>
+    <tr><td><code>workflows/</code></td><td>The four audit workflows behind the proof-family skills</td></tr>
+    <tr><td><code>scripts/llm-call.py</code></td><td>One prompt to any OpenAI-compatible endpoint or the Anthropic API (LLM_BASE_URL, LLM_API_KEY)</td></tr>
+    <tr><td><code>guards/</code></td><td>Egress guard, token broker, reducer, path protection, leak scan, with tests (library, not installed)</td></tr>
+    <tr><td><code>templates/</code></td><td>CLAUDE.md, memory conventions, wiki log, report and Apps Script templates</td></tr>
 </table>
 </div>
 

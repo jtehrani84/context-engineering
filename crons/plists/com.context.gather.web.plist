@@ -2,13 +2,20 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <!-- Label must match the filename (minus .plist) -->
     <key>Label</key>
     <string>com.context.gather.web</string>
+
+    <!-- The script to run -->
     <key>ProgramArguments</key>
     <array>
         <string>/usr/bin/python3</string>
+        <!-- __SCRIPT_DIR__ is replaced by manage.sh install -->
         <string>__SCRIPT_DIR__/gather/web-scan.py</string>
     </array>
+
+    <!-- Schedule: 4:30 AM daily. launchd runs a missed job when the Mac wakes, so a sleeping laptop
+         doesn't skip the day. (This key must appear once; a second copy is ambiguous.) -->
     <key>StartCalendarInterval</key>
     <dict>
         <key>Hour</key>
@@ -16,14 +23,30 @@
         <key>Minute</key>
         <integer>30</integer>
     </dict>
-    <key>StandardOutPath</key>
-    <string>/tmp/context-gather-web.log</string>
-    <key>StandardErrorPath</key>
-    <string>/tmp/context-gather-web.err</string>
+
+    <!-- Environment variables -->
     <key>EnvironmentVariables</key>
     <dict>
+        <!-- Set your Exa API key here. launchd jobs do not read your shell profile. -->
+        <key>EXA_API_KEY</key>
+        <string>YOUR_EXA_API_KEY_HERE</string>
         <key>PATH</key>
-        <string>/usr/local/bin:/usr/bin:/bin</string>
+        <!-- __HOME__ is replaced by manage.sh install -->
+        <string>__HOME__/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
     </dict>
+
+    <!-- Logging -->
+    <key>StandardOutPath</key>
+    <string>/tmp/context-crons-web-stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/context-crons-web-stderr.log</string>
+
+    <!-- Working directory -->
+    <key>WorkingDirectory</key>
+    <string>__SCRIPT_DIR__</string>
+
+    <!-- Don't keep running — one-shot -->
+    <key>KeepAlive</key>
+    <false/>
 </dict>
 </plist>

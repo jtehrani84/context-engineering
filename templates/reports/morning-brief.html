@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Morning Brief — {{DATE}}</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            font-size: 16px;
+            line-height: 1.7;
+            color: #E2E8F0;
+            background: #0F172A;
+            overflow-x: hidden;
+            padding: 48px 24px;
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #1E293B; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+
+        .container {
+            max-width: 960px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header-badge {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 20px;
+            background: rgba(251, 191, 36, 0.1);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            color: #FBBF24;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 16px;
+        }
+
+        .header h1 {
+            font-size: clamp(28px, 5vw, 40px);
+            font-weight: 800;
+            color: #F8FAFC;
+            margin-bottom: 12px;
+        }
+
+        /* Signal Strength */
+        .signal-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 12px;
+        }
+
+        .signal-badge {
+            display: inline-block;
+            padding: 4px 14px;
+            border-radius: 16px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .signal-low { background: rgba(248, 113, 113, 0.15); color: #F87171; }
+        .signal-medium { background: rgba(251, 191, 36, 0.15); color: #FBBF24; }
+        .signal-high { background: rgba(52, 211, 153, 0.15); color: #34D399; }
+
+        /* Sources Row */
+        .sources-row {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            flex-wrap: wrap;
+            margin-bottom: 40px;
+            font-size: 13px;
+            color: #64748B;
+        }
+
+        .sources-row span {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .source-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .dot-exa { background: #22D3EE; }
+        .dot-slack { background: #818CF8; }
+        .dot-x { background: #F472B6; }
+
+        /* Category Cards */
+        .category-card {
+            background: #1E293B;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 24px 28px;
+            margin-bottom: 20px;
+            border-left: 4px solid;
+            opacity: 0;
+            transform: translateY(16px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+
+        .category-card.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .category-card.cat-product { border-left-color: #22D3EE; }
+        .category-card.cat-competitive { border-left-color: #F87171; }
+        .category-card.cat-ai { border-left-color: #818CF8; }
+        .category-card.cat-territory { border-left-color: #FBBF24; }
+        .category-card.cat-industry { border-left-color: #34D399; }
+        .category-card.cat-actions { border-left-color: #F472B6; }
+
+        .category-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #F8FAFC;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .category-title .cat-icon {
+            font-size: 18px;
+        }
+
+        .category-card ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .category-card li {
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(51, 65, 85, 0.6);
+            font-size: 14px;
+        }
+
+        .category-card li:last-child { border-bottom: none; }
+
+        .item-title {
+            font-weight: 600;
+            color: #F8FAFC;
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        .item-source {
+            font-size: 11px;
+            color: #64748B;
+            font-weight: 500;
+        }
+
+        .item-why {
+            color: #94A3B8;
+            font-size: 13px;
+            margin-top: 3px;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding-top: 32px;
+            border-top: 1px solid #1E293B;
+            font-size: 12px;
+            color: #475569;
+        }
+
+        /* Print */
+        @media print {
+            body { background: #fff; color: #1a1a1a; }
+            .category-card { background: #f9fafb; border-color: #e5e7eb; }
+            .category-card.cat-product { border-left-color: #0891b2; }
+            .category-card.cat-competitive { border-left-color: #dc2626; }
+            .category-card.cat-ai { border-left-color: #6366f1; }
+            .category-card.cat-territory { border-left-color: #d97706; }
+            .category-card.cat-industry { border-left-color: #059669; }
+            .category-card.cat-actions { border-left-color: #db2777; }
+            .category-title, .item-title, .header h1 { color: #111827; }
+            .item-why { color: #4b5563; }
+            .footer { color: #9ca3af; }
+        }
+
+        @media (max-width: 480px) {
+            .sources-row { flex-direction: column; align-items: center; gap: 8px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-badge">Intelligence Digest</div>
+            <h1>Morning Brief &mdash; {{DATE}}</h1>
+            <div class="signal-row">
+                <span style="font-size:13px; color:#64748B;">Signal Strength:</span>
+                <span class="signal-badge signal-{{SIGNAL_STRENGTH}}">{{SIGNAL_STRENGTH}}</span>
+            </div>
+        </div>
+
+        <div class="sources-row">
+            <span><span class="source-dot dot-exa"></span> {{EXA_COUNT}} web results</span>
+            <span><span class="source-dot dot-slack"></span> {{SLACK_COUNT}} Slack channels</span>
+            <span><span class="source-dot dot-x"></span> {{XFEED_COUNT}} tweets</span>
+        </div>
+
+        <div class="category-card cat-product">
+            <div class="category-title"><span class="cat-icon">&#9889;</span> Product &amp; Platform</div>
+            <ul>
+                {{PRODUCT_ITEMS}}
+            </ul>
+        </div>
+
+        <div class="category-card cat-competitive">
+            <div class="category-title"><span class="cat-icon">&#9876;</span> Competitive Intel</div>
+            <ul>
+                {{COMPETITIVE_ITEMS}}
+            </ul>
+        </div>
+
+        <div class="category-card cat-ai">
+            <div class="category-title"><span class="cat-icon">&#129302;</span> AI &amp; Tooling</div>
+            <ul>
+                {{AI_ITEMS}}
+            </ul>
+        </div>
+
+        <div class="category-card cat-territory">
+            <div class="category-title"><span class="cat-icon">&#127919;</span> Projects &amp; Internal</div>
+            <ul>
+                {{TERRITORY_ITEMS}}
+            </ul>
+        </div>
+
+        <div class="category-card cat-industry">
+            <div class="category-title"><span class="cat-icon">&#128200;</span> Industry Trends</div>
+            <ul>
+                {{INDUSTRY_ITEMS}}
+            </ul>
+        </div>
+
+        <div class="category-card cat-actions">
+            <div class="category-title"><span class="cat-icon">&#9889;</span> Action Items</div>
+            <ul>
+                {{ACTION_ITEMS}}
+            </ul>
+        </div>
+
+        <div class="footer">Generated by /morning-brief &mdash; {{DATE}}</div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Resolve signal badge class from template value
+            const signalRaw = '{{SIGNAL_STRENGTH}}';
+            if (signalRaw && signalRaw !== '{{SIGNAL_STRENGTH}}') {
+                const badge = document.querySelector('.signal-badge');
+                badge.className = 'signal-badge signal-' + signalRaw.toLowerCase().trim();
+            }
+
+            // Scroll-triggered fade-in
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach((entry, i) => {
+                    if (entry.isIntersecting) {
+                        setTimeout(() => entry.target.classList.add('visible'), i * 100);
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.1 });
+
+            document.querySelectorAll('.category-card').forEach(el => observer.observe(el));
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "meta": {
+    "note": "GENERIC SEED corpus for the evolve-and-gate eval — synthetic public passages, NOT anyone's real writing. Copied to corpus.json so harness-eval runs out of the box. REPLACE/EXTEND with your team's own clean samples (label 'human', origin 'self') and known AI-slop (label 'ai'); grow the held-out split as you go. All rows are marked seed:true so the voice-setup fuse never counts them as your calibration.",
+    "labels": "human = clean human writing (must NOT be flagged) · ai = AI slop (should be caught)",
+    "splits": "tune = what you calibrate against · heldout = never tuned on, the overfit check"
+  },
+  "passages": [
+    { "id": "seed-ai-1",  "label": "ai", "split": "tune", "seed": true, "text": "In today's rapidly evolving landscape, organizations must leverage cutting-edge solutions to unlock transformative value and drive seamless, robust outcomes at scale." },
+    { "id": "seed-ai-2",  "label": "ai", "split": "tune", "seed": true, "text": "It's not just a platform — it's a paradigm shift that empowers teams to foster synergies and spearhead innovation across the entire ecosystem." },
+    { "id": "seed-ai-3",  "label": "ai", "split": "tune", "seed": true, "text": "By harnessing the power of next-generation capabilities, we streamline workflows, bolster resilience, and deliver best-in-class experiences that truly move the needle." },
+    { "id": "seed-hu-1",  "label": "human", "split": "tune", "seed": true, "text": "The migration ran overnight and finished around 4am. Two tables failed on a constraint I forgot to drop first, so I reran those by hand." },
+    { "id": "seed-hu-2",  "label": "human", "split": "tune", "seed": true, "text": "I don't think the cache is the problem. We only see it under load, and the profiler points at the serializer, not the lookups." },
+    { "id": "seed-hu-3",  "label": "human", "split": "tune", "seed": true, "text": "Ship it Friday if the tests pass. If they don't we hold, I'd rather slip a week than page someone over the weekend." },
+    { "id": "seed-ai-4",  "label": "ai", "split": "heldout", "seed": true, "text": "Furthermore, this holistic approach underscores our unwavering commitment to delivering actionable insights and mission-critical outcomes in a dynamic, ever-changing world." },
+    { "id": "seed-ai-5",  "label": "ai", "split": "heldout", "seed": true, "text": "Ultimately, the journey toward digital transformation is a testament to the power of collaboration, unlocking unprecedented opportunities to elevate and empower every stakeholder." },
+    { "id": "seed-hu-4",  "label": "human", "split": "heldout", "seed": true, "text": "The API returns 200 but an empty body when the record is soft-deleted. That's undocumented, and it quietly broke our retry logic last week." },
+    { "id": "seed-hu-5",  "label": "human", "split": "heldout", "seed": true, "text": "Numbers are down this quarter, mostly the two accounts that churned. Next quarter's pipeline looks healthier, but I want to see two more weeks before I call it." }
+  ]
+}

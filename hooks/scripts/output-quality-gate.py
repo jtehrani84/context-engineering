@@ -10,8 +10,9 @@ This is the hard enforcement layer. Rules are soft (can be forgotten in
 long conversations). This hook catches what slips through.
 
 Fires on: Write (PostToolUse)
-Reads: tool_input and tool_result from stdin (JSON)
-Outputs: JSON with result "continue" and optional warning
+Reads: tool_name and tool_input from stdin (JSON)
+Outputs: nothing when the write is clean; otherwise hookSpecificOutput.additionalContext with the
+violations. Never blocks.
 """
 
 import json
@@ -80,7 +81,12 @@ def scan_for_violations(text):
 
         # Check single words
         for word in BANNED_WORDS:
+            # Word boundary check to avoid false positives
+            # e.g., "comprehensive" shouldn't match in "comprehensively"
+            # but we want both, so just use 'in'
             if word in line_lower:
+                # Verify it's a real word occurrence (not inside another word
+                # for very short terms)
                 pattern = r'\b' + re.escape(word) + r'\b'
                 if re.search(pattern, line_lower):
                     violations.append({
@@ -126,37 +132,43 @@ def format_warning(violations, file_path):
 
 
 def main():
-    hook_input = json.loads(sys.stdin.read())
+    try:
+        hook_input = json.loads(sys.stdin.read())
+    except Exception:
+        sys.exit(0)  # unreadable payload: stay quiet rather than break the session
+    if not isinstance(hook_input, dict) or not isinstance(hook_input.get("tool_input", {}), dict):
+        sys.exit(0)
 
     tool_name = hook_input.get("tool_name", "")
     tool_input = hook_input.get("tool_input", {})
 
     # Only process Write operations
     if tool_name != "Write":
-        print(json.dumps({"result": "continue"}))
-        return
+        sys.exit(0)
 
     file_path = tool_input.get("file_path", "")
 
     # Only check content files
     if not file_path.endswith(CONTENT_EXTENSIONS):
-        print(json.dumps({"result": "continue"}))
-        return
+        sys.exit(0)
 
     content = tool_input.get("content", "")
 
     # Skip short files (config, templates, etc.)
     if count_words(content) < MIN_WORD_COUNT:
-        print(json.dumps({"result": "continue"}))
-        return
+        sys.exit(0)
 
     violations = scan_for_violations(content)
 
     if violations:
         warning = format_warning(violations, file_path)
-        print(json.dumps({"result": "continue", "warning": warning}))
-    else:
-        print(json.dumps({"result": "continue"}))
+        print(json.dumps({
+            "hookSpecificOutput": {
+                "hookEventName": "PostToolUse",
+                "additionalContext": warning,
+            }
+        }))
+    sys.exit(0)
 
 
 if __name__ == "__main__":

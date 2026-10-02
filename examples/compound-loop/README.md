@@ -1,94 +1,131 @@
-# The Compound Loop — A Complete Walkthrough
+# The Compound Loop — A Real Example
 
-This example shows how a single correction evolves into permanent enforcement over time. This is the core mechanism that makes context engineering compound.
+This walks through one concrete mistake becoming permanently prevented. Every correction follows this lifecycle:
 
-## The Scenario
+```
+Mistake --> Correction --> Memory --> Rule --> Hook --> Prevention
+```
 
-You're a product manager writing weekly updates. Claude keeps using the word "leverage" in your content.
+The system develops immunity to its own failure modes.
+
+---
+
+## Day 1: The Mistake
+
+You ask Claude to draft a customer email:
+
+> "Write a follow-up email to the VP of Engineering at Acme Corp about last week's analytics conversation."
+
+Claude writes:
+
+```
+Hi Sarah,
+
+I hope this finds you well. I wanted to circle back on our conversation
+about how our platform can help Acme leverage its data ecosystem to unlock
+new insights and empower your engineering team with seamless, robust
+analytics capabilities.
+
+Our cutting-edge platform can streamline your data operations...
+```
+
+This is unusable. "Leverage", "ecosystem", "unlock", "empower", "seamless", "robust", "cutting-edge", "streamline" -- eight banned words in one paragraph. No human professional talks like this.
+
+---
 
 ## Day 1: The Correction
 
-You ask Claude to draft a stakeholder update. It writes:
+You tell Claude:
 
-> "We're leveraging the new analytics dashboard to drive insights across the organization."
+> "Never use those words. They sound like AI wrote it. Here's my rule: no leverage, ecosystem, unlock, empower, seamless, robust, cutting-edge, streamline, utilize, harness, holistic, delve, or any word that makes you sound like a marketing bot."
 
-You say: **"Don't use the word 'leverage'. It sounds like AI wrote it. Use 'use' or 'build on' instead."**
+Claude saves a memory file. See `feedback-anti-slop-example.md` in this directory for the exact content. The frontmatter follows what Claude Code writes itself; `templates/memory/README.md` explains each field.
 
-Claude corrects the sentence and saves a memory file:
+---
 
-```
-~/.claude/projects/your-project/memory/feedback-no-leverage.md
-```
+## Day 3: Memory Becomes a Rule
 
-See `feedback-example.md` for what this file looks like.
-
-## Day 3: The Rule
-
-You notice Claude used "leverage" again in a long conversation (memory got buried in context). You add it to `~/.claude/rules/communication.md`:
+After collecting 3-4 similar corrections, you (or Claude) codifies the pattern into a permanent rule file at `~/.claude/rules/communication.md`:
 
 ```markdown
-### Banned Words
-- leverage -> use, build on, apply
+# Communication & Voice Standards
+
+## Banned Words (AI Slop)
+The following words are banned from ALL generated content.
+They make output sound like AI wrote it. Use plain English instead.
+
+Banned: delve, leverage, ecosystem, unlock, empower, streamline, harness,
+holistic, robust, seamless, cutting-edge, utilize, facilitate, solutioning,
+ideation, learnings, synergy, paradigm, transformative, pivotal,
+groundbreaking, spearhead, foster, bolster, fortify, underpin, cornerstone,
+linchpin, bedrock, tapestry, multifaceted, nuanced, comprehensive,
+innovative, disruptive, game-changing, best-in-class, world-class,
+state-of-the-art, next-generation, mission-critical
+
+## Replacement Guide
+- "leverage" --> "use" or "build on"
+- "ecosystem" --> "tools" or "community" or the specific thing
+- "unlock" --> "enable" or "get"
+- "empower" --> "let" or "give [person] the ability to"
+- "seamless" --> "smooth" or "simple" or just cut the word
+- "robust" --> "reliable" or "thorough" or the specific quality
+- "cutting-edge" --> "new" or "latest" or just cut the adjective
+- "streamline" --> "simplify" or "speed up"
 ```
 
-Now it's loaded at session start. But rules can still be forgotten in 100K+ token conversations.
+Rules are auto-loaded into every session. Claude now avoids these words by default.
 
-## Day 7: The Hook
+---
 
-After catching "leverage" one more time (in a particularly long session), you create a hook. This is code that runs AFTER every Write operation and mechanically scans the output:
+## Day 7: Rule Becomes a Hook
 
-```python
-# ~/.claude/hooks/scripts/output-quality-gate.py
-BANNED_WORDS = ["leverage", ...]
-```
+But rules are soft enforcement. Sometimes context windows get long, rules get buried, and Claude slips. So you add a hook that checks AFTER content is written.
 
-See `guardrail-example.py` for a simplified version.
+See `guardrail-example.py` in this directory. This script:
 
-Now it's impossible to forget. The hook fires on every file write, checks for banned words, and reports violations with line numbers. Claude immediately rewrites.
+1. Fires after any Write operation on `.md` or `.html` files
+2. Scans the written content for banned words
+3. If any are found, prints the exact words and line numbers as `hookSpecificOutput.additionalContext`, the field Claude Code puts next to the tool result
+4. Claude sees the warning and rewrites
 
-## Day 14: The Skill
+---
 
-You realize the voice-checking pattern is useful enough to invoke manually. You run `/skillify` and create:
-
-```
-/voice-check — scans any content for the full 50+ word banned list
-```
-
-Now you can proactively check content before sending it.
-
-## Day 30: The Graph
-
-The memory file about "leverage" is indexed by the knowledge graph. When Claude preps for a stakeholder meeting (via `/research-prep`), the graph surfaces your voice preferences alongside the meeting context. The system doesn't just prevent mistakes — it proactively applies your preferences.
-
-## The Full Loop
+## The Result
 
 ```
-Mistake ("leverage" in output)
-    |
-    v
-Correction ("don't use that word")
-    |
-    v
-Memory File (saved for next session)
-    |
-    v
-Rule (loaded at every session start)
-    |
-    v
-Hook (mechanical enforcement, can't be forgotten)
-    |
-    v
-Skill (proactive checking on demand)
-    |
-    v
-Graph (contextual awareness across all work)
-    |
-    v
-The mistake class is EXTINCT
+Week 1:  Claude uses "leverage" 4x per session
+Week 2:  Memory prevents most occurrences (soft enforcement)
+Week 3:  Rule catches the rest (loaded every session)
+Week 4+: Hook catches the 1% that slips through
+
+Error rate: 4x/session --> ~0/session
+Human effort: one correction on Day 1, zero effort after Day 7
 ```
 
-## Why This Matters
+The entire error class is eliminated. You never explain this again.
 
-A single correction on Day 1 becomes a permanent part of your system's immune response. After 60 days, you've made hundreds of corrections. Each one has followed some version of this path. The result: Claude produces work that sounds like you, thinks like you, and avoids your known pitfalls — without you having to remind it.
+---
 
-**This is compound growth.** A mediocre setup running for 60 days beats a perfect setup running for 1 day.
+## How This Generalizes
+
+| Initial Mistake | Memory File | Rule | Hook |
+|----------------|-------------|------|------|
+| Uses banned words | feedback-anti-slop-words.md | communication.md banned list | output-quality-gate.py |
+| Hallucinated product name | feedback-product-names.md | domain-terms section in rules | domain-verification.py |
+| --set-env-vars wipes all vars | feedback-deploy-envvars.md | infrastructure-constraints.md | guardrail.py blocks the flag |
+| Commits .env file | feedback-no-secrets.md | security.md | guardrail.py blocks the write |
+| Assumes environment config exists | feedback-verify-first.md | architecture.md "check first" rule | (no hook needed -- rule suffices) |
+
+Every mistake you correct feeds the same loop. After 30 days, you have 50+ immunities running silently.
+
+---
+
+## Key Insight
+
+The compound effect is not linear. Each layer reinforces the others:
+
+- **Memory** = "I was told this once"
+- **Rule** = "This is always true"
+- **Hook** = "This is enforced mechanically"
+
+Most AI tools only have the memory layer. The rule and hook layers are what make the system production-grade.

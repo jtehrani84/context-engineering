@@ -1,113 +1,102 @@
 # /system-health
 
-System diagnostics. Checks that hooks are firing, rules are loading, graph is growing, and the whole context architecture is working.
+Audit the health of your Claude Code persistent context architecture. Reports across all layers.
 
 ## Trigger
-When the user says: "system health", "diagnostics", "is everything working?", "check my setup", "debug hooks"
+When the user says: "system health", "audit my setup", "system check", "how healthy is my claude"
 
 ## Workflow
 
-### 1. Check rules
+Run these checks and report a scorecard:
 
-```bash
-ls -la ~/.claude/rules/
+### 1. Memory Health
+- Count total memory files in project memory directory
+- Check MEMORY.md line count (warn if over 200)
+- Find memory files not modified in 30+ days (candidates for archive)
+- Find memory files with no backlinks from MEMORY.md index (orphans)
+
+### 2. Wiki Health
+- Count total wiki pages
+- Check wiki/index.md for dead links (pages referenced but missing)
+- Check for orphan pages (exist but not in index)
+- Check wiki/inbox.md for pending items
+
+### 3. Rules Health
+- Count rules in ~/.claude/rules/
+- Grep for contradictions (same file path in multiple rules with different guidance)
+- Check rules files modification dates (stale = unchanged in 60+ days)
+
+### 4. Hooks Health
+- Count scripts in ~/.claude/hooks/scripts/
+- Verify each .py file is syntactically valid (python3 -c "import ast; ast.parse(open('file').read())")
+- Check if hooks are wired in settings.json
+- Report any hooks that exist as files but aren't configured
+
+### 5. Skills Health
+- Count skills in ~/.claude/skills/ and ~/.claude/commands/
+- Identify skills with 0 invocations (if usage tracking exists)
+- Check for skill files with syntax errors
+
+### 6. MCP Health
+- List configured servers from .mcp.json and settings.json
+- Report total tool count
+- Flag any servers that haven't been called this session
+
+### 7. Graph Health (if graph exists)
+- Count nodes and edges
+- Find orphaned entities (nodes with no edges)
+- Find entities pointing to deleted files
+- Report last indexing timestamp
+
+### 8. Context Overflow
+- Check if context-mode plugin is installed
+- Report FTS5 database size if exists
+
+### 9. Crons Health (if crons exist)
+- Check launchd job status (launchctl list | grep claude)
+- Report last successful run timestamps from logs
+- Flag any jobs with non-zero exit codes
+
+### 10. Overall Score
+Compute a 0-10 health score:
+- 10: Everything clean, no orphans, no stale items, all systems green
+- 7-9: Minor staleness or a few orphans
+- 4-6: Significant maintenance needed
+- 0-3: System degraded, major gaps
+
+## Output Format
+
 ```
-- Are rule files present?
-- Are they non-empty?
-- Any syntax issues? (check for valid markdown headers)
+## System Health Report — [Date]
+**Score: [X]/10**
 
-### 2. Check hooks
+| Layer | Status | Items | Issues |
+|-------|--------|-------|--------|
+| Memory | [OK/WARN] | [count] | [orphans, stale] |
+| Wiki | [OK/WARN] | [count] | [dead links, inbox pending] |
+| Rules | [OK] | [count] | [none] |
+| Hooks | [OK/WARN] | [count] | [unwired, syntax errors] |
+| Skills | [OK] | [count] | [unused] |
+| MCP | [OK] | [count] servers, [count] tools | [unreachable] |
+| Graph | [OK/WARN] | [nodes]/[edges] | [orphaned entities] |
+| Overflow | [OK] | [size] | [none] |
+| Crons | [OK/WARN] | [count] jobs | [failed runs] |
 
-```bash
-ls -la ~/.claude/hooks/scripts/
-```
-- Are hook scripts present and executable?
-- Do they have valid Python syntax? (`python3 -c "import ast; ast.parse(open('file').read())"`)
-- Are they referenced in settings.json?
-
-### 3. Check settings
-
-```bash
-cat ~/.claude/settings.json
-```
-- Are hooks registered under the correct lifecycle events?
-- Are permissions configured?
-- Are environment variables set?
-
-### 4. Check knowledge graph
-
-```python
-import sqlite3
-from pathlib import Path
-
-db = Path.home() / ".claude" / "graph.sqlite"
-if db.exists():
-    conn = sqlite3.connect(str(db))
-    nodes = conn.execute("SELECT COUNT(*) FROM nodes").fetchone()[0]
-    edges = conn.execute("SELECT COUNT(*) FROM edges").fetchone()[0]
-    # Report counts
+### Action Items
+1. [Most urgent fix]
+2. [Second priority]
+3. [Third priority]
 ```
 
-### 5. Check wiki structure
-
-```bash
-find ~/.claude/wiki -type f -name "*.md" | wc -l
-cat ~/.claude/wiki/index.md | head -5
-```
-
-### 6. Check memory
-
-```bash
-find ~/.claude -path "*/memory/*.md" -type f | wc -l
-```
-
-### 7. Produce the report
-
-```
-## System Health: [date]
-
-### Rules [PASS/WARN/FAIL]
-- Files: [N] found in ~/.claude/rules/
-- Loading: [all valid / issues found]
-- Issues: [if any]
-
-### Hooks [PASS/WARN/FAIL]
-- Scripts: [N] found in ~/.claude/hooks/scripts/
-- Executable: [all/some/none]
-- Registered in settings: [yes/no/partial]
-- Issues: [if any]
-
-### Settings [PASS/WARN/FAIL]
-- File exists: [yes/no]
-- Hooks configured: [N lifecycle events]
-- Permissions: [N allow / N deny rules]
-- Issues: [if any]
-
-### Knowledge Graph [PASS/WARN/FAIL]
-- Database: [exists/missing]
-- Nodes: [N]
-- Edges: [N]
-- Last updated: [date]
-- Growth: [healthy/stagnant/not started]
-
-### Wiki [PASS/WARN/FAIL]
-- Pages: [N]
-- Index: [exists/missing]
-- Inbox: [N items pending]
-
-### Memory [PASS/WARN/FAIL]
-- Files: [N]
-- Last modified: [date]
-
-### Overall: [HEALTHY / NEEDS ATTENTION / BROKEN]
-
-### Suggested Fixes
-1. [Specific fix if anything is wrong]
-```
+## Visual Report
+After collecting all data, generate a visual HTML dashboard:
+1. Read the template at `~/context-engineering/templates/reports/system-health.html`
+2. Replace all `{{PLACEHOLDER}}` tokens with actual values
+3. Write the populated HTML to `/tmp/system-health-report.html`
+4. Run `open /tmp/system-health-report.html` to display in browser
 
 ## Rules
-- This is a diagnostic tool — report facts, don't make changes
-- If something is broken, provide the exact command to fix it
-- "WARN" means working but suboptimal. "FAIL" means not functioning.
-- A system with 0 memory files is not broken — it's new. Note it as "building."
-- Don't flag empty wiki directories as failures — they fill over time
+- Run non-destructively — read only, never modify
+- Report facts, not opinions
+- If a layer doesn't exist (no graph, no crons), report "Not configured" not "Broken"
+- Under 300 words for terminal output (full detail goes to HTML report)

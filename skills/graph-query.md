@@ -1,81 +1,110 @@
 # /graph-query
 
-Query the knowledge graph. Find relationships, connections, and related files across your wiki and memory.
+Query the local knowledge graph to discover relationships between files, people, entities, and concepts.
 
 ## Trigger
-When the user says: "graph query", "what's related to [X]?", "connections for [X]", "who mentions [X]?", "knowledge graph", "what do I know about [X]?"
+When the user says: "what relates to", "show me connections", "graph query", "what mentions [X]", "related files", "knowledge graph"
+
+## How the Graph Works
+
+The graph lives at `~/.claude/projects/[project]/memory/graph.sqlite`. It auto-populates from the `graph-auto-index.py` hook — every time you write or edit a wiki page, memory file, or entity page, the hook indexes it.
+
+**Node types:** memory, wiki, person, entity, rule
+**Edge types:** REFERENCES (file mentions entity), RELATES_TO (files share 3+ entities)
 
 ## Workflow
 
-### 1. Identify the query
-- Entity name (person, company, concept)
-- Relationship type (REFERENCES, RELATES_TO)
-- Or: general exploration ("show me the graph")
+### 1. Determine Query Type
 
-### 2. Query the SQLite graph
+- **"What relates to [X]?"** → Find the node for X, traverse RELATES_TO edges
+- **"What mentions [person/company]?"** → Find all REFERENCES edges pointing to that entity
+- **"Show me the graph for [topic]"** → Full subgraph: node + all edges + neighbors
+- **"What's connected to [file]?"** → Direct neighbors via any edge type
+
+### 2. Execute Query
 
 ```python
 import sqlite3
 from pathlib import Path
 
-# Find the graph database
-graph_path = Path.home() / ".claude" / "graph.sqlite"
-# Or check project memory: ~/.claude/projects/*/memory/graph.sqlite
+# Find graph database
+projects_dir = Path.home() / ".claude" / "projects"
+graph_db = None
+for d in projects_dir.iterdir():
+    candidate = d / "memory" / "graph.sqlite"
+    if candidate.exists():
+        graph_db = candidate
+        break
 
-conn = sqlite3.connect(str(graph_path))
-
-# Find a node
-cursor = conn.execute(
-    "SELECT id, node_type, name, file_path FROM nodes WHERE name LIKE ?",
-    (f"%{query}%",)
-)
-
-# Find edges from/to a node
-cursor = conn.execute("""
-    SELECT n2.name, n2.node_type, e.edge_type, e.confidence
-    FROM edges e
-    JOIN nodes n2 ON e.target_id = n2.id
-    WHERE e.source_id = ?
-""", (node_id,))
+if not graph_db:
+    print("No graph database found. The graph builds automatically as you work.")
+    print("Write or edit wiki/memory/entity pages and the hook will index them.")
+else:
+    conn = sqlite3.connect(str(graph_db))
+    # Example queries below
 ```
 
-### 3. Present results
+### 3. Common Queries
+
+**Find all files that mention a person:**
+```sql
+SELECT n2.node_type, n2.name, n2.file_path
+FROM edges e
+JOIN nodes n1 ON e.target_id = n1.id
+JOIN nodes n2 ON e.source_id = n2.id
+WHERE n1.name LIKE '%[SEARCH_TERM]%'
+AND e.edge_type = 'REFERENCES'
+ORDER BY n2.updated_at DESC;
+```
+
+**Find related files (share entities):**
+```sql
+SELECT n2.name, n2.node_type, e.confidence,
+       json_extract(e.properties, '$.shared_entity_count') as shared
+FROM edges e
+JOIN nodes n1 ON e.source_id = n1.id
+JOIN nodes n2 ON e.target_id = n2.id
+WHERE n1.name LIKE '%[FILE_NAME]%'
+AND e.edge_type = 'RELATES_TO'
+ORDER BY e.confidence DESC;
+```
+
+**Graph stats:**
+```sql
+SELECT node_type, COUNT(*) as count FROM nodes GROUP BY node_type;
+SELECT edge_type, COUNT(*) as count FROM edges GROUP BY edge_type;
+```
+
+**Most connected entities (hubs):**
+```sql
+SELECT n.name, n.node_type, COUNT(e.id) as connections
+FROM nodes n
+JOIN edges e ON n.id = e.target_id
+WHERE e.edge_type = 'REFERENCES'
+GROUP BY n.id
+ORDER BY connections DESC
+LIMIT 20;
+```
+
+### 4. Output Format
 
 ```
-## Graph Query: [search term]
+## Knowledge Graph Query: [what was asked]
 
 ### Direct Matches
-- [Node name] ([type]) — [file path]
+- [file/entity] — [type] — [path]
 
-### References (this entity is mentioned in)
-| File | Type | Confidence |
-|------|------|-----------|
-| [file] | [memory/wiki/rule] | [0-1.0] |
-
-### Related Files (share 3+ entities)
-| File | Shared Entities | Confidence |
-|------|----------------|-----------|
-| [file] | [N] | [0-1.0] |
-
-### Entity Network
-[Entity] connects to:
-- [Related entity 1] (via [N] shared files)
-- [Related entity 2] (via [N] shared files)
+### Related (via shared entities)
+- [file] relates to [file] — shared: [entity list] — confidence: [X]
 
 ### Graph Stats
-- Total nodes: [N]
-- Total edges: [N]
-- Node types: [breakdown]
+- Nodes: [N] (memory: X, wiki: X, person: X, entity: X, rule: X)
+- Edges: [N] (REFERENCES: X, RELATES_TO: X)
+- Most connected: [top 3 entities]
 ```
 
-### 4. Suggest actions
-- "Read [related file] for more context?"
-- "This connects to [entity] — want me to pull that wiki page?"
-- "3 memory files mention this — review them?"
-
 ## Rules
-- If the graph database doesn't exist yet, explain that it builds automatically from Write/Edit operations
-- Fuzzy match on names (partial matches are fine)
-- Sort results by confidence (strongest connections first)
-- Maximum 10 results per category to keep output scannable
-- If no results found, suggest: "Try a different spelling, or check if the entity has been mentioned in any wiki/memory files"
+- If graph doesn't exist yet, explain that it builds automatically from work
+- Show file paths so user can Read the related content
+- For large results, summarize and offer to drill deeper
+- The graph is read-only in this skill — the hook handles all writes

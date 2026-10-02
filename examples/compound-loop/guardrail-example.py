@@ -1,71 +1,76 @@
 #!/usr/bin/env python3
 """
-Simplified Guardrail Example — Shows how hooks work in practice.
+Output Quality Gate — PostToolUse hook example.
 
-This is a stripped-down version of output-quality-gate.py to illustrate
-the concept. The real version handles more edge cases.
+Fires after Write operations on .md or .html files.
+Scans content for banned AI-slop words and warns Claude to rewrite.
 
-How it works:
-1. Claude Code calls this script AFTER writing a file
-2. The script reads what was written (via stdin JSON)
-3. It scans for banned patterns
-4. If found: returns a warning (Claude will rewrite)
-5. If clean: returns continue (no action needed)
+This is a simplified example. See hooks/scripts/output-quality-gate.py
+for the production version.
 """
 
 import json
-import re
 import sys
 
-
-# The patterns you want to catch
+# Banned words — add your own as you discover them
 BANNED_WORDS = [
-    "leverage",
-    "synergy",
-    "ecosystem",
-    "holistic",
-    "robust",
+    "delve", "leverage", "ecosystem", "unlock", "empower",
+    "streamline", "harness", "holistic", "robust", "seamless",
+    "cutting-edge", "utilize", "facilitate", "solutioning",
+    "ideation", "learnings", "synergy", "paradigm", "transformative",
+    "pivotal", "groundbreaking", "spearhead", "foster", "bolster",
+    "fortify", "underpin", "cornerstone", "linchpin", "bedrock",
+    "tapestry", "multifaceted", "nuanced", "comprehensive",
+    "innovative", "disruptive", "game-changing",
 ]
 
 
 def scan_content(text):
-    """Check text for banned words. Returns list of matches."""
-    found = []
-    for word in BANNED_WORDS:
-        pattern = r'\b' + re.escape(word) + r'\b'
-        if re.search(pattern, text, re.IGNORECASE):
-            found.append(word)
-    return found
+    """Find banned words and their line numbers."""
+    violations = []
+    for line_num, line in enumerate(text.splitlines(), 1):
+        line_lower = line.lower()
+        for word in BANNED_WORDS:
+            if word in line_lower:
+                violations.append({"word": word, "line": line_num})
+    return violations
 
 
 def main():
-    # Read the hook input (what Claude just did)
     hook_input = json.loads(sys.stdin.read())
 
-    # Get the content that was written
+    tool_name = hook_input.get("tool_name", "")
     tool_input = hook_input.get("tool_input", {})
-    content = tool_input.get("content", "")
+
+    # Only check Write operations on content files
+    if tool_name != "Write":
+        sys.exit(0)  # nothing to say: exit 0, no output
+
     file_path = tool_input.get("file_path", "")
-
-    # Only check content files
     if not file_path.endswith((".md", ".html", ".txt")):
-        print(json.dumps({"result": "continue"}))
-        return
+        sys.exit(0)  # nothing to say: exit 0, no output
 
-    # Scan for violations
+    content = tool_input.get("content", "")
     violations = scan_content(content)
 
     if violations:
-        # Report the issue — Claude will fix it
-        warning = (
-            f"Voice violation in {file_path}: "
-            f"found {', '.join(violations)}. "
-            f"Rewrite using plain language."
+        word_list = ", ".join(set(v["word"] for v in violations))
+        locations = "; ".join(
+            f"'{v['word']}' on line {v['line']}" for v in violations[:5]
         )
-        print(json.dumps({"result": "continue", "warning": warning}))
-    else:
-        # All clean
-        print(json.dumps({"result": "continue"}))
+        warning = (
+            f"AI SLOP DETECTED: Found {len(violations)} banned word(s): {word_list}. "
+            f"Locations: {locations}. "
+            f"Rewrite these sections using plain, human language."
+        )
+        # PostToolUse: additionalContext lands next to the tool result, where Claude reads it.
+        print(json.dumps({
+            "hookSpecificOutput": {
+                "hookEventName": "PostToolUse",
+                "additionalContext": warning,
+            }
+        }))
+    sys.exit(0)
 
 
 if __name__ == "__main__":

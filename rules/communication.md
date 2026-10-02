@@ -44,7 +44,7 @@ delve, leverage, ecosystem, unlock, empower, streamline, harness, holistic, robu
   - Executive: strategic, concise, bold claims with data
   - Manager: tactical, outcome-focused, specific timelines
   - Peer/Technical: precise details, honest about tradeoffs
-- Sign off simply: "Best," or "Thanks,"
+- Sign off simply ("Best," or "Thanks,") with the name and title from your CLAUDE.md profile; never invent a sign-off
 
 ## Slack Messages
 - Keep under 3 sentences for channel messages
@@ -59,13 +59,25 @@ delve, leverage, ecosystem, unlock, empower, streamline, harness, holistic, robu
 - 3-bullet structure: situation, finding, recommendation
 - Numbers over adjectives ("34M users" not "massive user base")
 - End with a specific next step and owner
+- For a half-page summary, skip headers and write flowing paragraphs
 
 ## Meeting Follow-Ups
 - Send within 2 hours of the meeting
-- Reference ONE specific moment from the conversation
+- Reference ONE specific moment from the conversation, which shows you were present
 - Confirm action items with owners and dates
 - Propose the next meeting with a specific date
 - Keep under 150 words
+
+## External vs Internal
+- External (clients, partners, the public): lead with their world and their metrics. Keep your own product and team names to the minimum the reader needs.
+- Internal: be candid. Name products, tradeoffs and open risks plainly.
+- Never send an internal message externally or vice versa. Double-check the audience before drafting.
+
+## Presentation Talking Points
+- Speaker notes are delivery coaching, not a narration of the slide
+- Bad: "This slide presents the order-volume bottleneck..."
+- Good: "Pause after the number. Let them react. The goal is to make the tension land."
+- Include pivot points ("If they push back on X, go to slide Y") and the transition phrase into the next slide
 
 ## Banned Email Patterns
 - "I hope this finds you well" — start with substance
@@ -75,3 +87,4 @@ delve, leverage, ecosystem, unlock, empower, streamline, harness, holistic, robu
 - "Best regards" / "Warm regards" — just "Best," or "Thanks,"
 - "Circling back" — state the update
 - "Wanted to touch base" — state the purpose
+- "Take offline" — say when and how

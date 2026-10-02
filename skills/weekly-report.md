@@ -1,74 +1,80 @@
 # /weekly-report
 
-Status report from git history, memory files, and session activity. Produces a structured summary of what was accomplished.
+Status report generator. Summarizes what happened this week from git history, memory files, and session activity.
 
 ## Trigger
-When the user says: "weekly report", "status report", "what did I do this week?", "week in review"
+When the user says: "weekly report", "what did I ship this week?", "status report", "weekly summary", "what happened this week?"
 
 ## Workflow
 
-### 1. Gather data
+### 1. Gather data from 4 sources
 
+**Git log (last 7 days):**
 ```bash
-# Git activity
-git log --since="1 week ago" --oneline --stat
+git log --since="7 days ago" --oneline --all
+```
+Count: commits, files changed, lines added/removed.
 
-# Memory file changes
-find ~/.claude -name "*.md" -newer /tmp/weekago -type f 2>/dev/null | head -20
+**Memory files created/modified (last 7 days):**
+```bash
+find ~/.claude/ -name "*.md" -mtime -7 -type f
+```
+List new memory files (corrections, decisions, feedback captured).
 
-# Wiki changes
-find wiki/ -name "*.md" -newer /tmp/weekago -type f 2>/dev/null | head -20
+**Wiki pages touched:**
+```bash
+find [project-wiki-dir] -name "*.md" -mtime -7 -type f
 ```
 
-### 2. Categorize work
+**Skills or hooks modified:**
+```bash
+find ~/.claude/commands/ ~/.claude/hooks/ -mtime -7 -type f
+```
 
-Group commits and changes into categories:
-- **Features/Deliverables** — new things built or shipped
-- **Improvements** — enhancements to existing work
-- **Fixes** — bugs resolved, issues addressed
-- **Research/Learning** — new knowledge acquired
-- **Process** — workflow improvements, automation added
+### 2. Categorize activity
+
+Group everything into:
+- **Shipped:** Completed work (merged PRs, deployed services, finished deliverables)
+- **In Progress:** Active work (open branches, partial implementations)
+- **Blocked:** Waiting on something external (approvals, access, dependencies)
+- **System Growth:** New rules, skills, memory files, hooks added (the compound loop in action)
 
 ### 3. Produce the report
 
 ```
 ## Weekly Report: [date range]
 
-### Summary
-[2-3 sentences: what was the main thrust of this week's work?]
+### Shipped
+- [Specific deliverable + outcome, not just "worked on X"]
+- [Include metrics where possible: "deployed rev 00287, 375 tests passing"]
 
-### Key Deliverables
-- [Deliverable 1] — [impact/outcome]
-- [Deliverable 2] — [impact/outcome]
-- [Deliverable 3] — [impact/outcome]
+### In Progress
+- [What's being built + % estimate + ETA]
 
-### Activity Breakdown
-| Category | Items | Highlights |
-|----------|-------|-----------|
-| Features | [N] | [key item] |
-| Improvements | [N] | [key item] |
-| Fixes | [N] | [key item] |
-| Research | [N] | [key item] |
+### Blocked
+- [What's waiting + who/what it's waiting on + suggested unblock]
 
-### Metrics
-- Commits: [N]
-- Files changed: [N]
-- Memory files created: [N]
-- Wiki pages added/updated: [N]
+### System Growth
+- [New skills, rules, or hooks added]
+- [Memory files captured: X new corrections/decisions]
+- [Estimated time saved by automation: X minutes/week]
 
-### Blockers Resolved
-- [What was blocking + how it was resolved]
+### Key Numbers
+| Metric | This Week | Trend |
+|--------|-----------|-------|
+| Commits | [N] | [up/down/flat] |
+| Memory files created | [N] | |
+| Skills used | [list] | |
+| Meetings prepped | [N] | |
 
-### Carried to Next Week
-- [Items not completed + why]
-
-### Patterns Noticed
-- [Any recurring themes, tools adopted, or decisions made]
+### Next Week Focus
+- [Top 3 priorities based on what's in progress + unblocked work]
 ```
 
 ## Rules
-- Report facts, not feelings. Numbers and specifics over narrative.
-- Group by impact (what shipped), not by time (what happened Monday)
-- Keep under 300 words — a manager should scan this in 60 seconds
-- If it was a light week, say so honestly
-- Always include "carried to next week" for continuity
+- Report facts, not aspirations. Only list what actually happened.
+- "Shipped" means done-done. In someone's hands or deployed. Not "mostly finished."
+- Keep the whole report under 300 words. Executives scan.
+- If nothing shipped, say so honestly. Better than inflating progress.
+- Include system growth — it shows the compounding investment paying off.
+- One line per item. No paragraphs in a status report.

@@ -84,15 +84,16 @@ def suggest_context(cwd, git_info):
 
 def main():
     """Hook entry point."""
-    # Read hook input from stdin
-    hook_input = json.loads(sys.stdin.read())
+    try:
+        hook_input = json.loads(sys.stdin.read())
+    except (json.JSONDecodeError, EOFError):
+        sys.exit(0)
 
     cwd = hook_input.get("cwd", os.getcwd())
     git_info = get_git_info()
 
     suggestions = suggest_context(cwd, git_info)
 
-    # Build the context hint
     hints = []
 
     if git_info.get("branch"):
@@ -105,18 +106,17 @@ def main():
         hints.append(f"Suggested context: {', '.join(suggestions)}")
 
     if hints:
-        output = {
-            "result": "continue",
-            "metadata": {
-                "title": "Session Context",
-                "body": " | ".join(hints),
-            },
-        }
-    else:
-        output = {"result": "continue"}
-
-    print(json.dumps(output))
+        print(json.dumps({
+            "hookSpecificOutput": {
+                "hookEventName": "SessionStart",
+                "additionalContext": "Session context: " + " | ".join(hints),
+            }
+        }))
+    sys.exit(0)
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception:
+        sys.exit(0)

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Label must match the filename (minus .plist) -->
+    <key>Label</key>
+    <string>com.context.curate-prep</string>
+
+    <!-- Read-only prep for /curate. Writes ~/.claude/crons/curate-prep/CURATE-PENDING.md -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <!-- __SCRIPT_DIR__ is replaced by manage.sh install -->
+        <string>__SCRIPT_DIR__/curate-prep/curate-prep.py</string>
+    </array>
+
+    <!-- Schedule: Sundays at 11:00 PM (Weekday 0 = Sunday). If the Mac is asleep then,
+         launchd runs the job when it wakes. -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Weekday</key>
+        <integer>0</integer>
+        <key>Hour</key>
+        <integer>23</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <!-- Point at a specific project if you have several. Leave blank to auto-detect.
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>CURATE_MEMORY_DIR</key>
+        <string>YOUR-HOME-FOLDER/.claude/projects/YOUR-PROJECT/memory</string>
+        <key>CURATE_WIKI_DIR</key>
+        <string>YOUR-HOME-FOLDER/.claude/wiki</string>
+    </dict>
+    -->
+
+    <key>StandardOutPath</key>
+    <string>/tmp/context-crons-curate-prep-stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/context-crons-curate-prep-stderr.log</string>
+
+    <key>WorkingDirectory</key>
+    <string>__SCRIPT_DIR__</string>
+
+    <!-- One-shot job -->
+    <key>KeepAlive</key>
+    <false/>
+</dict>
+</plist>

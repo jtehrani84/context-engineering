@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Label must match the filename (minus .plist) -->
+    <key>Label</key>
+    <string>com.context.session-backup</string>
+
+    <!-- Opt-in: installed only by `manage.sh install --with-backup`.
+         Local-only mirror + dated snapshots of ~/.claude/projects (see the script header) -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <!-- __SCRIPT_DIR__ is replaced by manage.sh install -->
+        <string>__SCRIPT_DIR__/backup/backup-sessions.sh</string>
+    </array>
+
+    <!-- Schedule: 12:30 PM and 10:30 PM daily. If the Mac is asleep then, launchd runs
+         the job when it wakes. -->
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict>
+            <key>Hour</key>
+            <integer>12</integer>
+            <key>Minute</key>
+            <integer>30</integer>
+        </dict>
+        <dict>
+            <key>Hour</key>
+            <integer>22</integer>
+            <key>Minute</key>
+            <integer>30</integer>
+        </dict>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/opt/homebrew/bin</string>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/context-crons-session-backup-stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/context-crons-session-backup-stderr.log</string>
+
+    <key>WorkingDirectory</key>
+    <string>__SCRIPT_DIR__</string>
+
+    <!-- One-shot job -->
+    <key>KeepAlive</key>
+    <false/>
+</dict>
+</plist>

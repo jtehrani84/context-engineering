@@ -1,0 +1,6 @@
+# Local-only pages: never commit these to a shared repository.
+# See README.md in this folder for the convention.
+*.local.md
+people/*
+!people/README.md
+!people/_template-*.md
