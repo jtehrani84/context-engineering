@@ -86,6 +86,17 @@ test('a provider moving to a new version is logged as a change, and the new id i
   assert.match(readFileSync(join(dir, 'changes.log'), 'utf8'), /\tgrok\tgrok-7 -> grok-8\topencode-models\n$/);
 });
 
+test('a role the listing stops serving is a loud error, and the removed id never comes back from the cache later', async () => {
+  const { resolve } = await import('./model-roster.mjs');
+  const dir = join(tmp, 'c3-removed');
+  await resolve('grok', { cacheDir: dir, runOpencode: async () => 'xai/grok-7\n' });
+  // the listing answers but serves no grok: an error, and the cache remembers the removal
+  await assert.rejects(resolve('grok', { cacheDir: dir, runOpencode: async () => 'openai/gpt-9\n' }), /grok/);
+  assert.match(readFileSync(join(dir, 'changes.log'), 'utf8'), /\tgrok\tgrok-7 -> \(removed\)\t/);
+  // every live source down afterwards: still an error, never the removed grok-7 handed back as stale
+  await assert.rejects(resolve('grok', { cacheDir: dir, runOpencode: async () => { throw new Error('opencode down'); } }), /grok/);
+});
+
 test('opencode-llm: a role resolves from the same binary it dispatches to and runs through runSpec', async () => {
   clearLog();
   const { llm } = await import('./opencode-llm.mjs');

@@ -20,7 +20,9 @@
  *     for that call; its picks are cached under opts.scope (`<role>@<scope>`), apart from the opencode picks,
  *   then (c) the last-known-good cache (~/.cache/model-roster/resolved.json), ONLY when every live source is
  *     unavailable. A live source that answers but no longer serves the role is an error, never a cache hit:
- *     a removed id is never kept in use silently.
+ *     a removed id is never kept in use silently. That answer also tombstones the role's cache entry (the
+ *     removed id, which source said so, when; logged as `<id> -> (removed)`), so a later run with every live
+ *     source down errors instead of handing the removed id back as stale.
  * Provider id, most specific first: the `provider` option; the role's entry in MODEL_ROSTER_PROVIDERS
  * ("role=provider,role=provider"); the role's `provider` in the json; MODEL_ROSTER_PROVIDER; the json's
  * sources.provider; the policy's providerID; else the only provider whose ids match the role (two or more = an
@@ -329,21 +331,38 @@ async function resolveWith(name, ctx, cache, changes) {
   const base = { role, vendor: def.vendor, tier: def.tier, dispatch: def.dispatch };
   if (n.deprecated) base.deprecatedName = n.from;
   const key = ctx.opts.scope ? `${role}@${ctx.opts.scope}` : role;
-  const live = await liveResolve(role, def, ctx);
+  const entry = cache.roles?.[key];
+  let live;
+  try { live = await liveResolve(role, def, ctx); }
+  catch (e) {
+    // a live source answered and no longer serves the role: tombstone the cached id, so a later run with every
+    // live source down can't hand it back from the cache. Ambiguity (no `served`) is a config error, not a removal.
+    if (e instanceof RosterError && Array.isArray(e.served) && entry?.id) {
+      const by = ctx.opts.listModels ? (ctx.opts.sourceName || 'listing') : def.dispatch === 'native' ? 'gateway-models' : /`opencode models`/.test(e.message) ? 'opencode-models' : 'policy';
+      changes.push(`${now}\t${key}\t${entry.id} -> ${REMOVED}\t${by}`);
+      cache.roles[key] = { id: null, removed: { id: entry.id, provider: entry.provider ?? null, by, at: now } };
+      cache.dirty = true;
+    }
+    throw e;
+  }
   if (live.unavailable) {
-    const hit = !ctx.opts.refresh && cache.roles?.[key];
+    const hit = !ctx.opts.refresh && entry;
     if (hit?.id) return { ...base, id: hit.id, provider: hit.provider ?? null, qualified: hit.qualified ?? null, source: 'cache', cachedFrom: hit.source, resolvedAt: hit.resolvedAt, stale: true, changed: false, unavailable: live.unavailable };
+    const gone = !ctx.opts.refresh && hit?.removed;
+    if (gone) throw new RosterError(`model-roster: role '${role}' did not resolve: no live source available (${live.unavailable.join('; ')}), and the cache will not supply ${gone.id}: ${gone.by} reported it no longer served at ${gone.at}. No fallback to another model.`, { role, unavailable: live.unavailable, removed: gone });
     throw new RosterError(`model-roster: role '${role}' did not resolve: no live source available (${live.unavailable.join('; ')})${ctx.opts.refresh ? ' and --refresh skips the cache' : ' and no cached id'}.`, { role, unavailable: live.unavailable });
   }
   const qualified = live.provider ? `${live.provider}/${live.id}` : live.id;
-  const prev = cache.roles?.[key]?.id;
+  const prev = entry?.id ?? entry?.removed?.id;
   const changed = !!prev && prev !== live.id;
-  if (changed) changes.push(`${now}\t${key}\t${prev} -> ${live.id}\t${live.source}`);
+  const restored = !entry?.id && !!entry?.removed;
+  if (changed || restored) changes.push(`${now}\t${key}\t${restored ? REMOVED : prev} -> ${live.id}\t${live.source}`);
   cache.roles = cache.roles || {};
   cache.roles[key] = { id: live.id, provider: live.provider, qualified, source: live.source, resolvedAt: now };
   cache.dirty = true;
-  return { ...base, id: live.id, provider: live.provider, qualified, source: live.source, resolvedAt: now, changed, ...(changed ? { previous: prev } : {}) };
+  return { ...base, id: live.id, provider: live.provider, qualified, source: live.source, resolvedAt: now, changed, ...(changed ? { previous: prev } : {}), ...(restored ? { restored: true } : {}) };
 }
+const REMOVED = '(removed)';
 function flush(dir, cache, changes) {
   if (changes.length) { mkdirSync(dir, { recursive: true }); appendFileSync(join(dir, 'changes.log'), changes.join('\n') + '\n'); }
   if (cache.dirty) { delete cache.dirty; cache.schema = 'model-roster.cache.v1'; cache.updatedAt = new Date().toISOString(); writeJsonAtomic(join(dir, 'resolved.json'), cache); }
@@ -453,6 +472,7 @@ export function notice(opts = {}) {
       const first = latest.get(role)?.old ?? m[1];
       latest.set(role, { old: first, now: m[2] });
     }
+    for (const [r, v] of latest) if (v.old === v.now) latest.delete(r); // removed then back on the same id: nothing changed
     writeJsonAtomic(stampPath, { seen: lines.length, at: new Date().toISOString() });
     if (!latest.size) return '';
     return 'model roster: ' + [...latest].map(([r, v]) => `${r} is now ${v.now} (was ${v.old})`).join('; ');
