@@ -21,6 +21,8 @@ What "valid" means here (the Claude Code hooks reference):
   - PostToolUse / SessionStart: hookSpecificOutput.additionalContext for a nudge. A PostToolUse block is
                  top-level {"decision": "block", "reason": ...} (with a non-empty reason); the kit's
                  proof gates use it only when KIT_PROOF_GATES=block is set.
+  - Stop:        top-level {"decision": "block", "reason": ...} sends Claude back to revise (voice-draft-gate
+                 on a hard tell in a draft); a top-level "systemMessage" is a note for the user.
   - hookEventName matches the event the hook is wired to
   - none of the legacy shapes that older kit versions printed ({"result": ...}, {"decision": "approve"})
 
@@ -68,12 +70,12 @@ def contract_errors(stdout, event):
         errs.append('legacy {"result": ...} shape (Claude Code does not read it)')
     if obj.get("decision") in ("approve", "allow"):
         errs.append('legacy {"decision": "approve"} shape')
-    extra = set(obj) - (ALLOWED_POST_TOP_KEYS if event == "PostToolUse" else ALLOWED_TOP_KEYS)
+    extra = set(obj) - (ALLOWED_POST_TOP_KEYS if event in ("PostToolUse", "Stop") else ALLOWED_TOP_KEYS)
     if extra:
         errs.append(f"unexpected top-level keys {sorted(extra)}")
     if "decision" in obj:
-        if event != "PostToolUse":
-            errs.append(f"top-level decision is only read on PostToolUse, not {event}")
+        if event not in ("PostToolUse", "Stop"):
+            errs.append(f"top-level decision is only read on PostToolUse and Stop, not {event}")
         elif obj["decision"] != "block":
             errs.append(f"top-level decision {obj['decision']!r} is not 'block'")
         elif not str(obj.get("reason", "")).strip():
@@ -102,14 +104,29 @@ def contract_errors(stdout, event):
     return errs
 
 
+def stop_errors(stdout):
+    """Stop takes no hookSpecificOutput: a block or a systemMessage at the top level."""
+    try:
+        obj = json.loads(stdout.strip() or "{}")
+    except ValueError:
+        return []
+    errs = ["hookSpecificOutput on Stop (Claude Code reads a top-level decision or systemMessage there)"] \
+        if isinstance(obj, dict) and "hookSpecificOutput" in obj else []
+    if isinstance(obj, dict) and "systemMessage" in obj and not str(obj["systemMessage"]).strip():
+        errs.append("empty systemMessage")
+    return errs
+
+
 def classify(stdout):
-    """silent | deny | ask | context | block"""
+    """silent | deny | ask | context | block | note (a top-level systemMessage only)"""
     text = stdout.strip()
     if not text:
         return "silent"
     obj = json.loads(text)
     if obj.get("decision") == "block":
         return "block"
+    if obj.get("systemMessage") and not obj.get("hookSpecificOutput"):
+        return "note"
     hso = obj.get("hookSpecificOutput") or {}
     if hso.get("permissionDecision") in ("deny", "ask"):
         return hso["permissionDecision"]
@@ -125,7 +142,7 @@ def text_of(stdout):
         return stdout
     hso = obj.get("hookSpecificOutput") or {}
     parts = [str(hso.get(k, "")) for k in ("permissionDecisionReason", "additionalContext")]
-    return " ".join(parts + [str(obj.get("reason", ""))])
+    return " ".join(parts + [str(obj.get("reason", "")), str(obj.get("systemMessage", ""))])
 
 
 # ----------------------------------------------------------------------------------------------------
@@ -293,6 +310,34 @@ def cases(env):
     add(V, "send with the scorer missing -> deny (fails closed)", "PreToolUse", send("mcp__github__create_issue", "The rollout lands Thursday."),
         "deny", "couldn't run its scorer", keep_path=True, extra_env={**vt, "VOICE_AISCORE": os.path.join(VOICE_TOOLS_DIR, "no-such-aiscore.mjs")})
 
+    # ---- voice-draft-gate (a Stop hook; needs node, scores with the same engine through voice-tell-gate.py next to it).
+    # The full suite is tools/hook-tests/voice-draft-gate.test.py; these check the contract and each outcome once. ----
+    W = "voice-draft-gate.py"
+    tdir = os.path.join(env.root, "transcripts")
+    os.makedirs(tdir, exist_ok=True)
+
+    def stop(name, reply):
+        """A Stop payload whose transcript holds one prompt and one assistant reply (the shape Claude Code writes)."""
+        path = os.path.join(tdir, name + ".jsonl")
+        recs = [{"type": "user", "isSidechain": False, "promptId": "p-" + name, "uuid": "u1-" + name,
+                 "message": {"role": "user", "content": "synthetic prompt"}},
+                {"type": "assistant", "isSidechain": False, "uuid": "u2-" + name,
+                 "message": {"role": "assistant", "content": [{"type": "text", "text": reply}]}}]
+        with open(path, "w") as f:
+            f.write("\n".join(json.dumps(r) for r in recs) + "\n")
+        return {"hook_event_name": "Stop", "session_id": "selftest-" + name, "transcript_path": path, "prompt_id": "p-" + name,
+                "stop_hook_active": False, "last_assistant_message": reply}
+    fence = lambda body: "Here it is:\n\n```draft\n" + body + "\n```"
+    wt = {**vt, "VOICE_DRAFT_STATE_DIR": os.path.join(env.root, "draft-state")}
+    add(W, "hard tell in a draft -> block", "Stop", stop("hard", fence("Our seamless rollout lands Thursday.")),
+        "block", "seamless", keep_path=True, extra_env=wt)
+    add(W, "clean draft -> silent", "Stop", stop("clean", fence("The rollout lands Thursday after the review.")),
+        "silent", None, keep_path=True, extra_env=wt)
+    add(W, "a banned word in prose, not in a draft -> silent", "Stop", stop("prose", "The filter caught 'seamless' in the last draft."),
+        "silent", None, keep_path=True, extra_env=wt)
+    add(W, "draft with the scorer missing -> stop allowed with a note", "Stop", stop("noscorer", fence("The rollout lands Thursday.")),
+        "note", "not checked", keep_path=True, extra_env={**wt, "VOICE_AISCORE": os.path.join(VOICE_TOOLS_DIR, "no-such-aiscore.mjs")})
+
     # ---- session-init ----
     add("session-init.py", "SessionStart in a repo -> context", "SessionStart",
         {"hook_event_name": "SessionStart", "cwd": env.repo_feature}, "any")
@@ -343,7 +388,8 @@ EVENT_OF = {"schema-check.py": "PreToolUse", "guardrail.py": "PreToolUse", "doma
             "output-quality-gate.py": "PostToolUse", "voice-tell-gate.py": "PostToolUse",
             "graph-auto-index.py": "PostToolUse", "session-init.py": "SessionStart",
             "deploy-proof-gate.py": "PostToolUse", "claim-faithfulness-gate.py": "PostToolUse",
-            "refutation-oracle-gate.py": "PostToolUse"}
+            "refutation-oracle-gate.py": "PostToolUse", "voice-draft-gate.py": "Stop"}
+NEEDS_NODE = {"voice-tell-gate.py", "voice-draft-gate.py"}
 
 
 def find_hooks(installed):
@@ -406,7 +452,7 @@ def main(argv):
                 skipped += 1
                 print(f"  skip  {name}")
                 continue
-            if hook == "voice-tell-gate.py" and not node_ok:
+            if hook in NEEDS_NODE and not node_ok:
                 skipped += 1
                 print(f"  skip  {name} (node not installed)")
                 continue
@@ -423,6 +469,8 @@ def main(argv):
             if rc != 0:
                 errs.append(f"exit code {rc} (stderr: {err.strip()[-200:]})")
             errs += contract_errors(out, event)
+            if event == "Stop":
+                errs += stop_errors(out)
             if not errs:
                 got = classify(out)
                 if kind != "any" and got != kind:

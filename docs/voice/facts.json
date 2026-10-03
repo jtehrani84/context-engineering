@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "edition": "public",
-  "generatedAt": "2026-10-02T17:39:26.265Z",
-  "date": "2026-10-02",
+  "generatedAt": "2026-10-03T08:07:14.335Z",
+  "date": "2026-10-03",
   "git": {
-    "sha": "b4534e3d6bd73f57d93f16af71e633f04b774f25",
-    "short": "b4534e3"
+    "sha": "cc4c9152a7b94472df403f640acb6dc9d310d3b1",
+    "short": "cc4c915"
   },
   "facts": [
     {
@@ -13,8 +13,8 @@
       "value": 429,
       "status": "measured",
       "source": "count of f18/ lines in calibration/public-corpora.sha256",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "files"
     },
     {
@@ -22,8 +22,8 @@
       "value": 18,
       "status": "measured",
       "source": "count of RFC numbers in calibration/fetch-public-corpora.sh RFCS",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "RFCs"
     },
     {
@@ -31,8 +31,8 @@
       "value": 2,
       "status": "measured",
       "source": "voice-corpus/public-human.json",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "samples"
     },
     {
@@ -40,16 +40,16 @@
       "value": "yes",
       "status": "measured",
       "source": "detector.head compared with detector.pin",
-      "sha": "b4534e3",
-      "date": "2026-10-02"
+      "sha": "cc4c915",
+      "date": "2026-10-03"
     },
     {
       "key": "detector.categories",
       "value": 51,
       "status": "measured",
       "source": "require detector/patterns.js TYPE_LABELS",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "categories"
     },
     {
@@ -57,32 +57,68 @@
       "value": "58a95fc",
       "status": "measured",
       "source": "git -C avoid-ai-writing rev-parse HEAD",
-      "sha": "b4534e3",
-      "date": "2026-10-02"
+      "sha": "cc4c915",
+      "date": "2026-10-03"
     },
     {
       "key": "detector.pin",
       "value": "58a95fc",
       "status": "recorded",
       "source": "README.md (git -C avoid-ai-writing checkout <pin>)",
-      "sha": "b4534e3",
-      "date": "2026-10-02"
+      "sha": "cc4c915",
+      "date": "2026-10-03"
+    },
+    {
+      "key": "draft.lead_in_lines",
+      "value": 3,
+      "status": "measured",
+      "source": "parse ~/.claude/tools/hook/voice-draft-gate.py LEAD_IN",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
+      "unit": "lines"
+    },
+    {
+      "key": "draft.max_blocks",
+      "value": 2,
+      "status": "measured",
+      "source": "parse ~/.claude/tools/hook/voice-draft-gate.py MAX_BLOCKS",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
+      "unit": "blocks"
+    },
+    {
+      "key": "draft.normalizer_timeout_s",
+      "value": 3,
+      "status": "measured",
+      "source": "parse ~/.claude/tools/hook/voice-draft-gate.py NORMALIZER_TIMEOUT",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
+      "unit": "seconds"
+    },
+    {
+      "key": "draft.scorer_timeout_s",
+      "value": 5,
+      "status": "measured",
+      "source": "parse ~/.claude/tools/hook/voice-draft-gate.py SCORER_TIMEOUT",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
+      "unit": "seconds"
     },
     {
       "key": "env.claude_code_version",
       "value": "2.1.286",
       "status": "measured",
       "source": "claude --version (first token)",
-      "sha": "b4534e3",
-      "date": "2026-10-02"
+      "sha": "cc4c915",
+      "date": "2026-10-03"
     },
     {
       "key": "evidence.counted",
       "value": 9,
       "status": "measured",
       "source": "import ai-evidence.mjs COUNTED",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "categories"
     },
     {
@@ -90,8 +126,8 @@
       "value": 42,
       "status": "measured",
       "source": "import ai-evidence.mjs NOT_COUNTED",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "categories"
     },
     {
@@ -99,8 +135,8 @@
       "value": 1,
       "status": "measured",
       "source": "import ai-evidence.mjs NOT_COUNTED",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "categories"
     },
     {
@@ -108,8 +144,8 @@
       "value": 20,
       "status": "measured",
       "source": "import ai-evidence.mjs NOT_COUNTED",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "categories"
     },
     {
@@ -117,8 +153,8 @@
       "value": 2,
       "status": "measured",
       "source": "import ai-evidence.mjs NOT_COUNTED",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "categories"
     },
     {
@@ -126,8 +162,8 @@
       "value": 19,
       "status": "measured",
       "source": "import ai-evidence.mjs NOT_COUNTED",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "categories"
     },
     {
@@ -135,8 +171,8 @@
       "value": 0,
       "status": "measured",
       "source": "TYPE_LABELS minus COUNTED and NOT_COUNTED",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "categories"
     },
     {
@@ -144,8 +180,8 @@
       "value": 421,
       "status": "measured",
       "source": "node calibration/human-fp-budget.mjs",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "docs"
     },
     {
@@ -153,8 +189,8 @@
       "value": 0,
       "status": "measured",
       "source": "node calibration/human-fp-budget.mjs",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "docs"
     },
     {
@@ -162,8 +198,8 @@
       "value": 17320,
       "status": "measured",
       "source": "node calibration/human-fp-budget.mjs",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "docs"
     },
     {
@@ -171,8 +207,8 @@
       "value": 0,
       "status": "measured",
       "source": "node calibration/human-fp-budget.mjs",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "docs"
     },
     {
@@ -180,24 +216,24 @@
       "value": "892b20b",
       "status": "recorded",
       "source": "calibration/human-fp-budget.json",
-      "sha": "b4534e3",
-      "date": "2026-10-02"
+      "sha": "cc4c915",
+      "date": "2026-10-03"
     },
     {
       "key": "fp_budget.baseline.measured_at",
       "value": "2026-10-02T05:07:45.633Z",
       "status": "recorded",
       "source": "calibration/human-fp-budget.json",
-      "sha": "b4534e3",
-      "date": "2026-10-02"
+      "sha": "cc4c915",
+      "date": "2026-10-03"
     },
     {
       "key": "fp_budget.margin",
       "value": 2,
       "status": "measured",
       "source": "calibration/human-fp-budget.mjs margin() applied to the baseline pooledPublic.n",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "docs"
     },
     {
@@ -205,8 +241,8 @@
       "value": 576,
       "status": "measured",
       "source": "node calibration/human-fp-budget.mjs",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "docs"
     },
     {
@@ -214,8 +250,8 @@
       "value": 0,
       "status": "measured",
       "source": "node calibration/human-fp-budget.mjs",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "docs"
     },
     {
@@ -223,8 +259,8 @@
       "value": 18335,
       "status": "measured",
       "source": "node calibration/human-fp-budget.mjs",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "docs"
     },
     {
@@ -232,8 +268,8 @@
       "value": 0,
       "status": "measured",
       "source": "node calibration/human-fp-budget.mjs",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "docs"
     },
     {
@@ -241,8 +277,8 @@
       "value": 18,
       "status": "measured",
       "source": "node calibration/human-fp-budget.mjs",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "docs"
     },
     {
@@ -250,8 +286,8 @@
       "value": 0,
       "status": "measured",
       "source": "node calibration/human-fp-budget.mjs",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "docs"
     },
     {
@@ -259,16 +295,16 @@
       "value": "measured",
       "status": "measured",
       "source": "node calibration/human-fp-budget.mjs",
-      "sha": "b4534e3",
-      "date": "2026-10-02"
+      "sha": "cc4c915",
+      "date": "2026-10-03"
     },
     {
       "key": "gate.aiscore_timeout_ms",
       "value": 120000,
       "status": "measured",
       "source": "parse prose-gate.mjs AISCORE_TIMEOUT_MS",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "ms"
     },
     {
@@ -276,16 +312,16 @@
       "value": 50,
       "status": "measured",
       "source": "parse prose-gate.mjs parseArgs defaults",
-      "sha": "b4534e3",
-      "date": "2026-10-02"
+      "sha": "cc4c915",
+      "date": "2026-10-03"
     },
     {
       "key": "gate.det_bar",
       "value": 40,
       "status": "measured",
       "source": "parse prose-gate.mjs parseArgs defaults",
-      "sha": "b4534e3",
-      "date": "2026-10-02"
+      "sha": "cc4c915",
+      "date": "2026-10-03"
     },
     {
       "key": "gate.drafters",
@@ -302,97 +338,141 @@
       ],
       "status": "measured",
       "source": "parse prose-gate.mjs TELL_PROFILE",
-      "sha": "b4534e3",
-      "date": "2026-10-02"
+      "sha": "cc4c915",
+      "date": "2026-10-03"
     },
     {
       "key": "gate.judge_timeout_ms",
       "value": 150000,
       "status": "measured",
       "source": "parse prose-gate.mjs callJudge",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "ms"
+    },
+    {
+      "key": "hook.block_forms",
+      "value": 38,
+      "status": "measured",
+      "source": "parse ~/.claude/tools/hook/voice-tell-gate.py BLOCK_FORMS",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
+      "unit": "forms"
+    },
+    {
+      "key": "hook.company_names",
+      "value": 22,
+      "status": "measured",
+      "source": "parse ~/.claude/tools/hook/voice-tell-gate.py COMPANY_NAMES",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
+      "unit": "names"
+    },
+    {
+      "key": "hook.min_draft_chars",
+      "value": 3,
+      "status": "measured",
+      "source": "parse ~/.claude/tools/hook/voice-tell-gate.py",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
+      "unit": "characters"
     },
     {
       "key": "hook.min_file_chars",
       "value": 400,
       "status": "measured",
-      "source": "parse /private/tmp/vship/tools/hook/voice-tell-gate.py",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "source": "parse ~/.claude/tools/hook/voice-tell-gate.py",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "characters"
+    },
+    {
+      "key": "hook.names_file",
+      "value": "~/.claude/voice/company-names.txt",
+      "status": "measured",
+      "source": "parse ~/.claude/tools/hook/voice-tell-gate.py NAMES_FILE_DEFAULT",
+      "sha": "cc4c915",
+      "date": "2026-10-03"
     },
     {
       "key": "hook.normalizer_timeout_cap_s",
       "value": 10,
       "status": "measured",
-      "source": "parse /private/tmp/vship/tools/hook/voice-tell-gate.py",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "source": "parse ~/.claude/tools/hook/voice-tell-gate.py",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "seconds"
     },
     {
       "key": "hook.not_send",
       "value": 8,
       "status": "measured",
-      "source": "parse /private/tmp/vship/tools/hook/voice-tell-gate.py NOT_SEND",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "source": "parse ~/.claude/tools/hook/voice-tell-gate.py NOT_SEND",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "substrings"
+    },
+    {
+      "key": "hook.nudge_forms",
+      "value": 62,
+      "status": "measured",
+      "source": "parse ~/.claude/tools/hook/voice-tell-gate.py NUDGE_FORMS",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
+      "unit": "forms"
     },
     {
       "key": "hook.nudge_score",
       "value": 40,
       "status": "measured",
-      "source": "parse /private/tmp/vship/tools/hook/voice-tell-gate.py",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "source": "parse ~/.claude/tools/hook/voice-tell-gate.py",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "points"
     },
     {
       "key": "hook.nudge_score_min_chars",
       "value": 200,
       "status": "measured",
-      "source": "parse /private/tmp/vship/tools/hook/voice-tell-gate.py",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "source": "parse ~/.claude/tools/hook/voice-tell-gate.py",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "characters"
     },
     {
       "key": "hook.prose_extensions",
       "value": 7,
       "status": "measured",
-      "source": "parse /private/tmp/vship/tools/hook/voice-tell-gate.py PROSE_EXT",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "source": "parse ~/.claude/tools/hook/voice-tell-gate.py PROSE_EXT",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "extensions"
     },
     {
       "key": "hook.scorer_timeout_max_s",
       "value": 40,
       "status": "measured",
-      "source": "parse /private/tmp/vship/tools/hook/voice-tell-gate.py",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "source": "parse ~/.claude/tools/hook/voice-tell-gate.py",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "seconds"
     },
     {
       "key": "hook.scorer_timeout_s",
       "value": 20,
       "status": "measured",
-      "source": "parse /private/tmp/vship/tools/hook/voice-tell-gate.py",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "source": "parse ~/.claude/tools/hook/voice-tell-gate.py",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "seconds"
     },
     {
       "key": "hook.send_suffixes",
       "value": 31,
       "status": "measured",
-      "source": "parse /private/tmp/vship/tools/hook/voice-tell-gate.py SEND_SUFFIXES",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "source": "parse ~/.claude/tools/hook/voice-tell-gate.py SEND_SUFFIXES",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "tool names"
     },
     {
@@ -400,8 +480,8 @@
       "value": 10,
       "status": "measured",
       "source": "import prose-gate.mjs INJECTION_PATTERNS",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "patterns"
     },
     {
@@ -409,8 +489,8 @@
       "value": 7,
       "status": "measured",
       "source": "import prose-gate.mjs INJECTION_PATTERNS",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "types"
     },
     {
@@ -418,8 +498,8 @@
       "value": 4,
       "status": "measured",
       "source": "import prose-gate.mjs JUDGES",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "judges"
     },
     {
@@ -432,8 +512,8 @@
       ],
       "status": "measured",
       "source": "import prose-gate.mjs JUDGES",
-      "sha": "b4534e3",
-      "date": "2026-10-02"
+      "sha": "cc4c915",
+      "date": "2026-10-03"
     },
     {
       "key": "judges.vendors",
@@ -445,42 +525,42 @@
       ],
       "status": "measured",
       "source": "import prose-gate.mjs JUDGES",
-      "sha": "b4534e3",
-      "date": "2026-10-02"
+      "sha": "cc4c915",
+      "date": "2026-10-03"
     },
     {
       "key": "overlay.verdict_types",
       "value": 1,
       "status": "measured",
       "source": "VERDICT_STRUCT_TYPES, imported from the overlay",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "structures"
     },
     {
       "key": "repo.commits",
-      "value": 31,
+      "value": 61,
       "status": "measured",
       "source": "git rev-list --count HEAD",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "commits"
     },
     {
       "key": "repo.sha",
-      "value": "b4534e3",
+      "value": "cc4c915",
       "status": "measured",
       "source": "git rev-parse HEAD",
-      "sha": "b4534e3",
-      "date": "2026-10-02"
+      "sha": "cc4c915",
+      "date": "2026-10-03"
     },
     {
       "key": "tests.aiscore.passed",
       "value": 20,
       "status": "measured",
       "source": "node aiscore.test.mjs",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "cases"
     },
     {
@@ -488,62 +568,80 @@
       "value": 20,
       "status": "measured",
       "source": "node aiscore.test.mjs",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "cases"
     },
     {
       "key": "tests.docs_tools.passed",
-      "value": 69,
+      "value": 70,
       "status": "measured",
       "source": "node --test docs/tools/test/*.test.mjs",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "cases"
     },
     {
       "key": "tests.docs_tools.total",
-      "value": 69,
+      "value": 70,
       "status": "measured",
       "source": "node --test docs/tools/test/*.test.mjs",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
+      "unit": "cases"
+    },
+    {
+      "key": "tests.draft_hook.passed",
+      "value": 126,
+      "status": "measured",
+      "source": "python3 hook-tests/voice-draft-gate.test.py",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
+      "unit": "cases"
+    },
+    {
+      "key": "tests.draft_hook.total",
+      "value": 126,
+      "status": "measured",
+      "source": "python3 hook-tests/voice-draft-gate.test.py",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "cases"
     },
     {
       "key": "tests.hook.passed",
-      "value": 115,
+      "value": 552,
       "status": "measured",
       "source": "python3 hook-tests/voice-tell-gate.test.py",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "cases"
     },
     {
       "key": "tests.hook.total",
-      "value": 115,
+      "value": 552,
       "status": "measured",
       "source": "python3 hook-tests/voice-tell-gate.test.py",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "cases"
     },
     {
       "key": "tests.onboarding.passed",
-      "value": 74,
+      "value": 85,
       "status": "measured",
       "source": "node --test onboarding/test/*.test.mjs",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "cases"
     },
     {
       "key": "tests.onboarding.total",
-      "value": 74,
+      "value": 85,
       "status": "measured",
       "source": "node --test onboarding/test/*.test.mjs",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "cases"
     },
     {
@@ -551,8 +649,8 @@
       "value": 111,
       "status": "measured",
       "source": "the normalization cases of the overlay test suite",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "cases"
     },
     {
@@ -560,8 +658,8 @@
       "value": 40,
       "status": "measured",
       "source": "node prose-gate.unit.test.mjs",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "cases"
     },
     {
@@ -569,8 +667,8 @@
       "value": 25,
       "status": "measured",
       "source": "node prose-gate.unit.test.mjs",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "cases"
     },
     {
@@ -578,8 +676,8 @@
       "value": 119,
       "status": "measured",
       "source": "node prose-gate.unit.test.mjs",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "cases"
     },
     {
@@ -587,8 +685,8 @@
       "value": 119,
       "status": "measured",
       "source": "node prose-gate.unit.test.mjs",
-      "sha": "b4534e3",
-      "date": "2026-10-02",
+      "sha": "cc4c915",
+      "date": "2026-10-03",
       "unit": "cases"
     },
     {
@@ -596,8 +694,8 @@
       "value": "yes",
       "status": "measured",
       "source": "node text-normalize.mjs --json (keys of the output)",
-      "sha": "b4534e3",
-      "date": "2026-10-02"
+      "sha": "cc4c915",
+      "date": "2026-10-03"
     }
   ]
 }

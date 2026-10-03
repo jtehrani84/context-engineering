@@ -13,6 +13,9 @@
 #        - keeps your auth key and other settings, and never duplicates a hook
 #        - rewrites an old flat-format hook entry, migrates a matcher the kit used to ship,
 #          and keeps a matcher you set yourself
+#        - wires the voice hooks: the send hook (regex mcp__ matcher) and the file-write nudge, and the draft gate
+#          on Stop with the guarded command, so a missing script can never block a reply
+#        - writes settings.json back in its own layout, so every entry it didn't change keeps its bytes
 #   3. a second run changes nothing; --dry-run writes nothing
 #   4. --uninstall removes unedited kit files, keeps edited ones, and unwires only the hooks it removed
 #   5. --check makes no network call and reports whether the model endpoint is configured
@@ -129,6 +132,14 @@ for ev, want in (("PostToolUse", "Write|Edit|MultiEdit"), ("PreToolUse", None)):
     need(len(vt) == 1, f"voice-tell-gate wired exactly once in {ev} (got {len(vt)})")
     if vt and want: need(vt[0].get("matcher") == want, f"voice-tell-gate {ev} matcher migrated to {want!r} (got {vt[0].get('matcher')!r})")
     if vt and not want: need(str(vt[0].get("matcher", "")).startswith("^(?:mcp__"), f"voice-tell-gate {ev} has the send-tool matcher (got {vt[0].get('matcher')!r})")
+# voice-draft-gate runs on Stop, once, with the guarded command (a missing script ends the reply with a note)
+dg = [e for e in s["hooks"].get("Stop", []) if "voice-draft-gate" in json.dumps(e)]
+need(len(dg) == 1, f"voice-draft-gate wired exactly once on Stop (got {len(dg)})")
+if dg:
+    cmd = dg[0]["hooks"][0]["command"]
+    need(dg[0].get("matcher", "") == "" and cmd.startswith("[ -f ~/.claude/hooks/scripts/voice-draft-gate.py ] ||")
+         and cmd.endswith("; python3 ~/.claude/hooks/scripts/voice-draft-gate.py"), f"voice-draft-gate Stop command is guarded (got {cmd!r})")
+need(not any("voice-draft-gate" in json.dumps(e) for ev, e in allh if ev != "Stop"), "voice-draft-gate wired on no other event")
 flat = [e for ev, e in allh if "hooks" not in e]
 need(not flat, f"no flat entries left (got {len(flat)})")
 sc = entries("/schema-check")[0]
@@ -144,6 +155,17 @@ PYEOF
 then ok "settings.json: auth/model/permissions/other hooks kept, no duplicates, flat entry rewritten, custom matcher kept"
 else bad "settings.json assertions (details above)"; fi
 check "settings backup written once" '[[ -f "$C/settings.json.pre-kit-backup" ]]'
+check "the draft gate script is installed next to the send hook" '[[ -x "$C/hooks/scripts/voice-draft-gate.py" ]] && cmp -s "$TMP/new/hooks/scripts/voice-draft-gate.py" "$C/hooks/scripts/voice-draft-gate.py"'
+# The installed Stop command, run the way Claude Code runs it (/bin/sh, Stop JSON on stdin): with the script in place it
+# runs the gate (a reply with no draft: nothing printed, exit 0); with the script gone it ends the reply with a note.
+STOP_CMD="$(python3 -c 'import json,sys; s=json.load(open(sys.argv[1])); print([h["command"] for e in s["hooks"]["Stop"] for h in e["hooks"] if "voice-draft-gate" in h["command"]][0])' "$C/settings.json")"
+STOP_IN='{"hook_event_name":"Stop","session_id":"t","transcript_path":"/nonexistent.jsonl","stop_hook_active":false,"last_assistant_message":"Done."}'
+OUT_OK="$(printf '%s' "$STOP_IN" | /bin/sh -c "$STOP_CMD")"; RC_OK=$?
+check "installed Stop command runs the gate: a reply with no draft passes (exit 0, no block)" '[[ $RC_OK -eq 0 ]] && ! grep -q "\"block\"" <<<"$OUT_OK"'
+mv "$C/hooks/scripts/voice-draft-gate.py" "$TMP/dg.py"
+OUT_MISS="$(printf '%s' "$STOP_IN" | /bin/sh -c "$STOP_CMD")"; RC_MISS=$?
+mv "$TMP/dg.py" "$C/hooks/scripts/voice-draft-gate.py"
+check "installed Stop command with the script missing: exit 0 and a draft-not-checked note (guarded)" '[[ $RC_MISS -eq 0 ]] && grep -q "draft not checked" <<<"$OUT_MISS"'
 
 echo; echo "== 3. idempotent re-run, dry run"
 H1=$(find "$C" -type f -not -name '*.pyc' -exec shasum -a 256 {} + | sort | shasum -a 256)
@@ -218,6 +240,51 @@ PYEOF
 then ok "a hook of yours named like a kit hook (architecture-guardrail.py) doesn't stop the kit hook being wired"
 else bad "hook name matching (details above)"; fi
 
+if python3 - "$TMP/new/scripts" "$TMP/layout" <<'PYEOF'
+import importlib.util, json, os, sys
+spec = importlib.util.spec_from_file_location("wire_hooks", sys.argv[1] + "/wire-hooks.py")
+wh = importlib.util.module_from_spec(spec); spec.loader.exec_module(wh)
+fails = []
+def need(cond, msg):
+    if not cond: fails.append(msg)
+# settings.json the way Claude Code writes it (2-space indent, <, > and & as \u escapes, no final newline) and the way
+# an editor writes it (4 spaces, final newline). Wiring adds the kit hooks and leaves every other byte alone.
+mine = {"model": "m", "permissions": {"allow": ["Bash(echo a > b && echo c)"]}, "env": {"NOTE": "caf\u00e9 \u2014 <tag>"},
+        "hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": [{"type": "command", "command": "echo 'mine' > /dev/null && true"}]}],
+                  "Stop": [{"hooks": [{"type": "command", "command": "echo my-stop"}]}]}}
+for label, style in (("Claude Code layout", {"indent": 2, "ascii": False, "go": True, "newline": ""}),
+                     ("4-space layout", {"indent": 4, "ascii": False, "go": False, "newline": "\n"})):
+    d = os.path.join(sys.argv[2], label.replace(" ", "-"))
+    os.makedirs(os.path.join(d, "hooks", "scripts"), exist_ok=True)
+    open(os.path.join(d, "hooks", "scripts", wh.DRAFT_GATE), "w").close()
+    p = os.path.join(d, "settings.json")
+    original = wh.dump_json(mine, style)
+    open(p, "w").write(original)
+    rc = wh.main(["wire-hooks.py", p])
+    after = open(p).read()
+    s = json.loads(after)
+    need(rc == 0 and wh.json_style(after, s) == style, f"{label}: written back in the same layout")
+    for ev, es in mine["hooks"].items():
+        for e in es:
+            need(wh.dump_json(e, style).strip() in after or json.dumps(e) in json.dumps(s["hooks"][ev]), f"{label}: your {ev} entry kept")
+    need(s["permissions"] == mine["permissions"] and s["env"] == mine["env"], f"{label}: other settings kept")
+    stop = [e for e in s["hooks"]["Stop"] if wh.DRAFT_GATE in json.dumps(e)]
+    need(s["hooks"]["Stop"][0] == mine["hooks"]["Stop"][0] and len(stop) == 1, f"{label}: your Stop hook kept, draft gate added once")
+    # every original entry is still in the file byte for byte (as the file's own layout prints it)
+    for ev, es in mine["hooks"].items():
+        for e in es:
+            ind = style["indent"] if isinstance(style["indent"], str) else " " * style["indent"]
+            block = "\n".join(ind * 3 + ln for ln in wh.dump_json(e, {**style, "newline": ""}).splitlines())
+            need(block in after, f"{label}: your {ev} entry is byte-identical")
+    before = after
+    rc = wh.main(["wire-hooks.py", p])
+    need(open(p).read() == before, f"{label}: a second run writes nothing")
+for f in fails: print("        layout:", f)
+sys.exit(1 if fails else 0)
+PYEOF
+then ok "wiring keeps settings.json's own layout (Claude Code's escapes, 4-space files) and your entries' bytes"
+else bad "settings.json layout (details above)"; fi
+
 echo; echo "== 5. --check is offline and reports the model endpoint"
 check "setup.sh hard-codes no URL at all" '! grep -Eq "https?://[A-Za-z0-9]" "$TMP/new/setup.sh"'
 check "README has no copy-paste installer URL piped into bash" '! grep -Eq "curl[^|]*https?://[^ ]+[^|]*\| *bash" "$TMP/new/README.md"'
@@ -240,6 +307,7 @@ check "an unedited kit skill is removed" '[[ ! -f "$C/commands/morning-brief.md"
 check "an unedited kit hook is removed and unwired" '[[ ! -f "$C/hooks/scripts/guardrail.py" ]] && ! grep -q "scripts/guardrail.py" "$C/settings.json"'
 check "the hook you edited is kept and still wired" '[[ -f "$C/hooks/scripts/output-quality-gate.py" ]] && grep -q "scripts/output-quality-gate.py" "$C/settings.json"'
 check "settings.json backed up before unwiring" '[[ -f "$C/settings.json.pre-uninstall-backup" ]]'
+check "the voice hooks are removed and unwired (send hook, file-write nudge, draft gate on Stop)" '[[ ! -f "$C/hooks/scripts/voice-tell-gate.py" && ! -f "$C/hooks/scripts/voice-draft-gate.py" ]] && ! grep -q "voice-tell-gate.py\|voice-draft-gate.py" "$C/settings.json"'
 if python3 - "$C" <<'PYEOF'
 import json, os, re, sys
 c = sys.argv[1]

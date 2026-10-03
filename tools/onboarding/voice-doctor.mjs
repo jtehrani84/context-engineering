@@ -23,13 +23,13 @@
 // Exit: 0 no check failed (WARN and INFO allowed), 1 at least one FAIL, 2 the doctor couldn't run (usage error).
 import './lib/local-only.mjs';
 import { existsSync, readFileSync, mkdtempSync, writeFileSync, rmSync, accessSync, constants, realpathSync, statSync } from 'node:fs';
-import { join, resolve, delimiter } from 'node:path';
+import { join, resolve, delimiter, dirname } from 'node:path';
 import { tmpdir, homedir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { loadConfig } from './lib/config.mjs';
 import { enginePaths, checkDetectorPin, loadDetector, runScorer, runNode, loadOverlay, overlayImports, engineLoadsOverlay, fileSha256, lastLine } from './lib/engine.mjs';
-import { resolveHook, matcherMatches, matcherKind, recommendedSendMatcher, sendToolName, hookIntrospect, runHook, sendPayload, writePayload, FILE_TOOLS } from './lib/hook.mjs';
+import { resolveHook, matcherMatches, matcherKind, recommendedSendMatcher, sendToolName, hookIntrospect, runHook, sendPayload, writePayload, FILE_TOOLS, DRAFT_HOOK_NAME, voiceHookEntries, hookPathFromCommand, draftGateCommand, draftCommandTraps } from './lib/hook.mjs';
 import * as P from './lib/probes.mjs';
 
 export const EXIT = { 0: 'no check failed', 1: 'at least one check failed', 2: "the doctor couldn't run (usage error)" };
@@ -271,6 +271,44 @@ export const CHECKS = [
     },
   },
   {
+    id: 'draft-gate-wiring', verifies: `settings.json runs the draft gate (${DRAFT_HOOK_NAME}) as a Stop hook, so a draft Claude shows in chat is checked when the reply ends, and the script is where the command points.`,
+    catches: ['draft gate not wired on Stop', 'a draft gate wired on another event', 'a flat draft-gate entry Claude Code does not run', 'draft gate script missing', 'a draft gate command with no guard for a missing script'],
+    run(ctx) {
+      const { config } = ctx;
+      const { entries, errors } = voiceHookEntries(config.paths.settings, DRAFT_HOOK_NAME);
+      const problems = [...errors];
+      const stop = entries.filter((e) => e.event === 'Stop' && !e.flat);
+      for (const e of entries.filter((x) => x.flat)) problems.push(`${e.file}: a ${e.event} entry runs the draft gate in the flat form ({matcher, command}); Claude Code only runs entries with a "hooks" list`);
+      for (const e of entries.filter((x) => !x.flat && x.event !== 'Stop')) problems.push(`${e.file} runs ${DRAFT_HOOK_NAME} on ${e.event}, not Stop; it reads the reply only when the reply ends`);
+      if (!stop.length) problems.push(`no Stop entry runs ${DRAFT_HOOK_NAME} in ${config.paths.settings.join(', ')}, so drafts Claude shows in chat are never checked`);
+      const expected = join(dirname(config.paths.hook), DRAFT_HOOK_NAME);
+      const script = (stop[0] && hookPathFromCommand(stop[0].command, DRAFT_HOOK_NAME)) || expected;
+      // A Stop command that runs python3 on the script with no guard exits 2 once the script is missing, and exit 2 on
+      // Stop blocks the stop. Claude Code 2.1.286 reads python3's and sh's missing-file errors as non-blocking (headless
+      // check, 2026-10-03); the guard doesn't depend on that, and the user gets a note instead of "Stop hook error
+      // occurred". Review of the hook holes, N3, 2026-10-03.
+      const NO_GUARD = 'the Stop command has no guard for a missing script: it exits 2, which blocks every reply on a Claude Code build that does not read the missing-file error as non-blocking (2.1.286 does), and the user sees only "Stop hook error occurred"';
+      const traps = stop.filter((e) => draftCommandTraps(e.command, ctx.env).traps);
+      const merge = join(ctx.onboarding, 'merge-hooks.mjs');
+      if (!existsSync(script)) {
+        problems.push(`no draft gate script at ${script}`);
+        if (traps.length) problems.push(`${NO_GUARD}; until the script is back, run node ${merge} --remove to take the entry out`);
+      }
+      const shipped = join(ctx.paths.toolsDir, 'hook', DRAFT_HOOK_NAME);
+      const install = `install the draft gate that ships with this engine: cp ${shipped} ${script}${existsSync(shipped) ? '' : ' (this engine has no hook/ folder; get it from the same release)'}`;
+      const onlyScript = !existsSync(script) && stop.length && problems.length === (traps.length ? 2 : 1);  // wired, the script gone
+      const fix = !problems.length ? null : onlyScript
+        ? `${install}${traps.length ? `; then run node ${merge} to rewrite the Stop command with the guard` : ''}`
+        : !existsSync(script)
+          ? `${install}; then run node ${merge} (it adds the Stop entry only once the script is installed, removes old ones and keeps every other hook)`
+          : `run node ${merge}: it adds the Stop entry, removes old ones and keeps every other hook`;
+      if (problems.length) return res(FAIL, problems[0], { details: problems.slice(1), fix });
+      if (traps.length) return res(WARN, `${NO_GUARD} (${traps[0].file}: ${traps[0].command})`,
+        { details: [`fix: run node ${merge}; it writes the command with a guard that lets the reply end with a note when the script is missing`] });
+      return res(PASS, `Stop runs ${script}${stop.length > 1 ? ` (${stop.length} entries)` : ''}`);
+    },
+  },
+  {
     id: 'hook-controls', verifies: 'The wired hook lets a plain message through and stops an obvious tell, with the real scorer.',
     catches: ['a hook that denies a clean send', 'a hook that lets an obvious tell through'],
     run(ctx) {
@@ -437,12 +475,17 @@ function parseArgs(argv) {
   return f;
 }
 
+// The hooks section the voice system needs: the send/write hook on PreToolUse (every send tool) and PostToolUse (file
+// writes), and the draft gate, which sits next to it, on Stop (matcher "": Stop has no tool to match). The Stop command
+// is guarded (lib/hook.mjs draftGateCommand): with the script missing it lets the reply end with a note, never blocks.
 export function hooksBlock(config, env = process.env) {
   const cmd = `python3 ${tilde(config.paths.hook, env)}`;
+  const draft = draftGateCommand(tilde(join(dirname(config.paths.hook), DRAFT_HOOK_NAME), env));
   return {
     hooks: {
       PreToolUse: [{ matcher: recommendedSendMatcher(config.sendTools), hooks: [{ type: 'command', command: cmd }] }],
       PostToolUse: [{ matcher: FILE_TOOLS.join('|'), hooks: [{ type: 'command', command: cmd }] }],
+      Stop: [{ matcher: '', hooks: [{ type: 'command', command: draft }] }],
     },
   };
 }

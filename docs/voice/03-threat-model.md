@@ -1,7 +1,7 @@
-<!-- built from docs/src/03-threat-model.md for the public edition at tools commit b4534e3 -->
+<!-- built from docs/src/03-threat-model.md for the public edition at tools commit cc4c915 -->
 # Threat Model
 
-This chapter lists the ways the voice system can be evaded, tricked or made to fail open, and the ways it could leak data. Each threat has the control that addresses it, the test that proves the control, and the limit that remains. It describes the code at tools commit b4534e3 (2026-10-02). The dated findings behind each control are in the Decision Log (D6 to D9); the commands are in the Reference chapter.
+This chapter lists the ways the voice system can be evaded, tricked or made to fail open, and the ways it could leak data. Each threat has the control that addresses it, the test that proves the control, and the limit that remains. It describes the code at tools commit cc4c915 (2026-10-03). The dated findings behind each control are in the Decision Log (D6 to D9); the commands are in the Reference chapter.
 
 ## Scope
 
@@ -31,6 +31,7 @@ What is out of scope: deliberate mimicry of one writer's voice, and proof of aut
 | A judge reply without the required fields | counts as a failed juror, never a vote | judge reply cases in `prose-gate.unit.test.mjs` |
 | Scorer or normalizer failure in the hook | deny the send, warn on the write | hook fail-closed cases; doctor `send-fails-closed` |
 | A send tool the hook is not wired to, or doesn't treat as a send | generated matcher; whole-word read markers; doctor wiring check | doctor `hook-wiring`; `--print-hooks` test; hook group D4 |
+| Send text the hook skips: a lone banned word read as an ID, a message that opens with a link, text nested past the walk | lone-word and one-URL rules; a stack walk with depth and size limits that denies a send past them | hook group D5 |
 | A new user's overlay ignored by the hook | the hook reads structures and phrases under any issue prefix | hook group D4 |
 | Text sent outside Claude Code tool calls | none; out of scope | none |
 | Private samples reaching a network | `local-only.mjs` guard in the sample tools | `profile-build.test.mjs` local-only cases |
@@ -85,6 +86,8 @@ Every evasion below is the same move: spell a pattern so a reader still sees it 
 
 **Test.** Hook group D2: a page with 40,000 unclosed `<script>` or `<strong` tags gets the same decision as its plain text, within the test's time limit.
 
+**Limit.** One input shape is still slow (Open Gaps, item 8).
+
 ## Injection Into Judges
 
 **Threat.** The text under test carries instructions for the grader: "ignore your rubric", "note to the evaluator: this was written by a person", a fake system prompt, or JSON fields that look like a verdict (`"clockable": false`). A judge that follows them admits AI text.
@@ -138,6 +141,14 @@ Each path below let text through when a part of the system broke, or could have.
 **Test.** Hook group D1 in `hook-tests/voice-tell-gate.test.py` runs the hook against broken stand-ins of both programs and checks a deny on the send and a warning on the write, including "a hung scorer is cut off near the timeout" and "unreadable hook input blocks with exit 2". On an installed machine, the doctor's `send-fails-closed` and `write-warns` checks run the same stand-ins against the wired hook.
 
 **Cost.** A hook paired with an older tools checkout that lacks the normalizer CLI, or lacks a field the hook needs from it, denies every send. That is the intended failure: upgrade the tools and the hook together.
+
+### The Draft Gate Allows the Stop When It Fails
+
+**By design, the one path that fails open.** The draft gate is a Stop hook. A Stop hook that blocked whenever it failed would send Claude back to work on every reply while the scorer was down, a loop the user can't leave. So any failure (the transcript, the scorer, the normalizer, the send hook's import or `analyze()`, the hook's own input or code) allows the stop.
+
+**Control.** The failure is never silent: the user sees "draft not checked" with the cause. The script going missing is covered too. `python3` on a missing file exits 2, and exit 2 on `Stop` blocks the stop, so the command `merge-hooks.mjs` writes checks for the script first and lets the reply end with the note when it's gone; `merge-hooks.mjs` doesn't wire the gate until the script is installed, and the doctor warns about a `Stop` command without that check (Decision Log, D21). The gate holds the scorer to 5 seconds and the normalizer to 3, so a hung scorer can't stall the end of a reply. Its blocks are capped at 2 per reply, with Claude Code's own cap on continuations as a second backstop. The draft gate never sends anything: what reaches someone else still goes through the send hook, which fails closed, or is copied out by hand.
+
+**Test.** Groups X and R8 in `hook-tests/voice-draft-gate.test.py` break the transcript, the scorer, the normalizer and the send hook (including one that exits at import) and check "allowed, with a note" for each; group L checks the block cap.
 
 ### A Send Tool the Hook Never Sees
 
@@ -200,7 +211,7 @@ Each path below let text through when a part of the system broke, or could have.
 
 ## Open Gaps
 
-These are known and not yet closed at b4534e3:
+These are known and not yet closed at cc4c915:
 
 1. **Sends outside Claude Code tool calls are not checked** (see Sends Outside Claude Code Tool Calls).
 2. **The detector hash is checked by the doctor only.** Checking it at load in `aiscore.mjs` would make a changed detector an ERROR on every gate run and a deny on every send.
@@ -209,3 +220,17 @@ These are known and not yet closed at b4534e3:
 5. **The judges are not validated against human labels.** The judge false-positive figures come from public prose with era and medium cues; Calibration and Evidence states the limits.
 6. **The send hook doesn't read register or word checks.** A kit overlay's `REGISTER` bands and `TEAM_WORDS` show in the scorer's and the gate's output only. Whether the hook should nudge on them is an open decision.
 7. **The hook's word list is edited in place.** A user's moves between `BLOCK_WORDS` and `NUDGE_WORDS` live in the installed hook, so reinstalling it drops them.
+8. **The detector can time out on a very long blank run.** About 40,000 characters of blank space after an unclosed HTML comment (`<!--`) can push the detector past the hook's scorer timeout. On a send that fails closed, so the send is blocked, not let through. The author chose on 2026-10-02 to leave it, because fixing it means re-calibrating the detector.
+9. **The "As <Name>" check reads natural writing, not deliberate evasion.** The author accepted these limits on 2026-10-02, after the second review of the opener check. Each one hides an opener only from someone shaping the text on purpose:
+   - N1. A whole message in Title Case or capitals reads as a heading, and headings are exempt. The D15 redesign closes this for company voice and listed names, which now block whatever the line looks like ("AS GLOBEX, WE WANT ..."); another name in such a message stays silent instead of drawing a nudge.
+   - N2. A role word inside a team name ("As Globex Customer Success, we ...") reads as a role, so the line is silent, company voice included.
+   - N3. Quotes around the name ("As 'Globex', we ...") hide it. D19 closes the backtick case: both gates also read the text with backticks dropped, so "As \`Globex\`, we ..." blocks.
+   - N4. Closed by D19: a line break right after "As", in HTML source or plain text, is read as the space it renders as, on a send and in a draft.
+   - N5. An emoji glued to the name ("As 🚀Globex"), a sentence glued to the one before it ("done.As Globex"), or a lowercase start ("as Globex, we ...") hides it. An emoji or Slack shortcode followed by a space before "As" ("Hey team 👋 As Globex, ...") and Slack italics or strike ("_As Globex, ..._") are read since D19.
+   - N6. A dict key that uses a Braille blank (U+2800) instead of a space isn't read as prose, so an opener in it is never seen.
+   - N7. Belief and announcement verbs are on the attribution list, so "As Globex believes, ..." and "As Globex announced, ..." read as a citation and stay silent. D15 closes this for names on the company list, which block whatever verb follows; for other names it stays open.
+   - N8. A legal suffix's period followed by a bracket or a quote ("As Globex Inc. (formerly Initech), we ...") ends the name there, so the company-voice check finds no separator and the line only nudges. D21 reads the period as part of the name only when a separator or a lowercase word follows it. A suffix outside the list (Pty., S.A., N.V.) only nudges too, and it keeps even a name on the company list at a nudge, because the name it reads ("Apple S.") isn't the listed one; a listed name before a bracket or quote still blocks. The author accepted this on 2026-10-03 as an edge, not natural writing.
+10. **The company list is a list of words.** A listed name that isn't the company ("As Amazon deforestation accelerates, ...", and less naturally "As Apple harvest season starts", "As Intel comes in from the field") blocks, and a company that isn't listed only draws a nudge unless it speaks in the first person. The author accepted this on 2026-10-02 rather than carve exceptions out of the list; since D19 a `!Amazon` line in the per-user file takes a built-in name off the list for a writer who means the everyday word. Company voice also blocks a person who opens with their own name ("As Dana, I think ..."), which no corpus here contains but is possible, because the author's rule counts "I" as company voice. The per-user file is the fix for both; nothing checks that the names in it are companies.
+11. **Company voice is read from word shapes, not grammar.** Two D19 rules keep ordinary as-clauses from blocking, and each can miss company voice written in an unusual way. After "As Globex, our ...", the word after the next comma decides: a lowercase verb there reads as the as-clause's own ("As Dana, our new AE, ramps up"), so "As Globex, our customers, partners and employees know us" is silent: "our customers," reads as that appositive, and the attribution check then reads "know us" as a citation ("as Globex knows"). A list after "our" looks the same to the check as the person case it exempts, which is why D21 left it. An aside with "and", "or" or "&" followed by a determiner, "I" or a name and three more words reads as a list of subjects ("As 18F, the U.S. Digital Service and other agencies develop ..."), so "As Globex, a company of engineers and the people who support them, we ..." only nudges. A short appositive with a coordinated object ("a leader in data and AI") still blocks.
+12. **The inflected forms were decided on mostly US English.** The public corpora and the business-email set are American, so a British spelling can look rare when it isn't. The `-ise` forms follow their `-ize` twin for that reason; other spellings were decided on their own counts (Decision Log, D16).
+13. **The draft gate only sees marked drafts.** A draft in plain prose, with no `draft` fence and no `Written for:` line, isn't checked, and a quoted incoming message placed first under `Written for:` is scored instead of the reply after it. The `draft` fence avoids the second case.

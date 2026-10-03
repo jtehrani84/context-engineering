@@ -1,7 +1,7 @@
-<!-- built from docs/src/02-architecture.md for the public edition at tools commit b4534e3 -->
+<!-- built from docs/src/02-architecture.md for the public edition at tools commit cc4c915 -->
 # Architecture
 
-This chapter describes the layers of the voice system, how text moves through them on a file write, a send and a gate run, what may leave the machine, and what the system depends on. It describes the code at tools commit b4534e3. Flags, exit codes and environment variables are listed in full in the Reference chapter, which is generated from the code.
+This chapter describes the layers of the voice system, how text moves through them on a file write, a send and a gate run, what may leave the machine, and what the system depends on. It describes the code at tools commit cc4c915. Flags, exit codes and environment variables are listed in full in the Reference chapter, which is generated from the code.
 
 ## Components
 
@@ -13,6 +13,7 @@ This chapter describes the layers of the voice system, how text moves through th
 | `voice-overlay.mjs` | The overlay module the engine imports: personal words, phrases, structures, cadence checks, approved lines and the verdict-driving structure list |
 | `prose-gate.mjs` | Gate: deterministic layer, injection check, judge panel, one verdict and exit code |
 | `hook/voice-tell-gate.py` | Claude Code hook, installed at `~/.claude/hooks/scripts/voice-tell-gate.py`: blocks sends, nudges file writes after they are saved, fails closed |
+| `hook/voice-draft-gate.py` | Claude Code Stop hook, installed at `~/.claude/hooks/scripts/voice-draft-gate.py`: checks the drafts in Claude's finished reply with the send hook's `analyze()`, blocks the stop at most 2 times per reply, allows the stop when anything fails |
 | `calibration/` | Public corpus fetch, the human false-positive budget, gate evaluation over labeled sets |
 | `onboarding/` | `voice-doctor.mjs`, `profile-build.mjs`, `calibrate-user.mjs`, `merge-hooks.mjs`, the overlay template |
 | avoid-ai-writing detector | Third-party pattern library, cloned beside the tools and pinned to one commit |
@@ -74,7 +75,18 @@ Exit 1 is a usage error. ADMIT needs both layers, so a run that never reached a 
 
 On a send, the hook blocks on any critical-severity overlay structure (`<prefix>-struct-*`, under any issue prefix), on an overlay phrase that the overlay marks critical or the hook's lexicon marks as blocking, and on its own word and phrase lexicon. It doesn't read overlay word hits or cadence checks. It nudges on high and medium structures, on dual-use words, and when the raw detector `score` is at or above 40 on text longer than 200 characters. The hook calls `node aiscore.mjs - --json` with a 20 second timeout (`VOICE_SCORER_TIMEOUT`; a value outside 0 < x <= 40 falls back to the default) and `node text-normalize.mjs --json` with a timeout capped at 10 seconds, and checks that the normalizer read exactly as many code points as it sent. It never calls the gate or a judge.
 
+Three rules in the lexicon have their own shape. A sentence that opens "As" plus a capitalized name blocks a send only in company voice ("As Globex, we ...", the name and then a first-person main clause) or when the name is on the company list: 22 large companies built in, plus the names in the per-user file `~/.claude/voice/company-names.txt`. Any other name there ("As Boston gets colder", an invented example) is a nudge, and attribution, roles and the stock openers stay silent (Decision Log, D15). Company voice is read after a short aside, a dash pair or an adverb ("As Globex, founded in 1985, we ..."), but not when the aside is a possessive appositive before the as-clause's own verb ("As Dana, our new AE, ramps up") or a list of subjects with a verb, and never across a blank line (D19). The word tiers include inflected forms, 38 that block and 62 that nudge, picked by how often real writers use each form (D16). A draft file, one under a folder named `drafts` or with `draft` in its file name, is checked from 3 characters instead of 400 (D17).
+
 The lexicon and the send-tool list are data at the top of the hook script. The starter kit ships them tuned for one writer's tools; edit them for the chat, email, document and code-review tools you use.
+
+### The Draft Gate
+
+`voice-draft-gate.py` is a Stop hook, wired in `settings.json` with an empty matcher. No hook can hold back chat text before Claude Code shows it, so this one reads the reply when it ends, and only the drafts in it:
+
+- **A draft fence.** A fenced block whose info string starts with the word `draft`: ````draft`, ````draft email`, `~~~draft slack`, `draft_email`, `drafts`. ````draft.js` is code, not a draft. The fence may sit in a list item or a blockquote.
+- **The "Written for:" fallback.** When the reply has no draft fence, the first blockquote or untagged fence within 3 lines after a `Written for:` line is the draft. When that line names a saved file, the piece went to a file, and the file-write check covers it instead.
+
+The rest of the reply is never scored, so a reply that explains why a word is banned trips nothing. The drafts go through the send hook's own `analyze()`, imported read-only, which also reads the text as it renders (backticks dropped, line breaks as spaces), so the two hooks can't disagree about a word or an opener. A hard tell blocks the stop: Claude gets the list of what to cut and shows the fixed draft in the same reply, and the user sees Claude Code's label "Stop hook error occurred" with a one-line note. That label is how Claude Code shows any Stop-hook block; nothing broke. A soft tell lets the stop through with a note for the user. After 2 blocks in one reply the stop is allowed, with a note that the draft is still flagged. If anything fails (the transcript, the scorer, the normalizer, the send hook, the hook's own input), the stop is allowed and the user sees "draft not checked" with the cause, because a Stop hook that failed closed would trap the session in a loop. The wired command checks that the script exists before running it, so a missing script gets the same note rather than `python3`'s exit 2, which would block the stop. The gate holds the scorer to 5 seconds and the normalizer to 3.
 
 ### Two Policies
 
@@ -91,7 +103,7 @@ The hook is the fast local guard on every send, so it blocks on the full hard-ba
 
 ## Data Flow
 
-The diagram shows the three entry points. Boxes inside the dashed line run on the user's machine. The only arrow that crosses it during a check is the judge call; the other network use, the corpus fetch for calibration, is in the Data Boundary table. The hook sees only Claude Code tool calls: text sent by a shell command (`curl`, `gh`, a chat CLI) never reaches it.
+The diagram shows the three entry points. Boxes inside the dashed line run on the user's machine. The only arrow that crosses it during a check is the judge call; the other network use, the corpus fetch for calibration, is in the Data Boundary table. The hook sees only Claude Code tool calls: text sent by a shell command (`curl`, `gh`, a chat CLI) never reaches it. The draft gate is not drawn: it hands the drafts it finds to the same `analyze()` the send hook runs, so from there its path is the send hook's.
 
 ```
   Claude Code                                          command line

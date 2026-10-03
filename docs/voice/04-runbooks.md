@@ -1,7 +1,7 @@
-<!-- built from docs/src/04-runbooks.md for the public edition at tools commit b4534e3 -->
+<!-- built from docs/src/04-runbooks.md for the public edition at tools commit cc4c915 -->
 # Runbooks
 
-Each runbook starts from something you can see (a blocked send, an exit code, a hook that stays quiet) and ends with a check you can run. Every runbook has the same five parts: **Symptom**, **Confirm**, **Fix**, **Verify** and **Rollback**. The commands and file names match the engine at tools commit b4534e3, written 2026-10-02. Flags, exit codes and environment variables are in the generated reference (chapter 05); this chapter links to them instead of repeating them.
+Each runbook starts from something you can see (a blocked send, an exit code, a hook that stays quiet) and ends with a check you can run. Every runbook has the same five parts: **Symptom**, **Confirm**, **Fix**, **Verify** and **Rollback**. The commands and file names match the engine at tools commit cc4c915, written 2026-10-02. Flags, exit codes and environment variables are in the generated reference (chapter 05); this chapter links to them instead of repeating them.
 
 The commands use two shell variables:
 
@@ -30,6 +30,7 @@ The hook's deny message lists every hit. Each hit has one of three sources, and 
 | A word or phrase from the hook's own lists | `BLOCK_WORDS` or `BLOCK_PHRASES` in the hook | the hook file (move the word to `NUDGE_WORDS` or `FULL_EXEMPT`) |
 | A structure with critical severity (an announced hedge, a candor label) | the overlay's structure list | the overlay (an approved line, or a narrower pattern) |
 | A phrase from the overlay | the overlay's phrase list: blocks when the overlay marks it critical (a kit `TEAM_PHRASES` entry) or the hook's word tiers block it | the overlay or the hook's tiers |
+| `banned opener` on an "As <Name>" sentence | the hook's opener check: company voice ("As Globex, we ...") or a name on the company list | the sentence; a wrong name in your names file (see below) |
 
 Then ask whether it is a false positive. A hit is a false positive when the matched text is a sense of the word you really use (a product name, a literal technical meaning), a verbatim quote, or a line you write and have approved. It is a true positive when the matched text is the move the check was written to catch, even if the rest of the message is fine. For a true positive, rewrite the sentence and resend; nothing else changes.
 
@@ -38,6 +39,7 @@ Then ask whether it is a false positive. A hit is a false positive when the matc
 1. **A line you write on purpose** (a sign-off, a quote you repeat). Add the exact line to the approved lines in your overlay. The overlay's own checks skip it. The generic detector and the hook's word lists do not read the approved lines, so this fix only clears an overlay hit.
 2. **A word with a real second sense.** Move the word in your copy of the hook from `BLOCK_WORDS` to `NUDGE_WORDS`: it is still flagged on every send, it stops blocking. Move it to `FULL_EXEMPT` only when it is a name you own and should never be flagged.
 3. **A structure that fires on a sentence it was not meant for.** Narrow its regular expression and add the sentence as a should-stay-silent test case (runbook "Add a Banned Word or a Structure").
+4. **An "As <Name>" opener.** Company voice ("As Globex, we ...") is the tell itself: lead with the name ("Globex ..."). An opener that only names a listed company ("As Google reports ...") blocks too; if the name in your own `company-names.txt` is wrong, remove the line. A name that should never count as a company gets a `!` line instead, which turns its non-company-voice openers silent; a `!` line works for a built-in name too ("!Amazon" for the rainforest). Any other name only draws a nudge and the send goes out.
 
 In a starter kit install the overlay is the file named on `voice-doctor`'s `overlay` line (`voice-overlay.mjs` by default), and its approved lines are `APPROVED_LINES`. `/voice-setup` steps 5 and 6 walk through editing it.
 
@@ -123,7 +125,7 @@ Det-only never returns ADMIT. A clean draft is INCONCLUSIVE, because nothing rea
 
 **Confirm.** First rule out the cases where staying quiet is correct:
 
-- The file is not a prose file (`.html .htm .md .mdx .txt .rtf .docx`, 7 extensions) or is shorter than 400 characters.
+- The file is not a prose file (`.html .htm .md .mdx .txt .rtf .docx`, 7 extensions) or is shorter than 400 characters. A draft file (a `drafts` folder in its path, or `draft` in its name) is checked from 3 characters.
 - The tool's own name (the part after the last `__`) has one of the 8 read-side markers (`read`, `search`, `list`, `get`, `fetch`, `download`, `poll`, `branch`) as a whole word. The hook treats such a tool as a read and skips it.
 - The text went out through a shell command (`curl`, `gh pr create --body ...`, a chat CLI). Hooks fire on tool calls; a Bash-piped send is outside the hook's reach (Threat Model, Sends Outside Claude Code Tool Calls).
 - The session started before the hook was wired. Claude Code reads hooks at session start.
@@ -131,7 +133,7 @@ Det-only never returns ADMIT. A clean draft is INCONCLUSIVE, because nothing rea
 Then run the doctor's hook checks, which read `settings.json` the way Claude Code does and run the hook on synthetic calls:
 
 ```bash
-node "$T/onboarding/voice-doctor.mjs" --only hook-wiring,hook-controls
+node "$T/onboarding/voice-doctor.mjs" --only hook-wiring,hook-controls,draft-gate-wiring
 node "$T/onboarding/voice-doctor.mjs" --print-hooks     # the hooks block this config needs
 ```
 
@@ -139,7 +141,7 @@ The most common cause is the send matcher. Claude Code reads a matcher made only
 
 The second cause is a hook older than the engine. Hooks from before 2026-10-02 test the read markers as substrings of the whole tool name, so `manage_spreadsheet_comment` ("spreadsheet" contains `read`) is skipped even when the matcher routes it there; `hook-wiring` reports it as a send tool the hook does not treat as a send. Those hooks also read overlay issues only under their owner's issue prefix, so a starter-kit overlay never affects a send.
 
-**Fix.** Rewrite the wiring with the merge tool. It replaces only the entries that run `voice-tell-gate.py`, keeps every other hook and setting, and backs up the file first:
+**Fix.** Rewrite the wiring with the merge tool. It replaces only the entries that run `voice-tell-gate.py` or `voice-draft-gate.py`, adds the draft gate on `Stop`, and backs up the file first. Every other hook and setting keeps its value, and its bytes too when the tool can reproduce the file's layout (Claude Code's own, or plain JSON with 2 or 4 spaces or tabs); a hand-formatted file is rewritten as 2-space JSON, and the tool says so. A `timeout` you set on a voice entry is carried over. If your old send matcher was a list of names, the tool prints any name the new matcher doesn't cover; add it to `sendTools` in the voice config and re-run to keep it gated. If it prints "skipped the Stop entry", the draft gate's script isn't installed: copy it with the `cp` the message gives and run the tool again:
 
 ```bash
 node "$T/onboarding/merge-hooks.mjs" --dry-run     # prints the hooks section it would write
@@ -157,7 +159,30 @@ Re-apply any word moves you made in the old copy. Restart the Claude Code sessio
 
 **Verify.** `hook-wiring` and `hook-controls` print `PASS`. In a fresh session, a send to a test channel or a draft with a known tell is denied. The doctor runs the hook directly, so its checks pass before the restart; only the fresh-session test shows that Claude Code loaded the new matcher.
 
-**Rollback.** `merge-hooks.mjs` printed the backup path. Copy it back over `settings.json` and restart the session.
+**Rollback.** `merge-hooks.mjs` printed the backup path. Copying it back over `settings.json` restores the old wiring, and also undoes any other settings change made since the merge. To take out only the voice entries (the send hook and the draft gate, on any event), keeping everything else:
+
+```bash
+node "$T/onboarding/merge-hooks.mjs" --remove      # backs up first; a second run changes nothing
+```
+
+Restart the session after either.
+
+## A Draft Was Flagged When the Reply Ended
+
+**Symptom.** Claude Code shows "Stop hook error occurred" at the end of a reply, with the note "Voice draft gate: the draft had hard tells (...); Claude will fix it, or ask you if they're your words.", and Claude then writes a corrected draft. Or a reply ends with a "Voice draft gate (reply allowed)" note that lists softer tells, or with "Voice draft gate: draft not checked: <cause>".
+
+**Confirm.** The label is how Claude Code shows any Stop-hook block. The draft gate blocked because a draft in the reply, a ````draft` fence or the piece after a `Written for:` line, has a hard tell; the reason Claude got lists each one. Run the scorer on the draft text the same way as for a blocked send (`node "$T/aiscore.mjs" /tmp/draft.txt`).
+
+**Fix.**
+
+1. **A true tell.** Nothing to change: Claude rewrites the draft in the same reply. The gate blocks at most 2 times per reply, then lets the reply end with a note that the draft is still flagged.
+2. **Your own words, relayed as-is.** When every hard tell sits in a sentence you wrote that turn, the gate allows the stop with a note. If you asked for a word on purpose, tell Claude to keep it; a draft shown again unchanged after a block is allowed with a note, not blocked again.
+3. **Not a draft.** An example or code that uses the `draft` info string is read as a draft. Use another info string (`text`, `md`) for examples.
+4. **"draft not checked: <cause>".** The gate couldn't run (the cause names the scorer, the normalizer, the send hook or the transcript) and let the reply end. "the draft gate script is missing" means `settings.json` points at a script that isn't there: install it (Getting Started, Before You Start), or take the entry out with `merge-hooks.mjs --remove`. Run `node "$T/onboarding/voice-doctor.mjs" --only draft-gate-wiring,hook-controls`, fix what it names, and check the draft by hand meanwhile.
+
+To turn the gate off, remove its `Stop` entry from `settings.json` (or restore the backup `merge-hooks.mjs` made) and restart the session.
+
+**Verify.** In a fresh session, ask for a short draft in a ````draft` fence that uses a banned word. The reply ends with the label and a corrected draft below it.
 
 ## Recalibrate After a Change
 
@@ -182,7 +207,7 @@ Re-apply any word moves you made in the old copy. Restart the Claude Code sessio
    node "$T/calibration/human-fp-budget.mjs"
    ```
 
-   It fails when the pooled public reject count rises above the recorded baseline plus a small margin, when the pinned structure or any injection pattern hits a single human document, or when a corpus has the wrong document count. The last run (measured at b4534e3 on 2026-10-02) found 0 rejects in 18,335 public human documents.
+   It fails when the pooled public reject count rises above the recorded baseline plus a small margin, when the pinned structure or any injection pattern hits a single human document, or when a corpus has the wrong document count. The last run (measured at cc4c915 on 2026-10-03) found 0 rejects in 18,335 public human documents.
 
 3. Your own held-out writing (starter kit installs):
 
@@ -237,7 +262,7 @@ The generated reference describes the hook's tiers; the words themselves are in 
 
 **Symptom.** A judge model is retired or unavailable, a better model from the same lab is out, or you want a judge from a lab the registry does not have yet.
 
-**Confirm.** The registry is the `JUDGES` constant in `prose-gate.mjs`: each entry has a name, a `vendor` (the lab), a `backend` and a `model`. Two more constants depend on it: `JUROR_ORDER`, the panel and spares for each drafter lab, and `TELL_PROFILE`, which maps drafter names to labs. The gate never seats a judge from the drafter's lab, and that rule reads `vendor`, so a wrong `vendor` value breaks the self-bias protection without any error. The registry has 4 judges at b4534e3: grok, gemini, claude, gpt, from xai, google, anthropic, openai.
+**Confirm.** The registry is the `JUDGES` constant in `prose-gate.mjs`: each entry has a name, a `vendor` (the lab), a `backend` and a `model`. Two more constants depend on it: `JUROR_ORDER`, the panel and spares for each drafter lab, and `TELL_PROFILE`, which maps drafter names to labs. The gate never seats a judge from the drafter's lab, and that rule reads `vendor`, so a wrong `vendor` value breaks the self-bias protection without any error. The registry has 4 judges at cc4c915: grok, gemini, claude, gpt, from xai, google, anthropic, openai.
 
 **Fix.**
 

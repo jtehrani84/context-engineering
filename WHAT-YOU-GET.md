@@ -26,9 +26,9 @@ Rules load automatically on every Claude Code session. You never need to remind 
 
 ---
 
-## Hooks (7 Wired by Setup + 3 Opt-In) — Scripts That Run Around Tool Calls
+## Hooks (8 Wired by Setup + 3 Opt-In) — Scripts That Run Around Tool Calls
 
-Hooks run mechanically, before or after Claude takes an action. Unlike rules (which Claude reads and can forget in long conversations), hooks execute as code. `./setup.sh` installs all ten into `~/.claude/hooks/scripts/` and wires seven into `settings.json`.
+Hooks run mechanically, before or after Claude takes an action. Unlike rules (which Claude reads and can forget in long conversations), hooks execute as code. `./setup.sh` installs all eleven into `~/.claude/hooks/scripts/` and wires eight into `settings.json`.
 
 | File | When It Fires | What It Does | Why It's Here |
 |------|--------------|-------------|---------------|
@@ -37,7 +37,8 @@ Hooks run mechanically, before or after Claude takes an action. Unlike rules (wh
 | `domain-verification.py` | Before Edit/Write | Catches hallucinated domain-specific terms from `~/.claude/domain-terms.json`, suggests corrections | No more invented product names or wrong terminology in your output |
 | `schema-check.py` | Before Bash | Checks column names in SQL commands against `~/.claude/schema.json`; silent without that file, never denies an unknown table | Catches bad queries before they fail |
 | `output-quality-gate.py` | After Write | Scans .md/.html files for 50+ banned AI-slop words, reports exact line numbers | Content quality is enforced mechanically, not by memory |
-| `voice-tell-gate.py` | After Write/Edit/MultiEdit, before send tools | Runs the voice engine (`~/.claude/tools/aiscore.mjs`, `text-normalize.mjs`) on written `.md`, `.mdx`, `.html`, `.htm`, `.txt`, `.rtf` and `.docx` files and nudges; on a chat, email, document, comment or pull-request send it blocks a hard tell. If the engine can't run, it denies the send and warns on the file write | The voice engine runs on everything Claude writes, and a send that can't be checked doesn't go out |
+| `voice-tell-gate.py` | After Write/Edit/MultiEdit, before send tools | Runs the voice engine (`~/.claude/tools/aiscore.mjs`, `text-normalize.mjs`) on written `.md`, `.mdx`, `.html`, `.htm`, `.txt`, `.rtf` and `.docx` files (a file under `drafts/` at any length) and nudges; on a chat, email, document, comment or pull-request send it blocks a hard tell. If the engine can't run, it denies the send and warns on the file write | The voice engine runs on everything Claude writes, and a send that can't be checked doesn't go out |
+| `voice-draft-gate.py` | When a reply ends (Stop) | Checks a draft Claude showed in a ` ```draft ` fence (or the piece after a `Written for:` line) with the send hook's scorer; a hard tell sends Claude back to fix the draft in the same reply, at most twice; if it can't run, the reply ends with a "draft not checked" note, never a trapped session | The message you copy out of the chat gets the same check as one Claude sends |
 | `deploy-proof-gate.py` | After Bash | After a deploy or publish command, reminds Claude to prove the change on the running system | "Deployed" stops meaning "the command exited 0" |
 | `claim-faithfulness-gate.py` | After Write/Edit, **opt-in** | On an external-facing doc with over-confident claim language, asks for a re-read against sources | The proof rule gets a nudge at the moment a doc is written |
 | `refutation-oracle-gate.py` | After Write/Edit, **opt-in** | On an audit that calls something fabricated, asks for a check of the source where it would be true | Wrong "that's made up" verdicts get caught before they stand |
@@ -113,7 +114,7 @@ Each skill replaces 15-60 minutes of manual work. Say the command, get the outpu
 |-----------|-------------|-------------|
 | `tools/aiscore.mjs` + vendored detector | 0–100 AI score from the vendored MIT detector (pinned at 58a95fc), an evidence-only adjusted score, and your personal overlay (shipped blank). The structural and cadence checks are described in `rules/structural-voice.md`; they run only if your overlay defines them | The engine `voice-tell-gate.py` runs on; also callable as `node ~/.claude/tools/aiscore.mjs <file>` |
 | `tools/text-normalize.mjs`, `tools/prose-gate.mjs` | The normalizer (invisible characters, look-alike letters, markup) and the ship gate: the deterministic layer plus an optional judge panel that never uses the drafter's lab; `--det-only` makes no network call | A tell can't hide behind odd characters, and a judge doesn't grade its own lab |
-| `tools/onboarding/`, `tools/calibration/`, `tools/hook/`, `tools/hook-tests/` | The `/voice-setup` tools (`voice-doctor.mjs`, `profile-build.mjs`, `calibrate-user.mjs`), the false-positive budget on four public corpora, and the send hook's source and tests | Each claim about the guard has a command that checks it |
+| `tools/onboarding/`, `tools/calibration/`, `tools/hook/`, `tools/hook-tests/` | The `/voice-setup` tools (`voice-doctor.mjs`, `profile-build.mjs`, `calibrate-user.mjs`), the false-positive budget on four public corpora (the gate's verdicts and the send hook's word list), the send hook's and the draft gate's source and tests, and `onboarding/templates/company-names.example.txt` for the names your "As <Company>" check should know | Each claim about the guard has a command that checks it |
 | `docs/voice/` | The voice system docs: architecture, threat model, runbooks, the reference generated from the code, calibration evidence, and a review packet for outside reviewers; rendered at `docs/voice/site/` | One place to read how it works and how to check it |
 | `harness-evolution/` | Held-out eval harness plus a generic seed corpus you replace with your own writing | Prove a guard change is a real improvement, not a lucky sample |
 | `tools/rag-quality/` + `tools/llm.mjs` | ECHO error attribution over Claude Code workflow traces (runs as-is), one query-rewrite tool that runs once `llm.mjs` points at your endpoint, and three method skeletons you aim at your own corpus | Find which agent or step broke a multi-agent run |
@@ -203,7 +204,7 @@ A wiki skeleton ships in `wiki/` and `templates/wiki/`. `./setup.sh --with-wiki`
 | `rules-optional/` | Two opt-in design rules (Tailwind, a dense dark dashboard style) that setup never copies | Load one when you build a page in that style |
 | `docs/recommended-plugins.md` | Plugins worth installing and what each one wires | Get maintained skills and hooks without copying them into the kit |
 | `QUICKSTART-PROMPT.md` | Paste into Claude Code after `./setup.sh`; it asks 5 questions and writes your CLAUDE.md without recreating the installed rules, hooks or skills | Your CLAUDE.md is built around your role and projects |
-| `VOICE-ONBOARDING.md` | Six-step calibration of the voice guard to your own writing | Lifts the "generic-only" label once the guard knows your voice |
+| `VOICE-ONBOARDING.md` | Eight-step calibration of the voice guard to your own writing, and the drafts-first habit the draft gate relies on | Lifts the "generic-only" label once the guard knows your voice |
 | `docs/what-you-get.html` | This inventory as a web page | Hand-off material for your team |
 
 ---

@@ -10,9 +10,10 @@ The voice engine checks writing for generic AI tells before it reaches anyone el
 | `text-normalize.mjs` | Canonical text for scanning: NFKC, invisible and tag characters removed, look-alike letters mapped, emphasis and inline markup reduced. `node text-normalize.mjs --json < file` prints both views. |
 | `prose-gate.mjs` | The ship gate: the deterministic layer, then an optional judge panel that never seats a judge from the drafter's lab. `--det-only` runs locally with no network call. Fails closed: exit 4 when a layer fails. |
 | `voice-overlay.mjs` | Your personal overlay. Ships blank (`REVIEWED = false`); `/voice-setup` installs your reviewed copy here. |
-| `hook/voice-tell-gate.py` | The hook source (`./setup.sh` installs it in `~/.claude/hooks/scripts/`). It nudges on file writes and blocks a send with a hard tell, and it denies any send it can't score. Tests: `hook-tests/voice-tell-gate.test.py`. |
-| `onboarding/` | `/voice-setup`'s tools: `voice-doctor.mjs`, `profile-build.mjs`, `calibrate-user.mjs`, `merge-hooks.mjs`, the config schema and example, and the blank overlay template. |
-| `calibration/` | The human false-positive budget on four public corpora (`fetch-public-corpora.sh`, then `human-fp-budget.mjs`) and `gate-eval.mjs`. |
+| `hook/voice-tell-gate.py` | The send hook's source (`./setup.sh` installs it in `~/.claude/hooks/scripts/`). It nudges on file writes (a file under `drafts/` at any length) and blocks a send with a hard tell, a sentence that opens "As <Company>" in company voice or with a listed company, and any send it can't score. Your own company names go in `~/.claude/voice/company-names.txt`. Tests: `hook-tests/voice-tell-gate.test.py`. |
+| `hook/voice-draft-gate.py` | The draft gate's source, a Stop hook installed next to the send hook. When a reply ends it checks a draft shown in a ` ```draft ` fence with the send hook's scorer and sends Claude back to fix a hard tell; if it can't run, the reply ends with a "draft not checked" note. `./setup.sh` wires it with a guarded command, so a missing script never blocks a reply. Tests: `hook-tests/voice-draft-gate.test.py`. |
+| `onboarding/` | `/voice-setup`'s tools: `voice-doctor.mjs`, `profile-build.mjs`, `calibrate-user.mjs`, `merge-hooks.mjs` (wires the send hook and the draft gate; `--remove` takes them out), the config schema and example, the blank overlay template and `templates/company-names.example.txt`. |
+| `calibration/` | The human false-positive budget on four public corpora (`fetch-public-corpora.sh`, then `human-fp-budget.mjs`; its hook lane runs the send hook's word list through `hook-lexicon.py`) and `gate-eval.mjs`. |
 
 ## The Rule
 

@@ -64,6 +64,7 @@ calibration report yet). Steps 3 to 7 fix those. Any other FAIL is an install pr
 | `engine`, `detector`, `detector-pin` | An engine file is missing, or the detector isn't the tested commit | Re-run the kit's `setup.sh`; never edit the pin to make it pass |
 | `scorer`, `normalizer`, `gate` | The tool runs but gives a wrong answer on a fixed probe | Reinstall the engine from one release |
 | `hook-wiring` | `settings.json` doesn't run the hook for every send tool and every file write | Step 2 |
+| `draft-gate-wiring` | No `Stop` entry runs `voice-draft-gate.py`, or the script isn't next to the send hook | Re-run the kit's `setup.sh` (it installs the script), then Step 2 |
 | `hook-controls`, `send-fails-closed`, `write-warns` | The hook lets a tell through, or lets a send through when its scorer is broken | Reinstall the current `voice-tell-gate.py` |
 | `engine-calibration` | The engine's human false-positive record is missing or shows rejects | Reinstall `calibration/` with the engine |
 
@@ -104,10 +105,10 @@ config check refuses a file that changes those values.
 Check the config, then the wiring:
 
 ```bash
-node "$T/onboarding/voice-doctor.mjs" --only config,hook-wiring
+node "$T/onboarding/voice-doctor.mjs" --only config,hook-wiring,draft-gate-wiring
 ```
 
-If `hook-wiring` fails, show the user what the doctor expects and what will change, ask, and then wire it:
+If `hook-wiring` or `draft-gate-wiring` fails, show the user what the doctor expects and what will change, ask, and then wire it:
 
 ```bash
 node "$T/onboarding/voice-doctor.mjs" --print-hooks     # the hooks block this config needs
@@ -115,7 +116,10 @@ node "$T/onboarding/merge-hooks.mjs" --dry-run          # the hooks section afte
 node "$T/onboarding/merge-hooks.mjs"                    # writes it; the original is kept as settings.json.bak-<time>
 ```
 
-`merge-hooks.mjs` replaces only the entries that run `voice-tell-gate.py` and keeps every other hook and setting. The
+`merge-hooks.mjs` replaces only the entries that run `voice-tell-gate.py` or the draft gate `voice-draft-gate.py`, and
+keeps every other hook and setting. It wires the draft gate on `Stop` with a command that checks for the script first,
+so a missing script ends a reply with a "draft not checked" note instead of blocking it, and it skips the `Stop` entry
+(with a message) while the script isn't installed. The
 send matcher it writes is a regular expression on purpose: Claude Code reads a matcher made only of letters, digits,
 `_` and `|` as a list of exact tool names, so `slack_send_message` would never match `mcp__slack__slack_send_message`
 (checked against Claude Code 2.1.286 on 2026-10-02; the rule and its evidence are in `$T/onboarding/lib/hook.mjs`).

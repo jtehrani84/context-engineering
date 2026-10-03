@@ -7,7 +7,9 @@
 #   2. Copies rules, hooks, skill templates, and the voice engine + eval harness (tools/: the scorer, the
 #      normalizer, the gate, the send hook's source and tests, the calibration harness and the /voice-setup
 #      onboarding tools; the docs are in docs/voice/)
-#   3. Wires hooks into settings (merge-safe and re-runnable, so upgrades pick up new hooks).
+#   3. Wires hooks into settings (merge-safe and re-runnable, so upgrades pick up new hooks), including the voice
+#      hooks: voice-tell-gate on the MCP send tools (a regular-expression matcher over mcp__<server>__<tool>) and on
+#      file writes, and voice-draft-gate on Stop (a guarded command, so a missing script never blocks a reply).
 #      No ~/.claude/settings.json yet? It creates a minimal one.
 #   4. Points you at the personalization prompt that builds your CLAUDE.md
 #
@@ -124,6 +126,26 @@ if [[ "${1:-}" == "--check" ]]; then
         echo -e "  ${YELLOW}⚠${NC} Voice engine incomplete, missing: ${voice_missing[*]}. Re-run ./setup.sh: voice-tell-gate denies a send it can't score"
     fi
 
+    # 4b. Voice hooks wired: the send hook on PreToolUse and file writes, the draft gate on Stop.
+    if [[ -f "$CLAUDE_DIR/settings.json" ]]; then
+        if python3 - "$CLAUDE_DIR/settings.json" <<'PYEOF'
+import json, sys
+try:
+    s = json.load(open(sys.argv[1]))
+except Exception:
+    sys.exit(1)
+h = s.get("hooks", {}) if isinstance(s, dict) else {}
+runs = lambda ev, name: any(name in json.dumps(e) for e in (h.get(ev) or []) if isinstance(e, dict) and "hooks" in e)
+sys.exit(0 if runs("PreToolUse", "voice-tell-gate.py") and runs("PostToolUse", "voice-tell-gate.py")
+         and runs("Stop", "voice-draft-gate.py") else 1)
+PYEOF
+        then
+            echo -e "  ${GREEN}✓${NC} Voice hooks wired (send tools and file writes: voice-tell-gate; Stop: voice-draft-gate)"
+        else
+            echo -e "  ${YELLOW}⚠${NC} Voice hooks not all wired (voice-tell-gate on PreToolUse and PostToolUse, voice-draft-gate on Stop). Re-run ./setup.sh"
+        fi
+    fi
+
     # 5. python3
     if command -v python3 &>/dev/null; then
         echo -e "  ${GREEN}✓${NC} python3 available ($(python3 --version 2>&1))"
@@ -217,7 +239,7 @@ if [[ "${1:-}" == "--uninstall" ]]; then
             elif [[ -f "$target" ]] && is_prior_kit_version "$rel" "$target"; then
                 FILES_TO_REMOVE+=("$target")
             fi
-        done < <(find "$SCRIPT_DIR/$tree" -type f -print0)
+        done < <(find "$SCRIPT_DIR/$tree" -type f -not -path "*/__pycache__/*" -not -name "*.pyc" -print0)
     done
 
     # Files an earlier release installed and this one no longer ships: remove an unedited copy.
@@ -239,9 +261,10 @@ if [[ "${1:-}" == "--uninstall" ]]; then
     done
     echo ""
     echo "  Note: your wiki (~/.claude/wiki) and your voice folder (~/.claude/voice: samples, config, calibration"
-    echo "  reports) are not touched. In ~/.claude/settings.json only the hook entries that run a kit hook removed"
-    echo "  here are taken out (backed up first); the rest stays. An overlay you installed with /voice-setup"
-    echo "  (~/.claude/tools/voice-overlay.mjs) differs from the kit's blank copy, so it is kept."
+    echo "  reports, company-names.txt) are not touched. In ~/.claude/settings.json only the hook entries that run a kit"
+    echo "  hook removed here are taken out (backed up first), the voice hooks' Stop entry included; the rest stays."
+    echo "  An overlay you installed with /voice-setup (~/.claude/tools/voice-overlay.mjs) differs from the kit's"
+    echo "  blank copy, so it is kept."
     echo ""
 
     read -p "  Remove these ${#FILES_TO_REMOVE[@]} files? (Y/n) " confirm
@@ -399,7 +422,7 @@ for tree in tools harness-evolution workflows scripts/llm-call.py scripts/llm-re
             fi
             installed=$((installed + 1))
         fi
-    done < <(find "$SCRIPT_DIR/$tree" -type f -print0)
+    done < <(find "$SCRIPT_DIR/$tree" -type f -not -path "*/__pycache__/*" -not -name "*.pyc" -print0)
     echo "  ✓ $tree: $installed installed, $upgraded upgraded, $current already current, $kept kept yours (edited)"
 done
 for rel in "${RETIRED[@]}"; do
@@ -506,7 +529,8 @@ echo "    • Rules, hook scripts, and skills copied to ~/.claude/"
 echo "    • Voice engine + eval harness copied to ~/.claude/tools and ~/.claude/harness-evolution"
 echo "    • Audit workflows copied to ~/.claude/workflows (used by /claim-audit, /plan-audit, /execution-truth, /provenance-audit)"
 echo "    • Hooks wired into settings.json (auth key preserved), including voice-tell-gate on file writes (nudges)"
-echo "      and on send tools (blocks a send with a hard tell, and any send it can't score)"
+echo "      and on send tools (blocks a send with a hard tell, and any send it can't score), and voice-draft-gate"
+echo "      on Stop (checks a draft Claude shows in a \`\`\`draft fence before the reply ends)"
 if [[ "$WITH_WIKI" == true ]]; then
     echo "    • Wiki skeleton copied to ${WIKI_DEST:-$CLAUDE_DIR/wiki}"
 fi

@@ -43,6 +43,7 @@ COMMENTS = {
     "hooks/scripts/schema-check.py": "PreToolUse: check SQL columns against your schema",
     "hooks/scripts/output-quality-gate.py": "PostToolUse: scan for AI-slop in written files",
     "hooks/scripts/voice-tell-gate.py": "Pre+PostToolUse: voice engine on sends (blocks) and written files (nudges)",
+    "hooks/scripts/voice-draft-gate.py": "Stop: checks a draft shown in chat (```draft fence) with the send hook's scorer",
     "hooks/scripts/graph-auto-index.py": "Knowledge-graph indexer; installed, not wired by default",
     "hooks/scripts/deploy-proof-gate.py": "PostToolUse: after a deploy, prove it on the running system",
     "hooks/scripts/claim-faithfulness-gate.py": "PostToolUse, opt-in: re-read claims against their sources",
@@ -80,7 +81,7 @@ COMMENTS = {
 
 # Directory notes shown on the directory line itself.
 DIR_COMMENTS = {
-    "tools": "Voice engine (scorer, normalizer, gate, send hook source, /voice-setup tools, calibration), RAG-quality and transcript-export tools",
+    "tools": "Voice engine (scorer, normalizer, gate, send hook and draft gate source, /voice-setup tools, calibration), RAG-quality and transcript-export tools",
     "harness-evolution": "Held-out eval harness + your voice corpus",
     "scripts": "llm-call.py + llm-review.py back /review and /validate (LLM_BASE_URL, LLM_API_KEY)",
     "scripts/": "Repo-only helpers: hook wiring, manifest and tree generators, install, cron and script tests",

@@ -235,8 +235,20 @@
       }
     ],
 
-    // Fires when Claude's stop turn completes
-    "Stop": []
+    // Fires when Claude's reply ends
+    "Stop": [
+      {
+        // Voice draft gate: checks a draft Claude shows in the chat (a ```draft fence, or the piece after a
+        // "Written for:" line) with the send hook's scorer, and sends Claude back to fix a hard tell before the
+        // reply ends. The command checks for the script first: python3 on a missing file exits 2, and exit 2 on Stop
+        // would block every reply, so a missing script ends the reply with a "draft not checked" note instead.
+        // `node ~/.claude/tools/onboarding/voice-doctor.mjs --print-hooks` prints this entry for your config.
+        "matcher": "",
+        "hooks": [
+          { "type": "command", "command": "[ -f ~/.claude/hooks/scripts/voice-draft-gate.py ] || { echo '{\"systemMessage\":\"Voice draft gate: draft not checked: the draft gate script is missing where settings.json points; run voice-doctor.mjs\"}'; exit 0; }; python3 ~/.claude/hooks/scripts/voice-draft-gate.py" }
+        ]
+      }
+    ]
   }
 
   // MCP servers live in ~/.claude/.mcp.json (a separate file). See README "Recommended MCP Servers".

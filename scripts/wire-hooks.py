@@ -7,6 +7,8 @@ Wire the kit's hooks into ~/.claude/settings.json. Merge-safe, idempotent, safe 
 
 What it does for each hook in HOOKS below (plus OPTIONAL_PROOF_GATES when KIT_WIRE_PROOF_GATES=1):
   - not wired yet            -> adds it (nested {matcher, hooks:[...]} form, which is what Claude Code reads)
+  - wired with a command this
+    kit shipped earlier      -> moves it to the current command (PRIOR_COMMANDS; you never changed it)
   - wired in the old flat
     form (the flat shape the
     May 2026 settings example
@@ -23,7 +25,10 @@ MIGRATE_ONLY hooks are never added. If you already wired one in the old flat for
 into the nested form so Claude Code actually runs it, and nothing else changes.
 
 Nothing else in settings.json is touched (your auth key, model, permissions and any other hooks stay
-as they are). The file is backed up once to settings.json.pre-kit-backup before the first change.
+as they are). The file is backed up once to settings.json.pre-kit-backup before the first change, and it is
+written back in its own layout (indent, escaping and final newline, see json_style) when that layout can be
+reproduced, so every entry the kit didn't change stays byte for byte as it was. A re-run with nothing to
+change writes nothing.
 """
 import json
 import os
@@ -52,6 +57,26 @@ VOICE_SEND_TOOLS = (
 )
 VOICE_SEND_MATCHER = "^(?:mcp__.+__(?:" + "|".join(VOICE_SEND_TOOLS) + "))$"
 
+# voice-draft-gate runs on Stop: when Claude's reply ends it checks the drafts in it (a ```draft fence, or the piece
+# after a "Written for:" line) with voice-tell-gate's own scorer. The command is the guarded one
+# tools/onboarding/merge-hooks.mjs writes (lib/hook.mjs draftGateCommand): python3 on a missing file exits 2, and exit 2
+# on Stop blocks the stop, so a bare "python3 <gate>" could refuse every reply once the script is gone. The guard lets
+# the reply end with a note instead. scripts/test-voice-kit.py fails when this drifts from `voice-doctor --print-hooks`.
+DRAFT_GATE = "voice-draft-gate.py"
+DRAFT_GATE_PATH = "~/.claude/hooks/scripts/" + DRAFT_GATE
+DRAFT_MISSING_NOTE = ("Voice draft gate: draft not checked: the draft gate script is missing where settings.json points; "
+                      "run voice-doctor.mjs")
+DRAFT_GATE_COMMAND = ("[ -f " + DRAFT_GATE_PATH + " ] || { echo '" + json.dumps({"systemMessage": DRAFT_MISSING_NOTE},
+                      separators=(",", ":")) + "'; exit 0; }; python3 " + DRAFT_GATE_PATH)
+# Commands that differ from CMD_PREFIX + script, and earlier commands that are safe to replace with them.
+COMMANDS = {DRAFT_GATE: DRAFT_GATE_COMMAND}
+PRIOR_COMMANDS = {DRAFT_GATE: ["python3 " + DRAFT_GATE_PATH]}
+# Hooks wired only when their script is installed (a Stop entry for a missing script would block every reply on a
+# Claude Code build that reads the missing-file exit 2 as blocking).
+NEEDS_SCRIPT = {DRAFT_GATE}
+# Events that take no tool matcher. Their entry carries "matcher": "" the way merge-hooks.mjs writes it.
+NO_TOOL_EVENTS = {"Stop"}
+
 # (event, matcher, script, prior_matchers)
 # prior_matchers = matchers an earlier kit release wired for this script and that are safe to replace.
 HOOKS = [
@@ -62,6 +87,7 @@ HOOKS = [
     ("PostToolUse", "Write", "output-quality-gate.py", []),
     ("PostToolUse", "Write|Edit|MultiEdit", "voice-tell-gate.py", ["Write"]),
     ("PreToolUse", VOICE_SEND_MATCHER, "voice-tell-gate.py", []),
+    ("Stop", "", DRAFT_GATE, []),
     # Proof family. deploy-proof-gate only speaks after a deploy or publish command, so it is on by default.
     ("PostToolUse", "Bash", "deploy-proof-gate.py", []),
 ]
@@ -122,21 +148,34 @@ def _matcher_text(matcher):
     return matcher if isinstance(matcher, str) else ""
 
 
-def _nested(matcher, command):
+def _nested(matcher, command, event=None):
+    if event in NO_TOOL_EVENTS:
+        return {"matcher": "", "hooks": [{"type": "command", "command": command}]}
     entry = {"hooks": [{"type": "command", "command": command}]}
     if matcher:
         entry["matcher"] = matcher
     return entry
 
 
-def wire(settings):
-    """Apply HOOKS to the settings dict in place. Returns (added, migrated, kept) lists of strings."""
+def command_for(script):
+    return COMMANDS.get(script, CMD_PREFIX + script)
+
+
+def wire(settings, claude_dir=None):
+    """Apply HOOKS to the settings dict in place. Returns (added, migrated, kept) lists of strings. claude_dir is the
+    folder settings.json sits in; a NEEDS_SCRIPT hook is added only when its script is in <claude_dir>/hooks/scripts."""
     hooks = settings.setdefault("hooks", {})
     added, migrated, kept = [], [], []
     rows = [(r, True) for r in active_hooks()] + [(r, False) for r in MIGRATE_ONLY]
     for (event, matcher, script, prior), may_add in rows:
-        command = CMD_PREFIX + script
-        entries = hooks.get(event, []) if not may_add else hooks.setdefault(event, [])
+        command = command_for(script)
+        if may_add and script in NEEDS_SCRIPT and claude_dir is not None and \
+                not os.path.exists(os.path.join(claude_dir, "hooks", "scripts", script)):
+            kept.append(f"{script}: not wired, its script isn't installed in {os.path.join(claude_dir, 'hooks', 'scripts')}")
+            continue
+        if may_add and event not in hooks:
+            hooks[event] = []
+        entries = hooks.get(event, [])
         if not isinstance(entries, list):
             continue
         idx = [i for i, e in enumerate(entries)
@@ -144,15 +183,21 @@ def wire(settings):
         if not idx:
             if not may_add:
                 continue
-            entries.append(_nested(matcher, command))
-            added.append(script)
+            entries.append(_nested(matcher, command, event))
+            added.append(f"{script} ({event})" if sum(r[2] == script for r in HOOKS) > 1 else script)
             continue
         for i in idx:
             e = entries[i]
+            hs = e.get("hooks")
+            if isinstance(hs, list) and len(hs) == 1 and isinstance(hs[0], dict) and \
+                    hs[0].get("command") in PRIOR_COMMANDS.get(script, []):
+                hs[0]["command"] = command
+                migrated.append(f"{script}: command updated to the current kit command")
             if "hooks" not in e and "command" in e:
                 # legacy flat entry: {'type','command','matcher'?}. Claude Code reads the nested form.
                 old = _matcher_text(e.get("matcher"))
-                entries[i] = _nested(matcher if old in [matcher] + prior else old, e["command"])
+                cmd = command if e["command"] in PRIOR_COMMANDS.get(script, []) else e["command"]
+                entries[i] = _nested(matcher if old in [matcher] + prior else old, cmd, event)
                 migrated.append(f"{script}: old flat entry rewritten to the nested form")
                 continue
             current = _matcher_text(e.get("matcher"))
@@ -228,6 +273,40 @@ def unwire_missing(settings, claude_dir, names=None):
     return removed
 
 
+# How settings.json is laid out, so a rewrite keeps every byte outside the entries the kit changed. Claude Code writes
+# it with <, >, & and U+2028/U+2029 as \\u escapes, 2-space indent and no final newline; editors write plain JSON with 2
+# or 4 spaces or tabs. json_style() returns the first style that reproduces the file exactly, else 2 spaces + newline.
+_GO_ESCAPE = re.compile("[<>&\u2028\u2029]")
+
+
+def dump_json(value, style):
+    out = json.dumps(value, indent=style["indent"], ensure_ascii=style["ascii"])
+    if style["go"]:
+        out = _GO_ESCAPE.sub(lambda m: "\\u%04x" % ord(m.group(0)), out)
+    return out + style["newline"]
+
+
+def json_style(text, value):
+    for indent in (2, 4, "\t"):
+        for ascii_ in (False, True):
+            for go in (False, True):
+                for newline in ("\n", ""):
+                    style = {"indent": indent, "ascii": ascii_, "go": go, "newline": newline}
+                    if dump_json(value, style) == text:
+                        return style
+    return {"indent": 2, "ascii": False, "go": False, "newline": "\n"}
+
+
+def write_settings(path, settings, original_text):
+    """Write settings back in the layout original_text had (when json_style can reproduce it)."""
+    try:
+        style = json_style(original_text, json.loads(original_text))
+    except ValueError:  # a file with // comment lines: no layout to keep
+        style = {"indent": 2, "ascii": False, "go": False, "newline": "\n"}
+    with open(path, "w") as f:
+        f.write(dump_json(settings, style))
+
+
 def main(argv):
     args = [a for a in argv[1:] if not a.startswith("--")]
     dry = "--dry-run" in argv
@@ -253,8 +332,9 @@ def main(argv):
             return 0
         backup = path + ".pre-uninstall-backup"
         shutil.copy2(path, backup)
-        with open(path, "w") as f:
-            json.dump(settings, f, indent=2)
+        with open(path) as f:
+            original = f.read()
+        write_settings(path, settings, original)
         print("  Unwired from settings.json (their files were removed): " + ", ".join(removed))
         print(f"  Backed up your settings to {backup}")
         return 0
@@ -268,7 +348,7 @@ def main(argv):
         print("  settings.json has an unexpected 'hooks' shape, so wiring was skipped.", file=sys.stderr)
         return 0
 
-    added, migrated, kept = wire(settings)
+    added, migrated, kept = wire(settings, os.path.dirname(os.path.abspath(path)))
     for line in kept:
         print(f"  note: {line}")
     if not (added or migrated):
@@ -286,8 +366,9 @@ def main(argv):
     if not os.path.exists(backup):
         shutil.copy2(path, backup)
         print(f"  Backed up your settings to {backup}")
-    with open(path, "w") as f:
-        json.dump(settings, f, indent=2)
+    with open(path) as f:
+        original = f.read()
+    write_settings(path, settings, original)
     if added:
         print("  Wired: " + ", ".join(added))
     for m in migrated:

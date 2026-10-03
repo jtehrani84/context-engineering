@@ -45,8 +45,13 @@ Best,
 **Tone match:** [Executive/Manager/Peer]
 ```
 
+Save the draft to `drafts/YYYY-MM-DD-<slug>.md` in the project before you show it: the voice hook checks every file
+under `drafts/` at any length. Show it in the chat in a fenced block with the info string `draft`, so the draft gate
+checks the draft itself when the reply ends.
+
 ### 4. If voice check fails
-Automatically rewrite flagged sections and present the clean version.
+Automatically rewrite flagged sections and present the clean version. If the draft file check or the draft gate
+flagged a word the user wrote themselves, or a verbatim quote, keep it and tell the user it was flagged.
 
 ## Rules
 - First sentence must be specific (number, reference, fact)

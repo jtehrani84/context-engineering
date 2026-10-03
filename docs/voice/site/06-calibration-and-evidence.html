@@ -33,7 +33,7 @@
 </nav>
 <main id="main" class="content">
 <h1 id="calibration-and-evidence">Calibration and Evidence</h1>
-<p>This chapter describes how the voice system is measured and lists the numbers behind its current settings. Counts come from the facts file, measured at tools commit b4534e3 on 2026-10-02. Numbers that come from a one-time study cite the evidence file and date instead.</p>
+<p>This chapter describes how the voice system is measured and lists the numbers behind its current settings. Counts come from the facts file, measured at tools commit cc4c915 on 2026-10-03. Numbers that come from a one-time study cite the evidence file and date instead.</p>
 <p>The system can fail in two ways. It can reject text a person wrote (a false positive), or it can admit text a model wrote (a miss). The settings put the first one near zero and accept a partial catch rate on the second, because a rejected human message costs the writer trust in the tool, while a missed AI draft still goes to the judge panel. The deterministic layer is tuned against human text first; the judges carry most of the recall.</p>
 <h2 id="what-is-measured">What Is Measured</h2>
 <div class="table-wrap"><table>
@@ -58,13 +58,14 @@
 <tr><td>20 Newsgroups, by-date split</td><td>qwone.com, 1992 to 1993 Usenet</td><td>research use</td><td>17,320</td><td>0</td></tr>
 <tr><td>Pooled public</td><td></td><td></td><td>18,335</td><td>0</td></tr>
 </tbody></table></div>
-<p>The fetch downloads 429 18F files; the cleaning step keeps the 421 that hold post text. Status of this run: measured at b4534e3 on 2026-10-02.</p>
+<p>The fetch downloads 429 18F files; the cleaning step keeps the 421 that hold post text. Status of this run: measured at cc4c915 on 2026-10-03.</p>
 <p>The script fails (exit 1) when:</p>
 <ul>
 <li>the pooled public reject count exceeds the recorded baseline in <code>calibration/human-fp-budget.json</code> plus a margin of max(2, 0.01% of n), rounded up;</li>
 <li>any pinned structural tell (rule C) or any judge-directed injection pattern hits any human document, because a check that rejects on its own must cost zero real people;</li>
 <li>a corpus is missing or its document count differs from the recorded one, which means a different version was fetched;</li>
-<li>the in-process verdict and the CLI verdict disagree on any cross-checked document.</li>
+<li>the in-process verdict and the CLI verdict disagree on any cross-checked document;</li>
+<li>the hook lane is over its baseline or could not run. The verdict above never runs the send hook's own word list and &quot;As &lt;Name&gt;&quot; check, so the script also passes every document through them (<code>calibration/hook-lexicon.py</code>, counts only, the built-in company names) and fails when a set's documents the hook would deny pass the <code>hookLexicon</code> baseline plus the same margin. That baseline is re-recorded on its own with <code>--write-hook-baseline</code> (Decision Log, D19).</li>
 </ul>
 <p>The recorded baseline was measured 2026-10-02 at tools commit 892b20b and is re-recorded only with a reviewed reason (<code>--write-baseline</code>). Zero rejects on these corpora is a measurement on older, formal and technical prose. It does not cover a modern writer's business email or chat, and <a href="#known-limits">Known Limits</a> lists what that leaves open.</p>
 <h2 id="rules-that-reject-on-their-own">Rules That Reject on Their Own</h2>
@@ -131,9 +132,9 @@
 <tbody>
 <tr><td>Scorer</td><td><code>node aiscore.test.mjs</code></td><td>20 of 20</td></tr>
 <tr><td>Gate unit (no judge call)</td><td><code>node prose-gate.unit.test.mjs</code></td><td>119 of 119</td></tr>
-<tr><td>Send hook</td><td><code>python3 hook-tests/voice-tell-gate.test.py</code></td><td>115 of 115</td></tr>
-<tr><td>Onboarding tools</td><td><code>node --test onboarding/test/*.test.mjs</code></td><td>74 of 74</td></tr>
-<tr><td>Docs tools</td><td><code>node --test docs/tools/test/*.test.mjs</code></td><td>69 of 69</td></tr>
+<tr><td>Send hook</td><td><code>python3 hook-tests/voice-tell-gate.test.py</code></td><td>552 of 552</td></tr>
+<tr><td>Onboarding tools</td><td><code>node --test onboarding/test/*.test.mjs</code></td><td>85 of 85</td></tr>
+<tr><td>Docs tools</td><td><code>node --test docs/tools/test/*.test.mjs</code></td><td>70 of 70</td></tr>
 </tbody></table></div>
 <p>The gate unit suite includes 40 injection cases that must fire and 25 that must stay silent. The normalization cases in the overlay suite number 111.</p>
 <h2 id="known-limits">Known Limits</h2>
@@ -159,7 +160,7 @@
 </tbody></table></div>
 <p>The study files other than <code>calibration/</code> and <code>docs/evidence/</code> live in the author's private evidence directory and are not shipped, and <code>case-study/</code> stays in the private repo. Each one names its re-verify command in its header.</p>
 <nav class="pager" aria-label="Previous and next chapter"><span><a href="05-reference.html">Previous: Reference</a></span><span><a href="07-decision-log.html">Next: Decision Log</a></span></nav>
-<p class="built">Built from tools commit b4534e3 with facts from 2026-10-02.</p>
+<p class="built">Built from tools commit cc4c915 with facts from 2026-10-03.</p>
 </main>
 </div>
 <script src="search-index.js"></script>

@@ -50,7 +50,7 @@
 </div>
 
 <div class="section">
-<h2>Hooks (10 scripts: 7 wired by setup, 3 opt-in)</h2>
+<h2>Hooks (11 scripts: 8 wired by setup, 3 opt-in)</h2>
 <table>
     <tr><th>File</th><th>When</th><th>What</th></tr>
     <tr><td><code>session-init.py</code></td><td>Session start</td><td>Routes context from directory + git branch</td></tr>
@@ -59,6 +59,7 @@
     <tr><td><code>schema-check.py</code></td><td>Before Bash</td><td>Checks SQL column names against your schema file</td></tr>
     <tr><td><code>output-quality-gate.py</code></td><td>After Write</td><td>Scans for AI-slop words</td></tr>
     <tr><td><code>voice-tell-gate.py</code></td><td>After Write, before sends</td><td>Runs the voice engine on written docs; blocks a send with a hard tell</td></tr>
+    <tr><td><code>voice-draft-gate.py</code></td><td>When a reply ends</td><td>Checks a draft shown in chat; sends Claude back to fix a hard tell</td></tr>
     <tr><td><code>deploy-proof-gate.py</code></td><td>After Bash</td><td>After a deploy, asks for proof on the running system</td></tr>
     <tr><td><code>claim-faithfulness-gate.py</code></td><td>After Write/Edit (opt-in)</td><td>Re-read claims against sources</td></tr>
     <tr><td><code>refutation-oracle-gate.py</code></td><td>After Write/Edit (opt-in)</td><td>Check the right source before "fabricated"</td></tr>

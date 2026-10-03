@@ -54,13 +54,14 @@ suite "detector patterns.test.js"      bash -c 'cd tools/avoid-ai-writing/detect
 suite "detector validate.test.js"      bash -c 'cd tools/avoid-ai-writing/detector && node validate.test.js'
 suite "detector categories (known)"    categories_known
 suite "harness-eval runs"              node harness-evolution/harness-eval.mjs
-# The voice engine, its send hook and the /voice-setup onboarding tools (tools/). The onboarding suite takes about two
+# The voice engine, its send hook, the draft gate and the /voice-setup onboarding tools (tools/). The onboarding suite takes about two
 # minutes, so --fast skips it.
 suite "scripts/test-voice-kit.py"      python3 scripts/test-voice-kit.py
 suite "tools/aiscore.test.mjs"         node tools/aiscore.test.mjs
 suite "tools/text-normalize.test.mjs"  node tools/text-normalize.test.mjs
 suite "tools/prose-gate.unit.test.mjs" node tools/prose-gate.unit.test.mjs
 suite "tools/hook-tests (send hook)"   python3 tools/hook-tests/voice-tell-gate.test.py
+suite "tools/hook-tests (draft gate)"  python3 tools/hook-tests/voice-draft-gate.test.py
 if [[ -z "$FAST" ]]; then
     suite "tools/onboarding/test"      bash -c 'node --test tools/onboarding/test/*.test.mjs'
 fi

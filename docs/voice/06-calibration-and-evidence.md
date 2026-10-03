@@ -1,7 +1,7 @@
-<!-- built from docs/src/06-calibration-and-evidence.md for the public edition at tools commit b4534e3 -->
+<!-- built from docs/src/06-calibration-and-evidence.md for the public edition at tools commit cc4c915 -->
 # Calibration and Evidence
 
-This chapter describes how the voice system is measured and lists the numbers behind its current settings. Counts come from the facts file, measured at tools commit b4534e3 on 2026-10-02. Numbers that come from a one-time study cite the evidence file and date instead.
+This chapter describes how the voice system is measured and lists the numbers behind its current settings. Counts come from the facts file, measured at tools commit cc4c915 on 2026-10-03. Numbers that come from a one-time study cite the evidence file and date instead.
 
 The system can fail in two ways. It can reject text a person wrote (a false positive), or it can admit text a model wrote (a miss). The settings put the first one near zero and accept a partial catch rate on the second, because a rejected human message costs the writer trust in the tool, while a missed AI draft still goes to the judge panel. The deterministic layer is tuned against human text first; the judges carry most of the recall.
 
@@ -31,14 +31,15 @@ The corpora are pinned to fixed versions by `calibration/fetch-public-corpora.sh
 | 20 Newsgroups, by-date split | qwone.com, 1992 to 1993 Usenet | research use | 17,320 | 0 |
 | Pooled public | | | 18,335 | 0 |
 
-The fetch downloads 429 18F files; the cleaning step keeps the 421 that hold post text. Status of this run: measured at b4534e3 on 2026-10-02.
+The fetch downloads 429 18F files; the cleaning step keeps the 421 that hold post text. Status of this run: measured at cc4c915 on 2026-10-03.
 
 The script fails (exit 1) when:
 
 - the pooled public reject count exceeds the recorded baseline in `calibration/human-fp-budget.json` plus a margin of max(2, 0.01% of n), rounded up;
 - any pinned structural tell (rule C) or any judge-directed injection pattern hits any human document, because a check that rejects on its own must cost zero real people;
 - a corpus is missing or its document count differs from the recorded one, which means a different version was fetched;
-- the in-process verdict and the CLI verdict disagree on any cross-checked document.
+- the in-process verdict and the CLI verdict disagree on any cross-checked document;
+- the hook lane is over its baseline or could not run. The verdict above never runs the send hook's own word list and "As <Name>" check, so the script also passes every document through them (`calibration/hook-lexicon.py`, counts only, the built-in company names) and fails when a set's documents the hook would deny pass the `hookLexicon` baseline plus the same margin. That baseline is re-recorded on its own with `--write-hook-baseline` (Decision Log, D19).
 
 The recorded baseline was measured 2026-10-02 at tools commit 892b20b and is re-recorded only with a reviewed reason (`--write-baseline`). Zero rejects on these corpora is a measurement on older, formal and technical prose. It does not cover a modern writer's business email or chat, and [Known Limits](#known-limits) lists what that leaves open.
 
@@ -124,9 +125,9 @@ The network is switched off in `calibrate-user.mjs` and in every Node process it
 |---|---|---|
 | Scorer | `node aiscore.test.mjs` | 20 of 20 |
 | Gate unit (no judge call) | `node prose-gate.unit.test.mjs` | 119 of 119 |
-| Send hook | `python3 hook-tests/voice-tell-gate.test.py` | 115 of 115 |
-| Onboarding tools | `node --test onboarding/test/*.test.mjs` | 74 of 74 |
-| Docs tools | `node --test docs/tools/test/*.test.mjs` | 69 of 69 |
+| Send hook | `python3 hook-tests/voice-tell-gate.test.py` | 552 of 552 |
+| Onboarding tools | `node --test onboarding/test/*.test.mjs` | 85 of 85 |
+| Docs tools | `node --test docs/tools/test/*.test.mjs` | 70 of 70 |
 
 The gate unit suite includes 40 injection cases that must fire and 25 that must stay silent. The normalization cases in the overlay suite number 111.
 

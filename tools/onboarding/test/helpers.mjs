@@ -23,6 +23,7 @@ export const ONBOARDING = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 export const SRC_TOOLS = process.env.VOICE_ENGINE_SRC ? resolve(process.env.VOICE_ENGINE_SRC) : resolve(ONBOARDING, '..');
 export const FIXTURES = join(ONBOARDING, 'test', 'fixtures');
 export const FAKE_HOOK = join(FIXTURES, 'fake-voice-hook.py');
+export const FAKE_DRAFT_HOOK = join(FIXTURES, 'fake-voice-draft-gate.py');
 export const LOCAL_ONLY = join(ONBOARDING, 'lib', 'local-only.mjs');
 
 const PYTHON = (() => {
@@ -96,6 +97,8 @@ buildEngineWithOverlay(${JSON.stringify(SRC_TOOLS)}, ${JSON.stringify(overlay)},
 // makeInstall(opts) -> an install object (see the header). Options:
 //   overlay       overlay source text for tools/voice-overlay.mjs (default: a reviewed template overlay)
 //   hook          hook script to install (default: fixtures/fake-voice-hook.py); null installs none
+//   draftHook     draft gate (Stop hook) to install as hooks/scripts/voice-draft-gate.py (default:
+//                 fixtures/fake-voice-draft-gate.py); null installs none
 //   settings      settings.json content (object or string); default: the voice-doctor --print-hooks block
 //   config        voice-config.json content (object or string) at ~/.claude/voice/voice-config.json; default: none
 //   calibration   'copy' (default: human-fp-budget.json and public-corpora.sha256 copied) or 'none'
@@ -119,7 +122,9 @@ export function makeInstall(opts = {}) {
 
   const hookPath = join(claude, 'hooks', 'scripts', 'voice-tell-gate.py');
   if (opts.hook !== null) copyFileSync(opts.hook || FAKE_HOOK, hookPath);
-  const inst = { root, home, claude, tools, voice, tmp, cwd, bin, env, overlayPath, hookPath, settingsPath: join(claude, 'settings.json'), configPath: join(voice, 'voice-config.json') };
+  const draftHookPath = join(claude, 'hooks', 'scripts', 'voice-draft-gate.py');
+  if (opts.draftHook !== null) copyFileSync(opts.draftHook || FAKE_DRAFT_HOOK, draftHookPath);
+  const inst = { root, home, claude, tools, voice, tmp, cwd, bin, env, overlayPath, hookPath, draftHookPath, settingsPath: join(claude, 'settings.json'), configPath: join(voice, 'voice-config.json') };
   // Run one of the installed onboarding tools in this install.
   inst.run = (script, args = [], { env: extra = {}, input = '', cwd: dir = cwd, timeout } = {}) =>
     runNodeFile(join(tools, 'onboarding', script), args, { env: { ...env, ...extra }, input, cwd: dir, timeout });

@@ -23,5 +23,32 @@
  "pooledPublic": {
   "n": 18335,
   "rejects": 0
+ },
+ "hookLexicon": {
+  "measuredAt": "2026-10-03T03:01:51.185Z",
+  "toolsCommit": "fdc0365",
+  "note": "send hook lexicon (word list + \"As <Name>\" + flat view, built-in company names only) over the same docs; counts only. Re-record only with a reviewed reason (decision log D19).",
+  "sets": {
+   "18F": {
+    "n": 421,
+    "blockDocs": 77,
+    "openerBlockDocs": 0
+   },
+   "PEP": {
+    "n": 576,
+    "blockDocs": 36,
+    "openerBlockDocs": 0
+   },
+   "RFC": {
+    "n": 18,
+    "blockDocs": 7,
+    "openerBlockDocs": 0
+   },
+   "20NG": {
+    "n": 17320,
+    "blockDocs": 93,
+    "openerBlockDocs": 0
+   }
+  }
  }
 }

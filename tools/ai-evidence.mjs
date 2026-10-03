@@ -31,7 +31,7 @@ export const NOT_COUNTED = {
   'hashtag-stuff': 'NOISE', // a narrower form (6+ tags in the last 280 characters) is proposed in CLASSIFY.md, not built
   'tier1-clarity': 'STYLE', 'em-dash': 'STYLE', 'unnecessary-hyphenation': 'LINT',
   // UNTESTED = no fresh-AI hit (or, for performed-insight, 3 drafts that fail a Holm correction and leave-one-model-out)
-  // but at least one human hit. Cross-vendor review (GPT-5.6 Sol) and the data agree: removing all of them changes no
+  // but at least one human hit. A cross-vendor review (a model from another lab) and the data agree: removing all of them changes no
   // reject on either sample and raises held-out long-band AUC by 0.014 (recal/xr/disputes.json).
   'performed-insight': 'UNTESTED', chatbot: 'UNTESTED', tier2: 'UNTESTED', tier3: 'UNTESTED', 'tier3-phrase': 'UNTESTED',
   'generic-conclusion': 'UNTESTED', 'template-phrase': 'UNTESTED', 'normalization-flag': 'UNTESTED', sycophantic: 'UNTESTED',

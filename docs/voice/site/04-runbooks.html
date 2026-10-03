@@ -23,7 +23,7 @@
 <li><a href="02-architecture.html">Architecture</a></li>
 <li><a href="03-threat-model.html">Threat Model</a></li>
 <li><a href="04-runbooks.html" aria-current="page">Runbooks</a>
-<ol><li><a href="#a-legitimate-send-was-blocked">A Legitimate Send Was Blocked</a></li><li><a href="#the-scorer-errored-gate-exit-4-hook-denies-every-send">The Scorer Errored (Gate Exit 4, Hook Denies Every Send)</a></li><li><a href="#judges-are-unavailable">Judges Are Unavailable</a></li><li><a href="#the-hook-isnt-firing">The Hook Isn't Firing</a></li><li><a href="#recalibrate-after-a-change">Recalibrate After a Change</a></li><li><a href="#add-a-banned-word-or-a-structure">Add a Banned Word or a Structure</a></li><li><a href="#swap-a-judge-model-or-provider">Swap a Judge Model or Provider</a></li><li><a href="#upgrade-the-vendored-detector">Upgrade the Vendored Detector</a></li><li><a href="#claude-code-version-drift">Claude Code Version Drift</a></li><li><a href="#restore-the-hook-from-backup">Restore the Hook from Backup</a></li></ol></li>
+<ol><li><a href="#a-legitimate-send-was-blocked">A Legitimate Send Was Blocked</a></li><li><a href="#the-scorer-errored-gate-exit-4-hook-denies-every-send">The Scorer Errored (Gate Exit 4, Hook Denies Every Send)</a></li><li><a href="#judges-are-unavailable">Judges Are Unavailable</a></li><li><a href="#the-hook-isnt-firing">The Hook Isn't Firing</a></li><li><a href="#a-draft-was-flagged-when-the-reply-ended">A Draft Was Flagged When the Reply Ended</a></li><li><a href="#recalibrate-after-a-change">Recalibrate After a Change</a></li><li><a href="#add-a-banned-word-or-a-structure">Add a Banned Word or a Structure</a></li><li><a href="#swap-a-judge-model-or-provider">Swap a Judge Model or Provider</a></li><li><a href="#upgrade-the-vendored-detector">Upgrade the Vendored Detector</a></li><li><a href="#claude-code-version-drift">Claude Code Version Drift</a></li><li><a href="#restore-the-hook-from-backup">Restore the Hook from Backup</a></li></ol></li>
 <li><a href="05-reference.html">Reference</a></li>
 <li><a href="06-calibration-and-evidence.html">Calibration and Evidence</a></li>
 <li><a href="07-decision-log.html">Decision Log</a></li>
@@ -33,7 +33,7 @@
 </nav>
 <main id="main" class="content">
 <h1 id="runbooks">Runbooks</h1>
-<p>Each runbook starts from something you can see (a blocked send, an exit code, a hook that stays quiet) and ends with a check you can run. Every runbook has the same five parts: <strong>Symptom</strong>, <strong>Confirm</strong>, <strong>Fix</strong>, <strong>Verify</strong> and <strong>Rollback</strong>. The commands and file names match the engine at tools commit b4534e3, written 2026-10-02. Flags, exit codes and environment variables are in the generated reference (chapter 05); this chapter links to them instead of repeating them.</p>
+<p>Each runbook starts from something you can see (a blocked send, an exit code, a hook that stays quiet) and ends with a check you can run. Every runbook has the same five parts: <strong>Symptom</strong>, <strong>Confirm</strong>, <strong>Fix</strong>, <strong>Verify</strong> and <strong>Rollback</strong>. The commands and file names match the engine at tools commit cc4c915, written 2026-10-02. Flags, exit codes and environment variables are in the generated reference (chapter 05); this chapter links to them instead of repeating them.</p>
 <p>The commands use two shell variables:</p>
 <pre><code class="language-bash">T=&quot;${CLAUDE_CONFIG_DIR:-$HOME/.claude}/tools&quot;                       # the engine and the onboarding tools
 H=&quot;${CLAUDE_CONFIG_DIR:-$HOME/.claude}/hooks/scripts/voice-tell-gate.py&quot;   # the send hook</code></pre>
@@ -50,6 +50,7 @@ node &quot;$T/aiscore.mjs&quot; /tmp/blocked.txt</code></pre>
 <tr><td>A word or phrase from the hook's own lists</td><td><code>BLOCK_WORDS</code> or <code>BLOCK_PHRASES</code> in the hook</td><td>the hook file (move the word to <code>NUDGE_WORDS</code> or <code>FULL_EXEMPT</code>)</td></tr>
 <tr><td>A structure with critical severity (an announced hedge, a candor label)</td><td>the overlay's structure list</td><td>the overlay (an approved line, or a narrower pattern)</td></tr>
 <tr><td>A phrase from the overlay</td><td>the overlay's phrase list: blocks when the overlay marks it critical (a kit <code>TEAM_PHRASES</code> entry) or the hook's word tiers block it</td><td>the overlay or the hook's tiers</td></tr>
+<tr><td><code>banned opener</code> on an &quot;As &lt;Name&gt;&quot; sentence</td><td>the hook's opener check: company voice (&quot;As Globex, we ...&quot;) or a name on the company list</td><td>the sentence; a wrong name in your names file (see below)</td></tr>
 </tbody></table></div>
 <p>Then ask whether it is a false positive. A hit is a false positive when the matched text is a sense of the word you really use (a product name, a literal technical meaning), a verbatim quote, or a line you write and have approved. It is a true positive when the matched text is the move the check was written to catch, even if the rest of the message is fine. For a true positive, rewrite the sentence and resend; nothing else changes.</p>
 <p><strong>Fix.</strong> Pick the narrowest change that clears this case:</p>
@@ -57,6 +58,7 @@ node &quot;$T/aiscore.mjs&quot; /tmp/blocked.txt</code></pre>
 <li><strong>A line you write on purpose</strong> (a sign-off, a quote you repeat). Add the exact line to the approved lines in your overlay. The overlay's own checks skip it. The generic detector and the hook's word lists do not read the approved lines, so this fix only clears an overlay hit.</li>
 <li><strong>A word with a real second sense.</strong> Move the word in your copy of the hook from <code>BLOCK_WORDS</code> to <code>NUDGE_WORDS</code>: it is still flagged on every send, it stops blocking. Move it to <code>FULL_EXEMPT</code> only when it is a name you own and should never be flagged.</li>
 <li><strong>A structure that fires on a sentence it was not meant for.</strong> Narrow its regular expression and add the sentence as a should-stay-silent test case (runbook &quot;Add a Banned Word or a Structure&quot;).</li>
+<li><strong>An &quot;As &lt;Name&gt;&quot; opener.</strong> Company voice (&quot;As Globex, we ...&quot;) is the tell itself: lead with the name (&quot;Globex ...&quot;). An opener that only names a listed company (&quot;As Google reports ...&quot;) blocks too; if the name in your own <code>company-names.txt</code> is wrong, remove the line. A name that should never count as a company gets a <code>!</code> line instead, which turns its non-company-voice openers silent; a <code>!</code> line works for a built-in name too (&quot;!Amazon&quot; for the rainforest). Any other name only draws a nudge and the send goes out.</li>
 </ol>
 <p>In a starter kit install the overlay is the file named on <code>voice-doctor</code>'s <code>overlay</code> line (<code>voice-overlay.mjs</code> by default), and its approved lines are <code>APPROVED_LINES</code>. <code>/voice-setup</code> steps 5 and 6 walk through editing it.</p>
 <p><strong>Verify.</strong> Run the hook on the same text as a synthetic send; nothing is sent:</p>
@@ -106,17 +108,17 @@ echo 'probe text' | node &quot;$T/text-normalize.mjs&quot; --json; echo &quot;ex
 <p><strong>Symptom.</strong> A send with an obvious tell goes out with no block and no nudge, or a file write never gets an <code>AI-TELL CHECK</code> note.</p>
 <p><strong>Confirm.</strong> First rule out the cases where staying quiet is correct:</p>
 <ul>
-<li>The file is not a prose file (<code>.html .htm .md .mdx .txt .rtf .docx</code>, 7 extensions) or is shorter than 400 characters.</li>
+<li>The file is not a prose file (<code>.html .htm .md .mdx .txt .rtf .docx</code>, 7 extensions) or is shorter than 400 characters. A draft file (a <code>drafts</code> folder in its path, or <code>draft</code> in its name) is checked from 3 characters.</li>
 <li>The tool's own name (the part after the last <code>__</code>) has one of the 8 read-side markers (<code>read</code>, <code>search</code>, <code>list</code>, <code>get</code>, <code>fetch</code>, <code>download</code>, <code>poll</code>, <code>branch</code>) as a whole word. The hook treats such a tool as a read and skips it.</li>
 <li>The text went out through a shell command (<code>curl</code>, <code>gh pr create --body ...</code>, a chat CLI). Hooks fire on tool calls; a Bash-piped send is outside the hook's reach (Threat Model, Sends Outside Claude Code Tool Calls).</li>
 <li>The session started before the hook was wired. Claude Code reads hooks at session start.</li>
 </ul>
 <p>Then run the doctor's hook checks, which read <code>settings.json</code> the way Claude Code does and run the hook on synthetic calls:</p>
-<pre><code class="language-bash">node &quot;$T/onboarding/voice-doctor.mjs&quot; --only hook-wiring,hook-controls
+<pre><code class="language-bash">node &quot;$T/onboarding/voice-doctor.mjs&quot; --only hook-wiring,hook-controls,draft-gate-wiring
 node &quot;$T/onboarding/voice-doctor.mjs&quot; --print-hooks     # the hooks block this config needs</code></pre>
 <p>The most common cause is the send matcher. Claude Code reads a matcher made only of letters, digits, <code>_</code>, <code>|</code>, <code>,</code>, <code>-</code> and spaces as a list of exact tool names, and anything else as a regular expression tested unanchored against the tool name. A list such as <code>send_gmail_message|create_pull_request</code> therefore never matches <code>mcp__gmail__send_gmail_message</code>. The rule was read from the Claude Code 2.1.286 bundle on 2026-10-02 and confirmed with a live probe the same day; the evidence is the comment on <code>matcherMatches</code> in <code>onboarding/lib/hook.mjs</code>.</p>
 <p>The second cause is a hook older than the engine. Hooks from before 2026-10-02 test the read markers as substrings of the whole tool name, so <code>manage_spreadsheet_comment</code> (&quot;spreadsheet&quot; contains <code>read</code>) is skipped even when the matcher routes it there; <code>hook-wiring</code> reports it as a send tool the hook does not treat as a send. Those hooks also read overlay issues only under their owner's issue prefix, so a starter-kit overlay never affects a send.</p>
-<p><strong>Fix.</strong> Rewrite the wiring with the merge tool. It replaces only the entries that run <code>voice-tell-gate.py</code>, keeps every other hook and setting, and backs up the file first:</p>
+<p><strong>Fix.</strong> Rewrite the wiring with the merge tool. It replaces only the entries that run <code>voice-tell-gate.py</code> or <code>voice-draft-gate.py</code>, adds the draft gate on <code>Stop</code>, and backs up the file first. Every other hook and setting keeps its value, and its bytes too when the tool can reproduce the file's layout (Claude Code's own, or plain JSON with 2 or 4 spaces or tabs); a hand-formatted file is rewritten as 2-space JSON, and the tool says so. A <code>timeout</code> you set on a voice entry is carried over. If your old send matcher was a list of names, the tool prints any name the new matcher doesn't cover; add it to <code>sendTools</code> in the voice config and re-run to keep it gated. If it prints &quot;skipped the Stop entry&quot;, the draft gate's script isn't installed: copy it with the <code>cp</code> the message gives and run the tool again:</p>
 <pre><code class="language-bash">node &quot;$T/onboarding/merge-hooks.mjs&quot; --dry-run     # prints the hooks section it would write
 node &quot;$T/onboarding/merge-hooks.mjs&quot;               # writes it; the original is kept as settings.json.bak-&lt;time&gt;</code></pre>
 <p>For a hook older than the engine, install the hook that ships with it (keep a dated copy first):</p>
@@ -124,7 +126,21 @@ node &quot;$T/onboarding/merge-hooks.mjs&quot;               # writes it; the or
 cp &quot;$T/hook/voice-tell-gate.py&quot; &quot;$H&quot;</code></pre>
 <p>Re-apply any word moves you made in the old copy. Restart the Claude Code session after any wiring or hook change.</p>
 <p><strong>Verify.</strong> <code>hook-wiring</code> and <code>hook-controls</code> print <code>PASS</code>. In a fresh session, a send to a test channel or a draft with a known tell is denied. The doctor runs the hook directly, so its checks pass before the restart; only the fresh-session test shows that Claude Code loaded the new matcher.</p>
-<p><strong>Rollback.</strong> <code>merge-hooks.mjs</code> printed the backup path. Copy it back over <code>settings.json</code> and restart the session.</p>
+<p><strong>Rollback.</strong> <code>merge-hooks.mjs</code> printed the backup path. Copying it back over <code>settings.json</code> restores the old wiring, and also undoes any other settings change made since the merge. To take out only the voice entries (the send hook and the draft gate, on any event), keeping everything else:</p>
+<pre><code class="language-bash">node &quot;$T/onboarding/merge-hooks.mjs&quot; --remove      # backs up first; a second run changes nothing</code></pre>
+<p>Restart the session after either.</p>
+<h2 id="a-draft-was-flagged-when-the-reply-ended">A Draft Was Flagged When the Reply Ended</h2>
+<p><strong>Symptom.</strong> Claude Code shows &quot;Stop hook error occurred&quot; at the end of a reply, with the note &quot;Voice draft gate: the draft had hard tells (...); Claude will fix it, or ask you if they're your words.&quot;, and Claude then writes a corrected draft. Or a reply ends with a &quot;Voice draft gate (reply allowed)&quot; note that lists softer tells, or with &quot;Voice draft gate: draft not checked: &lt;cause&gt;&quot;.</p>
+<p><strong>Confirm.</strong> The label is how Claude Code shows any Stop-hook block. The draft gate blocked because a draft in the reply, a <code></code>draft<code>fence or the piece after a</code>Written for:<code> line, has a hard tell; the reason Claude got lists each one. Run the scorer on the draft text the same way as for a blocked send (</code>node &quot;$T/aiscore.mjs&quot; /tmp/draft.txt`).</p>
+<p><strong>Fix.</strong></p>
+<ol>
+<li><strong>A true tell.</strong> Nothing to change: Claude rewrites the draft in the same reply. The gate blocks at most 2 times per reply, then lets the reply end with a note that the draft is still flagged.</li>
+<li><strong>Your own words, relayed as-is.</strong> When every hard tell sits in a sentence you wrote that turn, the gate allows the stop with a note. If you asked for a word on purpose, tell Claude to keep it; a draft shown again unchanged after a block is allowed with a note, not blocked again.</li>
+<li><strong>Not a draft.</strong> An example or code that uses the <code>draft</code> info string is read as a draft. Use another info string (<code>text</code>, <code>md</code>) for examples.</li>
+<li><strong>&quot;draft not checked: &lt;cause&gt;&quot;.</strong> The gate couldn't run (the cause names the scorer, the normalizer, the send hook or the transcript) and let the reply end. &quot;the draft gate script is missing&quot; means <code>settings.json</code> points at a script that isn't there: install it (Getting Started, Before You Start), or take the entry out with <code>merge-hooks.mjs --remove</code>. Run <code>node &quot;$T/onboarding/voice-doctor.mjs&quot; --only draft-gate-wiring,hook-controls</code>, fix what it names, and check the draft by hand meanwhile.</li>
+</ol>
+<p>To turn the gate off, remove its <code>Stop</code> entry from <code>settings.json</code> (or restore the backup <code>merge-hooks.mjs</code> made) and restart the session.</p>
+<p><strong>Verify.</strong> In a fresh session, ask for a short draft in a <code></code>draft` fence that uses a banned word. The reply ends with the label and a corrected draft below it.</p>
 <h2 id="recalibrate-after-a-change">Recalibrate After a Change</h2>
 <p><strong>Symptom.</strong> You changed a check, a tier, a bar, the overlay, the detector, or the hook. Or <code>voice-doctor</code> prints <code>FAIL user-calibration</code> because the calibration report was made with a different overlay, scorer, gate or hook than the ones installed now (the report records their hashes).</p>
 <p><strong>Confirm.</strong> The change is a calibration event if it can move any verdict or any block. Moving a word between hook tiers, adding a structure, changing a severity, changing <code>--det-bar</code> or the cadence crossover all qualify. Editing a comment does not, but the doctor compares file hashes, so it still asks for a fresh report.</p>
@@ -137,7 +153,7 @@ python3 &quot;$T/hook-tests/voice-tell-gate.test.py&quot;      # VOICE_HOOK=&lt;
 <li><p>The human false-positive budget over the public pre-2022 corpora. The fetch needs network once and verifies every file by sha256; the run itself is local:</p>
 <pre><code class="language-bash">bash &quot;$T/calibration/fetch-public-corpora.sh&quot;
 node &quot;$T/calibration/human-fp-budget.mjs&quot;</code></pre>
-<p>It fails when the pooled public reject count rises above the recorded baseline plus a small margin, when the pinned structure or any injection pattern hits a single human document, or when a corpus has the wrong document count. The last run (measured at b4534e3 on 2026-10-02) found 0 rejects in 18,335 public human documents.</p></li>
+<p>It fails when the pooled public reject count rises above the recorded baseline plus a small margin, when the pinned structure or any injection pattern hits a single human document, or when a corpus has the wrong document count. The last run (measured at cc4c915 on 2026-10-03) found 0 rejects in 18,335 public human documents.</p></li>
 <li><p>Your own held-out writing (starter kit installs):</p>
 <pre><code class="language-bash">node &quot;$T/onboarding/calibrate-user.mjs&quot;</code></pre></li>
 </ol>
@@ -175,7 +191,7 @@ git -C &quot;$T&quot; diff calibration/human-fp-budget.json     # git checkouts 
 <p><strong>Rollback.</strong> Remove the entry and its test cases in one commit; nothing else depends on them.</p>
 <h2 id="swap-a-judge-model-or-provider">Swap a Judge Model or Provider</h2>
 <p><strong>Symptom.</strong> A judge model is retired or unavailable, a better model from the same lab is out, or you want a judge from a lab the registry does not have yet.</p>
-<p><strong>Confirm.</strong> The registry is the <code>JUDGES</code> constant in <code>prose-gate.mjs</code>: each entry has a name, a <code>vendor</code> (the lab), a <code>backend</code> and a <code>model</code>. Two more constants depend on it: <code>JUROR_ORDER</code>, the panel and spares for each drafter lab, and <code>TELL_PROFILE</code>, which maps drafter names to labs. The gate never seats a judge from the drafter's lab, and that rule reads <code>vendor</code>, so a wrong <code>vendor</code> value breaks the self-bias protection without any error. The registry has 4 judges at b4534e3: grok, gemini, claude, gpt, from xai, google, anthropic, openai.</p>
+<p><strong>Confirm.</strong> The registry is the <code>JUDGES</code> constant in <code>prose-gate.mjs</code>: each entry has a name, a <code>vendor</code> (the lab), a <code>backend</code> and a <code>model</code>. Two more constants depend on it: <code>JUROR_ORDER</code>, the panel and spares for each drafter lab, and <code>TELL_PROFILE</code>, which maps drafter names to labs. The gate never seats a judge from the drafter's lab, and that rule reads <code>vendor</code>, so a wrong <code>vendor</code> value breaks the self-bias protection without any error. The registry has 4 judges at cc4c915: grok, gemini, claude, gpt, from xai, google, anthropic, openai.</p>
 <p><strong>Fix.</strong></p>
 <ol>
 <li><strong>Same lab, new model.</strong> Change <code>model</code> in the entry. Keep <code>vendor</code>.</li>
@@ -243,7 +259,7 @@ node &quot;$T/onboarding/voice-doctor.mjs&quot; --only hook-controls,send-fails-
 <p>Both must pass. <code>user-calibration</code> then fails until you re-run <code>calibrate-user.mjs</code>, because the report records the hook's hash; that failure is expected.</p>
 <p><strong>Rollback.</strong> Copy the <code>.broken-&lt;time&gt;</code> file back over the hook. It is the version you replaced, kept byte for byte.</p>
 <nav class="pager" aria-label="Previous and next chapter"><span><a href="03-threat-model.html">Previous: Threat Model</a></span><span><a href="05-reference.html">Next: Reference</a></span></nav>
-<p class="built">Built from tools commit b4534e3 with facts from 2026-10-02.</p>
+<p class="built">Built from tools commit cc4c915 with facts from 2026-10-03.</p>
 </main>
 </div>
 <script src="search-index.js"></script>

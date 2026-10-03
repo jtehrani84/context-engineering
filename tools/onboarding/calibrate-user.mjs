@@ -85,7 +85,7 @@ export function suggestionFor(c, prefix = 'voice') {
   if (id.startsWith('pinned:')) return `${id.slice(7)} is in your overlay's VERDICT_STRUCT_TYPES, so it rejects on its own. Remove it from that list, or add the line to APPROVED_LINES.`;
   if (id.startsWith('gate-error')) return 'The gate failed on this sample. Run voice-doctor.mjs; the scorer or the gate is broken.';
   const t = id.replace(/^send-hook:/, '');
-  if (t === 'hard-ban') return "The send hook's word list blocks this word or phrase, and your overlay can't exempt it. If you really use it, move it from the hook's block list to its nudge list in your copy of voice-tell-gate.py (BLOCK_WORDS / NUDGE_WORDS), or reword.";
+  if (t === 'hard-ban') return "The send hook's word list blocks this word or phrase, and your overlay can't exempt it. If you really use it, move it from the hook's block list to its nudge list in your copy of voice-tell-gate.py (BLOCK_WORDS / NUDGE_WORDS), or reword. If the flagged text is \"As\" and a name at the start of a sentence, lead with the name instead (\"Acme grows\", not \"As Acme grows\").";
   if (t === 'soft-ban') return "A dual-use word on the send hook's nudge list. It never blocks; in strict mode it counts. Move it to the hook's exempt list if it's your vocabulary.";
   if (t === `${prefix}-phrase` || t === 'phrase') return 'A phrase in your TEAM_PHRASES appears in your own writing. Remove it from TEAM_PHRASES, or add the full line to APPROVED_LINES.';
   if (t === `${prefix}-word` || t === 'word') return 'A word in your TEAM_WORDS appears in your own writing. Remove it from TEAM_WORDS.';

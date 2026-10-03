@@ -7,6 +7,38 @@ import { resolve, basename } from 'node:path';
 import { childEnv } from './local-only.mjs';
 
 export const HOOK_NAME = 'voice-tell-gate.py';
+// The draft gate: a Stop hook next to the send hook that checks drafts Claude shows in chat (hook/voice-draft-gate.py).
+export const DRAFT_HOOK_NAME = 'voice-draft-gate.py';
+
+// A path as one shell word: a plain path stays as it is (a leading ~ still expands), anything else is double-quoted,
+// with a leading ~/ written as $HOME so it still expands inside the quotes.
+export function shellPath(p) {
+  if (/^[A-Za-z0-9_\/.~+@%=:,-]+$/.test(p)) return p;
+  const q = (s) => s.replace(/[\\"$`]/g, '\\$&');
+  return p.startsWith('~/') ? `"$HOME/${q(p.slice(2))}"` : `"${q(p)}"`;
+}
+// What the user sees when the draft gate's script is missing (review of the hook holes, N3, 2026-10-03).
+export const DRAFT_MISSING_NOTE = 'Voice draft gate: draft not checked: the draft gate script is missing where settings.json points; run voice-doctor.mjs';
+// The Stop command for the draft gate at `path` (as it should be written: ~/... or absolute). python3 on a missing file
+// exits 2, and exit 2 on Stop blocks the stop, so a bare "python3 <gate>" can refuse every reply once the script is gone
+// and trap the session (Claude Code 2.1.286 reads that missing-file error as non-blocking; other builds may not). This
+// command checks the file first: when it is missing it prints a systemMessage (the user sees the note) and exits 0, so
+// the reply ends; otherwise it runs the gate, whose own failures already allow the stop. Plain POSIX sh, no network.
+export function draftGateCommand(path) {
+  const p = shellPath(path);
+  return `[ -f ${p} ] || { echo '${JSON.stringify({ systemMessage: DRAFT_MISSING_NOTE })}'; exit 0; }; python3 ${p}`;
+}
+// Would this Stop command block the stop if the draft gate's script went missing? Runs the command through /bin/sh, as
+// Claude Code does, with the script's file name swapped for one that doesn't exist, and reads the result: exit 2 or a
+// "block" decision is the trap (whether a given Claude Code build then blocks is its own call; the guarded command never
+// leaves it that call). Returns { traps, code, timedOut }.
+export function draftCommandTraps(command, env = process.env) {
+  const probe = command.split(DRAFT_HOOK_NAME).join(`voice-doctor-missing-${DRAFT_HOOK_NAME}`);
+  const input = JSON.stringify({ hook_event_name: 'Stop', session_id: 'voice-doctor', transcript_path: '/voice-doctor/missing.jsonl', stop_hook_active: false, last_assistant_message: '' });
+  const r = spawnSync('/bin/sh', ['-c', probe], { input, encoding: 'utf8', env: pyEnv(env), timeout: 20000, killSignal: 'SIGKILL' });
+  const timedOut = r.error?.code === 'ETIMEDOUT';
+  return { traps: !timedOut && (r.status === 2 || /"decision"\s*:\s*"block"/.test(r.stdout || '')), code: r.status, timedOut };
+}
 
 // The environment for the hook's python3: the local-only guard for the Node scorer it starts, and no bytecode cache
 // written next to the hook (these runs must not leave files behind).

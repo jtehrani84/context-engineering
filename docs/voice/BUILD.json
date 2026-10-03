@@ -1,48 +1,48 @@
 {
   "edition": "public",
-  "toolsCommit": "b4534e3",
-  "factsDate": "2026-10-02",
-  "factsGeneratedAt": "2026-10-02T17:39:26.265Z",
+  "toolsCommit": "cc4c915",
+  "factsDate": "2026-10-03",
+  "factsGeneratedAt": "2026-10-03T08:07:14.335Z",
   "files": [
     {
       "name": "00-overview.md",
-      "sha256": "fe5041b0d1b0ff2501f4b08029a7e1463c1ff5ea54b53f0c37d4e86b8e3ffdba"
+      "sha256": "f95ff9071fdeaee344b75f66e01ad5f2ca08ac0fd5ffbc8a4ba2f004a3e75ff8"
     },
     {
       "name": "01-getting-started.md",
-      "sha256": "5bb3e8fdbebafc5494b1767dadf23639c8631741d4b772dc7f2240db8d749de9"
+      "sha256": "91d49b545dead31e8fda09df3465397f9e379e144647107524a5385d2afbf7ac"
     },
     {
       "name": "02-architecture.md",
-      "sha256": "e1491792b684efd6386144fc85214577f444b665e307cb92419abf54e35058c5"
+      "sha256": "debc0e04b78a16daad1e1270b9d01e78f040c39798fdbd29e732e03de756b74b"
     },
     {
       "name": "03-threat-model.md",
-      "sha256": "d99cefcd563aae8e8b8e1a5bbce0f7c4d548a4c680d8f3f61408a717a4e373da"
+      "sha256": "8d6b7340f43f50889a7e127dcaf94a5301107f3a6c1936807bbd7bd62fd45654"
     },
     {
       "name": "04-runbooks.md",
-      "sha256": "ff59ef7665028b2d1b9f41b25ee015af83e9da2dc7eb91e17a9c56b5bf2f7cb3"
+      "sha256": "1df0750d933f9d445fe2cccf2f32e2d542362d5ba1963785d5224e88d3cbd070"
     },
     {
       "name": "05-reference.md",
-      "sha256": "24c486dea7000d75c33d05265714dc29337d25eac20f4d43915206dc2ffcfda3"
+      "sha256": "0f4ad73fb4f893e0bc754291811efdae4af170765562b3977e0b1c9a4d9f058d"
     },
     {
       "name": "06-calibration-and-evidence.md",
-      "sha256": "8e03e7f8962990b583279c106a92971b5f5c236ca51440c809888bab00a66d1e"
+      "sha256": "da6288c8a1cda8b1c5b40800453cdb0f061caca8a2846ea59efedd702c1cac98"
     },
     {
       "name": "07-decision-log.md",
-      "sha256": "753e8bd35f48e0c7433fcce2f2c379c7a408b9d39a9c071e40717132854cf427"
+      "sha256": "5a7728dd1f3318c17cd2808b3e515867baac3116dadaa65afe31c1e7577e6d6f"
     },
     {
       "name": "09-review-packet.md",
-      "sha256": "5cdaab69706070d2176eaf0bf06d84c9f0f0f913f1ef632446e7561d35ead8f3"
+      "sha256": "90968f35ef84e0dfed9912871bf3555701b9d0e8a56ac7445d3a7525da463cce"
     },
     {
       "name": "10-maintaining-the-docs.md",
-      "sha256": "ed92b601caa5ca3726ceb6f2f821211a320399b109065ff58c4bb68ae5e28ab2"
+      "sha256": "dddc57db5977c95328f760f2829491df4a133f9e8496133dd23a13b95b2a211c"
     }
   ]
 }

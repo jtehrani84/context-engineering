@@ -1,7 +1,7 @@
-<!-- built from docs/src/09-review-packet.md for the public edition at tools commit b4534e3 -->
+<!-- built from docs/src/09-review-packet.md for the public edition at tools commit cc4c915 -->
 # Review Packet
 
-This chapter is for an outside reviewer. It lists what the voice system claims, the evidence for each claim, what is still undecided, the known limits, and a command that reproduces the public numbers from scratch. Counts are from the facts file at tools commit b4534e3 (2026-10-02).
+This chapter is for an outside reviewer. It lists what the voice system claims, the evidence for each claim, what is still undecided, the known limits, and a command that reproduces the public numbers from scratch. Counts are from the facts file at tools commit cc4c915 (2026-10-03).
 
 The most useful findings are a claim below that a fresh run contradicts, a human document from the public corpora that the deterministic layer rejects, a spelling or encoding that hides a pinned phrase or an injection from the checks, and any way to get ADMIT out of the gate on text it did not score.
 
@@ -19,16 +19,16 @@ Each claim names its evidence and whether a reviewer can reproduce it with publi
 
 | # | Claim | Evidence | Reproduce Publicly |
 |---|---|---|---|
-| 1 | The deterministic layer rejects 0 of 18,335 documents in the pinned public human corpora. | facts file (measured at b4534e3 on 2026-10-02), `calibration/human-fp-budget.mjs` | yes, see [Reproduce](#reproduce-the-public-numbers) |
+| 1 | The deterministic layer rejects 0 of 18,335 documents in the pinned public human corpora. | facts file (measured at cc4c915 on 2026-10-03), `calibration/human-fp-budget.mjs` | yes, see [Reproduce](#reproduce-the-public-numbers) |
 | 2 | No pinned structure and no injection pattern matches any document in those corpora. | same run; the script fails on a single hit | yes |
 | 3 | The judge panel rejected 0 of 400 human documents and caught 101 of 154 generated AI drafts. | study, `judge/JUDGE.md` (2026-10-02) | needs your own access to the four judge models; the sample lists are not shipped |
 | 4 | A judge from the drafter's own vendor rates that vendor's drafts as less AI-like (about 12 points on n = 4 documents). | study, `case-study/RESULTS.md` (2026-09-29) | demonstration only; no interval |
 | 5 | The gate never returns ADMIT on text it did not score: a broken or hung scorer gives ERROR, exit 4, with no judge called. | `prose-gate.unit.test.mjs`, 119 of 119 cases; verification run broke the scorer 13 ways (2026-10-02) | yes, the unit suite runs locally |
 | 6 | Typing a pinned phrase or an injection with look-alike, invisible, bidi or tag characters does not hide it. | 111 normalization cases; verification attack table, 24 of 24 spellings and 9 of 9 injections caught after ca26e8a | partly; the attack suite is not shipped |
 | 7 | Text addressed to a grader in a wording the 10 injection patterns list is rejected before any judge sees it. | 40 must-fire and 25 must-stay-silent injection cases | yes, unit suite |
-| 8 | The send hook blocks on its block tier and denies a send when its scorer or normalizer fails, for tool calls its matcher routes to it. | `hook-tests/voice-tell-gate.test.py` on `hook/voice-tell-gate.py`, 115 of 115 cases | yes; the starter kit ships them as `tools/hook/` and `tools/hook-tests/` from its 2026-10-02 release that added these docs (`docs/voice/`), and the kit at 9505301 does not |
+| 8 | The send hook blocks on its block tier and denies a send when its scorer or normalizer fails, for tool calls its matcher routes to it. | `hook-tests/voice-tell-gate.test.py` on `hook/voice-tell-gate.py`, 552 of 552 cases | yes; the starter kit ships them as `tools/hook/` and `tools/hook-tests/` from its 2026-10-02 release that added these docs (`docs/voice/`), and the kit at 9505301 does not |
 | 9 | The system cannot detect a model deliberately imitating a specific writer. | `VOICE-SYSTEM.md` "The ceiling": mimicry recall 0 of 11 (2026-09-21) | no; the reference writing is private |
-| 10 | Generated tables come from the code, numbers in the phrases `facts.mjs` lists are checked against the facts file, other numbers cite an evidence file and are checked by review, and the build fails when a listed number disagrees with a fresh run. | `docs/tools/verify-docs.mjs`, 69 of 69 docs-tool cases (they test the checker, not every sentence) | no; the docs tools stay in the private repo. The shipped `facts.json` and `BUILD.json` let a reviewer compare printed numbers with the recorded values |
+| 10 | Generated tables come from the code, numbers in the phrases `facts.mjs` lists are checked against the facts file, other numbers cite an evidence file and are checked by review, and the build fails when a listed number disagrees with a fresh run. | `docs/tools/verify-docs.mjs`, 70 of 70 docs-tool cases (they test the checker, not every sentence) | no; the docs tools stay in the private repo. The shipped `facts.json` and `BUILD.json` let a reviewer compare printed numbers with the recorded values |
 
 Claims 3, 4 and 9 rest on study files in the author's private evidence directory. [Decision Log](07-decision-log.md) gives each study's commit, numbers and reopen condition, and [Calibration and Evidence](06-calibration-and-evidence.md) gives the method.
 
@@ -42,7 +42,7 @@ bash calibration/fetch-public-corpora.sh && node calibration/human-fp-budget.mjs
 
 Check first that `calibration/human-fp-budget.mjs` and `prose-gate.mjs` exist in your copy. The starter kit ships both under `tools/` from its 2026-10-02 release that added these docs (`docs/voice/`); the kit at 9505301 does not, so on an older clone run `git pull` first. Requirements: Node (no npm packages), bash, curl and tar, network access for the download, and the detector clone at the pinned commit (see [Runbooks](04-runbooks.md)). The corpora go to `$VOICE_CORPORA`, by default `~/.cache/voice-system/corpora`; a second run reuses them once they verify. Scoring makes no network call and sends no text anywhere.
 
-What to expect. A table with one row per corpus (n, rejects, rejects by score, pinned hits, injection hits), a line `pooled public: R of N rejected; CLI cross-check K/K agree`, and a final line starting `PASS:`. The numbers in this packet are R = 0 and N = 18,335 (measured at b4534e3 on 2026-10-02). A `FAIL:` line names which condition broke: the budget, a pinned or injection hit on a human document, a document count that differs from the recorded one (a different corpus version), or a disagreement between the in-process verdict and the CLI.
+What to expect. A table with one row per corpus (n, rejects, rejects by score, pinned hits, injection hits), a line `pooled public: R of N rejected; CLI cross-check K/K agree`, and a final line starting `PASS:`. The numbers in this packet are R = 0 and N = 18,335 (measured at cc4c915 on 2026-10-03). A `FAIL:` line names which condition broke: the budget, a pinned or injection hit on a human document, a document count that differs from the recorded one (a different corpus version), or a disagreement between the in-process verdict and the CLI.
 
 Two local suites reproduce claims 5 and 7 with no download:
 
@@ -56,7 +56,7 @@ The docs tools stay in the private repo. The owner checks the docs against a fre
 
 These are choices the owner has not made yet. Each one lists what the evidence says so far.
 
-**1. Case sensitivity on one overlay structure.** One structure in the author's overlay matches a phrase mid-sentence and misses the same phrase at the start of a sentence. Fixing it adds send-hook blocks, because the structure has critical severity. It hit 1 pre-2022 human document and 0 AI drafts, and it has been lint-only in the gate since 1de0ab1.
+**1. Case sensitivity on one overlay structure.** One structure in the author's overlay matches a phrase mid-sentence and misses the same phrase at the start of a sentence. Fixing it adds send-hook blocks, because the structure has critical severity. It hit 1 pre-2022 human document and 0 AI drafts, and it has been lint-only in the gate since 1de0ab1. The send hook now blocks the sentence-start form on its own (Decision Log, D14); the overlay structure is unchanged.
 
 **2. Cadence out of the score can be reverted.** 05da726 set the cadence weight to 0; the capped variant from eb21f5c is one flag away (`--cadence-weight`). The capped variant catches one more AI draft in-sample (4 of 124 against 3) and leaves the nearest human document 3 points under the det bar instead of 22. The AUC gain and zero human rejects favor leaving cadence out. On the held-out half both variants caught 2 of 62 AI drafts, so the difference is within noise.
 

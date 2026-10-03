@@ -1,4 +1,4 @@
-<!-- built from docs/src/01-getting-started.md for the public edition at tools commit b4534e3 -->
+<!-- built from docs/src/01-getting-started.md for the public edition at tools commit cc4c915 -->
 # Getting Started With /voice-setup
 
 This chapter takes one person from a fresh install to `voice-doctor` GREEN. It follows the `/voice-setup` skill (`skills/voice-setup.md` in the starter kit, which `./setup.sh` installs as `~/.claude/commands/voice-setup.md`) step by step, and every command below is one the onboarding tools in `onboarding/` accept as of 2026-10-02. You can type `/voice-setup` in Claude Code and let the skill run the steps, or run them yourself in a terminal. The result is the same.
@@ -35,13 +35,19 @@ ls "$T/onboarding/voice-doctor.mjs" "$T/aiscore.mjs" "$T/prose-gate.mjs" "$T/tex
 
 If a file is missing, the install is incomplete. The next paragraph says where the files come from.
 
-Where the files come from: the public starter kit, `https://github.com/jtehrani84/context-engineering`. Clone it and run `./setup.sh` from the root of the clone; it copies the kit's `tools/` folder to `~/.claude/tools`, its hooks to `~/.claude/hooks/scripts` and its skills to `~/.claude/commands`, and wires the send hook into `settings.json`. The kit ships `prose-gate.mjs`, `text-normalize.mjs`, `calibration/`, `onboarding/`, `hook/` and `hook-tests/` under `tools/` from its 2026-10-02 release that added these docs (`docs/voice/`); the kit at 9505301 and earlier does not, and its `voice-tell-gate.py` only nudges on file writes. On an older clone, run `git pull` and then `./setup.sh` again. The engine and the hook must come from the same release: the hook reads a `text-normalize --json` key that older engines don't print.
+Where the files come from: the public starter kit, `https://github.com/jtehrani84/context-engineering`. Clone it and run `./setup.sh` from the root of the clone; it copies the kit's `tools/` folder to `~/.claude/tools`, its hooks to `~/.claude/hooks/scripts` (the send hook and, next to it, the draft gate) and its skills to `~/.claude/commands`, and wires the hooks into `settings.json`: the send hook on `PreToolUse` and `PostToolUse`, and the draft gate on `Stop` with the guarded command `merge-hooks.mjs` writes. The kit ships `prose-gate.mjs`, `text-normalize.mjs`, `calibration/`, `onboarding/`, `hook/` and `hook-tests/` under `tools/` from its 2026-10-02 release that added these docs (`docs/voice/`), and the draft gate (`hook/voice-draft-gate.py`) from its 2026-10-03 release; the kit at 9505301 and earlier ships none of them, and its `voice-tell-gate.py` only nudges on file writes. On an older clone, run `git pull` and then `./setup.sh` again. The engine and the hook must come from the same release: the hook reads a `text-normalize --json` key that older engines don't print.
 
 The send hook must be the copy that ships with the engine. If `$H` is missing or older, install it (keep a dated copy of the old one first):
 
 ```bash
 [ -f "$H" ] && cp "$H" "$H.bak-$(date +%Y-%m-%d)"
 mkdir -p "$(dirname "$H")" && cp "$T/hook/voice-tell-gate.py" "$H"
+```
+
+The draft gate, a second hook that checks the drafts Claude shows in chat when a reply ends, installs next to it. Install it before you run `merge-hooks.mjs` (Step 2), which wires the gate only once the script is there. A copy of the tools without `hook/voice-draft-gate.py` is older than the draft gate; the doctor's `draft-gate-wiring` check fails until it is installed:
+
+```bash
+cp "$T/hook/voice-draft-gate.py" "$(dirname "$H")/voice-draft-gate.py"
 ```
 
 Each tool prints `--help`. Their exit codes:
@@ -64,7 +70,7 @@ It prints one line per check (`PASS`, `FAIL`, `WARN` or `INFO`), a `fix:` line u
 node "$T/onboarding/voice-doctor.mjs" --list
 ```
 
-On a new install, expect three FAILs: `overlay` (no reviewed personal overlay yet), `hook-wiring` (`settings.json` doesn't run the hook yet) and `user-calibration` (no calibration report yet). Step 2 fixes `hook-wiring` and steps 4 to 7 fix the other two. Any other FAIL is an install problem. Fix it before you go on:
+After the starter kit's `./setup.sh`, which installs both hooks and wires them, expect two FAILs: `overlay` and `user-calibration`, which steps 4 to 7 fix. Without the kit's `setup.sh`, a new install has four FAILs: `overlay` (no reviewed personal overlay yet), `hook-wiring` and `draft-gate-wiring` (`settings.json` doesn't run the hooks yet) and `user-calibration` (no calibration report yet). Step 2 fixes the two wiring checks and steps 4 to 7 fix the other two. Any other FAIL is an install problem. Fix it before you go on:
 
 | Check | What a FAIL means | What to do |
 |---|---|---|
@@ -72,6 +78,7 @@ On a new install, expect three FAILs: `overlay` (no reviewed personal overlay ye
 | `engine`, `detector`, `detector-pin` | An engine file is missing, or the detector isn't the tested commit | Reinstall the engine (see Before You Start). Never edit the pin to make it pass |
 | `scorer`, `normalizer`, `gate` | The tool runs but gives a wrong answer on a fixed probe | Reinstall the engine from one release |
 | `hook-wiring` | `settings.json` doesn't run the hook for every send tool and every file write | Step 2 |
+| `draft-gate-wiring` | No `Stop` entry runs `voice-draft-gate.py`, or the script isn't where the entry points | Step 2, and install the draft gate (Before You Start) |
 | `hook-controls`, `send-fails-closed`, `write-warns` | The hook is missing or older than the engine: it lets a tell through, or lets a send through when its scorer is broken | Install `$T/hook/voice-tell-gate.py` at `$H` (Before You Start) |
 | `engine-calibration` | The engine's human false-positive record is missing or shows rejects | Reinstall `calibration/` with the engine |
 
@@ -103,10 +110,10 @@ The other strictness values have defaults you rarely change: `detBar` 40 (the AI
 Check the config and the wiring:
 
 ```bash
-node "$T/onboarding/voice-doctor.mjs" --only config,hook-wiring
+node "$T/onboarding/voice-doctor.mjs" --only config,hook-wiring,draft-gate-wiring
 ```
 
-If `hook-wiring` fails, look at what the doctor expects and what will change before you write anything:
+If either wiring check fails, look at what the doctor expects and what will change before you write anything:
 
 ```bash
 node "$T/onboarding/voice-doctor.mjs" --print-hooks     # the hooks block this config needs
@@ -114,13 +121,25 @@ node "$T/onboarding/merge-hooks.mjs" --dry-run          # the hooks section afte
 node "$T/onboarding/merge-hooks.mjs"                    # writes it; an existing file is kept as settings.json.bak-<time>
 ```
 
-`merge-hooks.mjs` replaces only the entries that run `voice-tell-gate.py` and keeps every other hook and setting. If there is no `settings.json` yet it creates one, and each run that changes the file writes a new backup. It also takes `--settings <file>` and `--config <file>`.
+`merge-hooks.mjs` replaces only the entries that run `voice-tell-gate.py` or `voice-draft-gate.py` and keeps every other hook and setting. It wires the send hook on `PreToolUse` and `PostToolUse` and the draft gate on `Stop` (matcher `""`). It writes the file back in the layout it found, so the lines outside the voice entries don't change; Claude Code itself writes `settings.json` with `<`, `>` and `&` as `\u` escapes and no final newline, and that layout is kept. A layout it can't reproduce (a hand-formatted file) is rewritten as 2-space JSON with every value kept, and the tool says so. A `timeout` you set on a voice entry is kept, and names an old list-style send matcher held that the new matcher doesn't cover are printed. A second run with nothing to change writes nothing. If there is no `settings.json` yet it creates one, and each run that changes the file writes a new backup. It also takes `--settings <file>` and `--config <file>`. To uninstall, `--remove` takes every voice entry out the same way, backup first.
+
+If the draft gate's script isn't next to the send hook, `merge-hooks.mjs` doesn't add the `Stop` entry. It prints "skipped the Stop entry" on stderr with the `cp` that installs the script, still wires the send hook, takes out any old draft-gate entry, and exits 0; install the script and run it again. The `Stop` command it writes checks that the script exists before it runs it, so if the file is removed later the reply ends with a "draft not checked" note instead of being blocked.
 
 If `hook-wiring` still fails with "the hook doesn't treat N of the configured send tools as sends", the hook script is the problem, not the wiring: install `$T/hook/voice-tell-gate.py` at `$H` (Before You Start), or add the name to the hook's `SEND_SUFFIXES`. Hooks older than 2026-10-02 skip `manage_spreadsheet_comment`, because they test the read marker `read` against the whole tool name and "spreadsheet" contains it.
 
 The send matcher it writes is a regular expression on purpose. Claude Code reads a matcher made only of letters, digits, `_`, `|`, `,`, `-` and spaces as a list of exact tool names, so an exact name like `send_message` never matches the MCP tool `mcp__chat__send_message`. The rule was read from the Claude Code 2.1.286 bundle and confirmed with a live probe on 2026-10-02; the rule and its evidence are in `$T/onboarding/lib/hook.mjs`.
 
 After a wiring change, restart the Claude Code session so it loads the new hooks. The doctor runs the hook directly, so its checks pass before the restart.
+
+What the draft gate does in a session: when Claude ends a reply that shows a draft for someone else, in a ````draft` fence or after a `Written for:` line, it checks that draft. A hard tell sends Claude back to fix it, and Claude Code shows you "Stop hook error occurred" with a one-line note; that label means the gate blocked the stop, not that something broke. It blocks at most 2 times per reply, and when it can't run it lets the reply end with a "draft not checked" note.
+
+Your own company names (optional). A sentence that opens "As <Name>, we ..." blocks a send for any name, and "As <Name> ..." blocks for a name on the company list whatever follows it: "As Apple pushed the update, the build broke." blocks, though nobody is speaking as Apple. A `!Apple` line in the file below exempts that name, and "As Apple, we ..." still blocks. The hook knows 22 large companies. To add yours, one per line:
+
+```bash
+cp "$T/onboarding/templates/company-names.example.txt" "$V/company-names.txt"   # then edit it
+```
+
+A line starting `!` marks a name that is never a company (an event, a product you write about), so "As <that name> wraps, ..." stays silent instead of drawing a nudge. It also takes a built-in name off the list when you mean the everyday word: with `!Amazon`, "As Amazon deforestation accelerates, ..." goes out, and "As Amazon, we ..." still blocks. A name is matched on at most four words; a longer line can't match, so the hook skips it and says so. The hook reads `$V/company-names.txt` under `CLAUDE_CONFIG_DIR` too, so the `cp` above puts the file where it looks. `VOICE_COMPANY_NAMES` points the hook at another file. A file the hook can't read leaves the built-in list in force and adds a note to the hook's message, on a send and in a chat draft alike.
 
 ## Step 3: Add Your Writing Samples
 
@@ -181,17 +200,20 @@ Each failure is listed by sample id, with the check that fired and a suggestion:
 |---|---|---|
 | `send-hook:<prefix>-phrase` | A phrase in `TEAM_PHRASES` is in your own writing | Remove it from `TEAM_PHRASES` |
 | `send-hook:<prefix>-struct-*` | A critical structure from a base overlay fired on your writing | Lower its severity in the overlay that defines it, or add the line to `APPROVED_LINES` |
-| `send-hook:hard-ban` | The hook's word list blocks a word you really use | Move the word from `BLOCK_WORDS` to `NUDGE_WORDS` in `$H`, or reword |
+| `send-hook:hard-ban` | The hook's word list blocks a word you really use, or a sentence that opens "As" and a name | Move the word from `BLOCK_WORDS` to `NUDGE_WORDS` in `$H`, or reword; for the opener, lead with the name |
 | `ai-evidence` | The generic detector's categories added up past `strictness.detBar` | Raise `detBar` a little, or drop the sample if it isn't really yours |
 | `pinned:<type>` | A type in `VERDICT_STRUCT_TYPES` fired on your writing | Remove it from that list |
 | `injection:<type>` | The sample reads like an instruction to a grader | Nothing exempts this; keep such text out of gated drafts |
 
 The shipped send hook doesn't read `TEAM_WORDS` hits or the `REGISTER` checks, so those never fail a held-out sample. A hook that reads them reports them as `send-hook:<prefix>-word` and `send-hook:<prefix>-cadence-*`, and the tool's suggestion then names the list or band to change.
 
-Make the change in your editor and re-run until 0 fail. Four cautions:
+Make the change in your editor and re-run until 0 fail.
+
+**Before you rely on the send hook, test it on writing you did not tune on.** The hook's block list is short, so a block word you use now and then can be missing from every sample you tuned with, and the first you hear of it is a blocked send. In a persona run on 2026-10-02 (one author of the public 18F blog, `docs/evidence/persona-2026-10-02.json`), the held-out set passed after one change to the block list, and the hook then blocked 4 of 14 fresh posts by the same author, each one on a block word. So put a few pieces of your own writing that the overlay never saw in a new folder, and run `node "$T/onboarding/calibrate-user.mjs" --overlay "$V/voice-overlay.draft.mjs" --tune "$V/samples" --held-out <that folder> --no-report`. Every block word it reports that you really use, move from `BLOCK_WORDS` to `NUDGE_WORDS` in `$H`. The same list blocks a sentence that opens "As" and a name ("As Acme grows, we..."); if that's how you write, lead with the name instead.
+
+Three cautions:
 
 - Each change you make to pass a held-out sample uses that sample for tuning. After several rounds, add a few new samples so the test stays clean.
-- The hook's block list is short, so a block word you use now and then may be in no held-out sample. In a persona run on 2026-10-02 (one author of the public 18F blog, `docs/evidence/persona-2026-10-02.json`), the held-out set passed after one change to the block list, and the hook then blocked 4 of 14 fresh posts by the same author, each one on a block word. Check fresh writing as well: put a few pieces the overlay never saw in a new folder and run `node "$T/onboarding/calibrate-user.mjs" --overlay "$V/voice-overlay.draft.mjs" --tune "$V/samples" --held-out <that folder> --no-report`. Move every block word you use.
 - A word you move lives in your installed copy of the hook. Reinstalling the hook replaces that copy, so keep the dated backup and re-apply your moves after an update.
 - If the tool warns that the samples changed since the draft was built, re-run step 4 with `--force`.
 
@@ -238,7 +260,7 @@ Setup is done when the last line reads `GREEN` with 0 fail. WARN lines are allow
 
 **Tune and held-out samples.** Tune samples build the overlay. Held-out samples only test it, so a pass on them says something about writing the overlay hasn't seen.
 
-**Block and nudge.** A block stops a send: the PreToolUse hook denies the tool call. A nudge lets the call through with a note to the model. File writes are only ever nudged.
+**Block and nudge.** A block stops a send: the PreToolUse hook denies the tool call. A nudge lets the call through with a note to the model. File writes are only ever nudged. The draft gate's block is different: it doesn't stop anything being sent, it sends Claude back to fix a draft it showed.
 
 **Fails closed.** If the scorer or the normalizer breaks, the hook denies a send instead of letting it through, and warns on a file write. The doctor checks this by breaking them on purpose in a temporary folder.
 

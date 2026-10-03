@@ -12,9 +12,9 @@ It is provider-agnostic. Nothing here assumes a particular company, CRM, cloud o
 |-------|------|--------|
 | **Identity** | `templates/CLAUDE.md` with a routing table, written for you by the quickstart prompt | Claude knows your role, projects, and constraints from session 1 |
 | **Rules** | 13 governance files: voice, security, architecture, code quality, testing, the four proof-family rules, structural voice, agent security, model tiering, context compression | Standards load every session; the proof gates flag confidently-wrong output |
-| **Hooks** | 10 scripts: 7 wired by setup, 3 opt-in | Context routes itself; dangerous commands get blocked; slop, hallucinated terms and unproven "shipped" claims get flagged |
+| **Hooks** | 11 scripts: 8 wired by setup, 3 opt-in | Context routes itself; dangerous commands get blocked; slop, hallucinated terms and unproven "shipped" claims get flagged |
 | **Skills** | 28 workflows | Research prep, drafting, planning, content quality, audits, wiki and memory upkeep, meta-skills |
-| **Voice engine** | `tools/aiscore.mjs`, a vendored MIT detector, your own overlay, and a calibration fuse | Flags AI-sounding prose in what Claude writes; calibrate it to your own writing |
+| **Voice engine** | `tools/aiscore.mjs`, a vendored MIT detector, your own overlay, the send hook, the draft gate and the `/voice-setup` calibration tools | Flags AI-sounding prose in what Claude writes, blocks it in what Claude sends, and checks drafts before you copy them; calibrate it to your own writing |
 | **Audits** | 4 multi-agent workflows behind `/claim-audit`, `/plan-audit`, `/execution-truth`, `/provenance-audit` | Re-check claims, plans and runtime behavior before they ship |
 | **Guards** | `guards/`: egress guard, token broker, output reducer, path protection, leak scan, with tests | Working code for agents that read untrusted data and hold real tools |
 | **Wiki + memory** | Starter wiki skeleton, memory conventions with perishable-finding fields | Decisions, people and reference pages, organized from day one |
@@ -112,7 +112,7 @@ Claude asks 5 questions and writes your `CLAUDE.md`. It doesn't recreate the fil
 | `/system-health` | System diagnostics: hooks firing, rules loading, graph growing |
 | `/gas-deploy` | Google Apps Script push + deploy + verify (see `docs/apps-script-setup.md`) |
 
-## Hooks (7 Wired by Setup, 3 Opt-In)
+## Hooks (8 Wired by Setup, 3 Opt-In)
 
 | Hook | Type | What It Does |
 |------|------|-------------|
@@ -121,7 +121,8 @@ Claude asks 5 questions and writes your `CLAUDE.md`. It doesn't recreate the fil
 | `domain-verification.py` | PreToolUse (Edit/Write) | Flags hallucinated domain terms before they reach output |
 | `schema-check.py` | PreToolUse (Bash) | Checks column names in SQL commands against `~/.claude/schema.json`; silent without that file |
 | `output-quality-gate.py` | PostToolUse (Write) | Scans written content for AI-slop words and reports violations |
-| `voice-tell-gate.py` | PostToolUse (Write/Edit/MultiEdit), PreToolUse (send tools) | Nudges on written `.md`, `.mdx`, `.html`, `.htm`, `.txt`, `.rtf` and `.docx` files; blocks a chat, email, document or pull-request send with a hard tell, and denies a send it can't score |
+| `voice-tell-gate.py` | PostToolUse (Write/Edit/MultiEdit), PreToolUse (send tools) | Nudges on written `.md`, `.mdx`, `.html`, `.htm`, `.txt`, `.rtf` and `.docx` files (a file under `drafts/` at any length); blocks a chat, email, document or pull-request send with a hard tell, and denies a send it can't score |
+| `voice-draft-gate.py` | Stop | When a reply ends, checks a draft Claude showed in a ` ```draft ` fence with the send hook's scorer and sends Claude back to fix a hard tell; if it can't run, the reply ends with a "draft not checked" note |
 | `deploy-proof-gate.py` | PostToolUse (Bash) | After a deploy or publish command, reminds Claude to prove the change on the running system |
 | `claim-faithfulness-gate.py` | PostToolUse, opt-in | On an external-facing doc with over-confident claim language, asks for a re-read against sources |
 | `refutation-oracle-gate.py` | PostToolUse, opt-in | On an audit that calls something fabricated, asks for a check of the source where it would be true |
@@ -182,6 +183,7 @@ See `examples/compound-loop/` for a complete walkthrough showing one real correc
 |   |-- refutation-oracle-gate.py                     # PostToolUse, opt-in: check the right source before calling something fabricated
 |   |-- schema-check.py                               # PreToolUse: check SQL columns against your schema
 |   |-- session-init.py                               # SessionStart: context routing
+|   |-- voice-draft-gate.py                           # Stop: checks a draft shown in chat (```draft fence) with the send hook's scorer
 |   +-- voice-tell-gate.py                            # Pre+PostToolUse: voice engine on sends (blocks) and written files (nudges)
 |-- commands/
 |   |-- action-plan.md
@@ -213,7 +215,7 @@ See `examples/compound-loop/` for a complete walkthrough showing one real correc
 |   |-- week-plan.md
 |   |-- weekly-report.md
 |   +-- wiki-lint.md
-|-- tools/  (59 files)                                # Voice engine (scorer, normalizer, gate, send hook source, /voice-setup tools, calibration), RAG-quality and transcript-export tools
+|-- tools/  (64 files)                                # Voice engine (scorer, normalizer, gate, send hook and draft gate source, /voice-setup tools, calibration), RAG-quality and transcript-export tools
 |-- harness-evolution/  (4 files)                     # Held-out eval harness + your voice corpus
 |-- workflows/  (4 files)                             # Multi-agent audit workflows behind /claim-audit, /plan-audit, /execution-truth, /provenance-audit
 |-- scripts/  (llm-call.py, llm-review.py, review-prompts/)  # llm-call.py + llm-review.py back /review and /validate (LLM_BASE_URL, LLM_API_KEY)
@@ -314,7 +316,7 @@ Edit `CLAUDE.md` — replace the placeholder sections with YOUR:
 The domain verification hook reads `~/.claude/domain-terms.json`. Add your field's commonly hallucinated terms — product names, API endpoints, technical terminology that LLMs get wrong — as `{"wrong term": "correction"}` pairs. The schema check reads `~/.claude/schema.json` the same way.
 
 ### For your voice
-The voice engine is generic until you calibrate it. Type `/voice-setup` in Claude Code: it collects your own samples, drafts an overlay you review, checks it on held-out writing, and ends with `voice-doctor` GREEN. `VOICE-ONBOARDING.md` is the short version; the full docs are in `docs/voice/` (rendered at `docs/voice/site/`).
+The voice engine is generic until you calibrate it. Type `/voice-setup` in Claude Code: it collects your own samples, drafts an overlay you review, checks it on held-out writing, and ends with `voice-doctor` GREEN. The drafts-first habit in `rules/communication.md` (write a draft to `drafts/` first, show it in a ` ```draft ` fence) is what lets the file check and the draft gate score a message before you copy it out. Company names you never want to open a sentence with "As ..." go in `~/.claude/voice/company-names.txt` (template: `tools/onboarding/templates/company-names.example.txt`). `VOICE-ONBOARDING.md` is the short version; the full docs are in `docs/voice/` (rendered at `docs/voice/site/`).
 
 ### For your workflows
 Skills are templates. Edit them to match YOUR processes, YOUR tools, YOUR output formats. An edited skill is never overwritten on upgrade.

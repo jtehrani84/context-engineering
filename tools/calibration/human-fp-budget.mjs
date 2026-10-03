@@ -12,6 +12,11 @@
 //   - a corpus is missing or has a different doc count than the one measured (wrong version: re-run the fetch);
 //   - the in-process verdict disagrees with the CLI on any cross-checked doc.
 //
+// The hook lane (added 2026-10-02 with D19): the same docs also go through the send hook's own word list and "As <Name>"
+// check (calibration/hook-lexicon.py, counts only), because the verdict above never runs the hook's lexicon. FAILS if
+// a set's docs the hook would deny on a send exceed the baseline's hookLexicon count plus the same margin, or if the
+// lane can't run. --write-hook-baseline records only that part of the baseline (review the diff!).
+//
 // Every guard change must pass this AND calibration/gate-eval.mjs. For changes that only move a verdict (a pin, a
 // bar, which checks count), this replaces harness-eval's "tune gain" requirement: harness-eval measures the raw
 // score and flag counts, so it reads a verdict-only change as g = 0 and can't pass or fail it.
@@ -94,12 +99,30 @@ for (const d of check) {
   if (!j || j.verdict !== verdictOf(d.text).verdict) { cliMismatch++; console.log(`  CLI mismatch: ${d.set}/${d.id} in-process ${verdictOf(d.text).verdict}, CLI ${j?.verdict} (exit ${p.status})`); }
 }
 
+// ── the hook lane: the send hook's own lexicon over the same docs (counts only) ─────────────────────────────
+const lane = spawnSync('python3', [join(HERE, 'hook-lexicon.py')], {
+  input: pub.map((d) => JSON.stringify({ set: d.set, text: d.text })).join('\n'), encoding: 'utf8', maxBuffer: 1 << 26,
+  timeout: 1800000, killSignal: 'SIGKILL', env: { ...process.env, VOICE_COMPANY_NAMES: join(HERE, '.no-company-names') },
+});
+let hookSets = null; try { hookSets = JSON.parse(lane.stdout.trim().split('\n').pop()); } catch {}
+if (hookSets) for (const k of PUBLIC_SETS) if (!hookSets[k]) hookSets[k] = { n: 0, blockDocs: 0, openerBlockDocs: 0, nudgeOnlyDocs: 0 };
+
 let commit = '?'; try { commit = execFileSync('git', ['-C', ROOT, 'rev-parse', '--short', 'HEAD'], { encoding: 'utf8' }).trim(); } catch {}
 console.log(`human-fp-budget · tools @ ${commit} · corpora ${DEST} · ${((Date.now() - t0) / 1000).toFixed(0)}s`);
 console.log('set'.padEnd(8), 'n'.padStart(6), ' rejects  by-score  pinned  injection');
 for (const [k, s] of Object.entries(sets)) console.log(k.padEnd(8), String(s.n).padStart(6), String(s.rejects).padStart(9), String(s.byScore).padStart(9), String(s.pinned).padStart(7), String(s.injection).padStart(10));
 console.log(`pooled public: ${pooled.rejects} of ${pooled.n} rejected; CLI cross-check ${check.length - cliMismatch}/${check.length} agree`);
 for (const r of rejects) console.log(`  reject: ${r}`);
+if (hookSets) {
+  console.log('hook lane (send hook lexicon: docs it would deny, of them for an opener, docs with nudges only)');
+  for (const [k, s] of Object.entries(hookSets)) console.log(k.padEnd(8), String(s.n).padStart(6), String(s.blockDocs).padStart(9), String(s.openerBlockDocs).padStart(9), String(s.nudgeOnlyDocs).padStart(9));
+} else console.log(`hook lane did not run (exit ${lane.status}${lane.error ? `, ${lane.error.message}` : ''}): ${(lane.stderr || '').trim().split('\n').pop() || 'no output'}`);
+if (process.argv.includes('--write-hook-baseline')) {
+  if (!hookSets) { console.log('FAIL: the hook lane did not run; nothing written'); process.exit(1); }
+  const b = existsSync(BASELINE) ? JSON.parse(readFileSync(BASELINE, 'utf8')) : {};
+  b.hookLexicon = { measuredAt: new Date().toISOString(), toolsCommit: commit, note: 'send hook lexicon (word list + "As <Name>" + flat view, built-in company names only) over the same docs; counts only. Re-record only with a reviewed reason (decision log D19).', sets: Object.fromEntries(Object.entries(hookSets).map(([k, s]) => [k, { n: s.n, blockDocs: s.blockDocs, openerBlockDocs: s.openerBlockDocs }])) };
+  writeFileSync(BASELINE, JSON.stringify(b, null, 1) + '\n'); console.log(`hook-lane baseline written to ${BASELINE}`); process.exit(0);
+}
 
 if (process.argv.includes('--write-baseline')) {
   const b = { measuredAt: new Date().toISOString(), toolsCommit: commit, note: 'post-fix rates after rule C, cadence out of the score, AI-evidence classification, normalization and the injection check (2026-10-02). Re-record only with a reviewed reason.', sets: Object.fromEntries(Object.entries(sets).map(([k, s]) => [k, { n: s.n, rejects: s.rejects }])), pooledPublic: pooled };
@@ -112,5 +135,13 @@ for (const k of PUBLIC_SETS) if (base.sets[k] && sets[k]?.n !== base.sets[k].n) 
 const allowed = base.pooledPublic.rejects + margin(base.pooledPublic.n);
 if (pooled.rejects > allowed) fails.push(`pooled public rejects ${pooled.rejects} > budget ${allowed} (measured ${base.pooledPublic.rejects} + margin ${margin(base.pooledPublic.n)})`);
 if (cliMismatch) fails.push(`${cliMismatch} in-process verdicts disagree with the CLI`);
+if (!hookSets) fails.push('the hook lane did not run (python3 and hook/voice-tell-gate.py are needed)');
+else if (!base.hookLexicon) fails.push('no hookLexicon baseline: run with --write-hook-baseline and review it');
+else for (const [k, b] of Object.entries(base.hookLexicon.sets)) {
+  const s = hookSets[k];
+  if (!s) { fails.push(`hook lane: no docs for ${k}`); continue; }
+  const a = b.blockDocs + margin(b.n);
+  if (s.blockDocs > a) fails.push(`hook lane ${k}: ${s.blockDocs} docs the send hook would deny > budget ${a} (measured ${b.blockDocs} at ${base.hookLexicon.toolsCommit} + margin ${margin(b.n)})`);
+}
 if (fails.length) { console.log(`\nFAIL:\n  ${fails.join('\n  ')}`); process.exit(1); }
-console.log(`PASS: pooled public ${pooled.rejects} ≤ budget ${allowed} (measured ${base.pooledPublic.rejects} at ${base.toolsCommit} + margin ${margin(base.pooledPublic.n)}); pinned tells and injection patterns hit 0 human docs`);
+console.log(`PASS: pooled public ${pooled.rejects} ≤ budget ${allowed} (measured ${base.pooledPublic.rejects} at ${base.toolsCommit} + margin ${margin(base.pooledPublic.n)}); pinned tells and injection patterns hit 0 human docs; the hook lane is within its baseline`);

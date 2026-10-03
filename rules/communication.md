@@ -4,6 +4,18 @@
 
 All content must sound like a real professional wrote it. AI-sounding output is a dealbreaker.
 
+### Drafts Go Through the Voice Check First
+- Anything the user might send (a chat message, an email, a post, a comment) is written first to a `drafts/` folder
+  in the project, as `drafts/YYYY-MM-DD-<slug>.md`. The voice hook checks any file under `drafts/` at any length,
+  so the draft is scored before the user sees it. Show it only after that check comes back clean, or after fixing
+  what it flagged.
+- When a draft has to appear in the chat, put it in a fenced block with the info string `draft` (` ```draft `). The
+  draft gate checks only what is inside that fence when the reply ends, not the explanation around it.
+- A hard-banned word or phrase in a draft means revise it before finishing. List softer tells under the draft for the
+  user to decide. If the flagged text is the user's own words or a verbatim quote, say it was flagged; don't
+  rephrase it silently.
+- Drafts can hold private text, so keep `drafts/` out of git (add it to `.gitignore`).
+
 ### Banned Words (50+)
 delve, leverage, ecosystem, unlock, empower, streamline, harness, holistic, robust, seamless, cutting-edge, utilize, facilitate, solutioning, ideation, learnings, synergy, paradigm, transformative, pivotal, groundbreaking, spearhead, foster, bolster, fortify, underpin, cornerstone, linchpin, bedrock, tapestry, multifaceted, nuanced, comprehensive, innovative, disruptive, game-changing, best-in-class, world-class, state-of-the-art, next-generation, mission-critical, end-to-end, full-stack, deep-dive, double-click, unpack, circle back, move the needle, low-hanging fruit, table stakes, north star
 

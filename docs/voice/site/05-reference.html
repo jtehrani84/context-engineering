@@ -33,7 +33,7 @@
 </nav>
 <main id="main" class="content">
 <h1 id="reference">Reference</h1>
-<p>This chapter is generated from the code. Counts come from the facts file, measured at tools commit b4534e3.</p>
+<p>This chapter is generated from the code. Counts come from the facts file, measured at tools commit cc4c915.</p>
 <h2 id="check-catalog">Check Catalog</h2>
 <h3 id="text-normalization">Text Normalization</h3>
 <p>Every scan reads canonical text from <code>text-normalize.mjs</code>, so a tell cannot be hidden by typing it with invisible or look-alike characters. Its exports:</p>
@@ -224,6 +224,7 @@ threshold always share one definition</code></pre>
 <div class="table-wrap"><table>
 <thead><tr><th>Flag</th><th>Default</th><th>Description</th></tr></thead>
 <tbody>
+<tr><td><code>--write-hook-baseline</code></td><td></td><td>Record only the hook lane (the send hook lexicon's deny counts per set) to the hookLexicon part of calibration/human-fp-budget.json. Review the diff before committing it.</td></tr>
 <tr><td><code>--write-baseline</code></td><td></td><td>Record the current counts to calibration/human-fp-budget.json instead of checking them. Review the diff before committing it.</td></tr>
 </tbody></table></div>
 <h3 id="onboarding-tools">Onboarding Tools</h3>
@@ -272,7 +273,7 @@ exit: 0 no check failed; 1 at least one check failed; 2 the doctor couldn't run 
 <tr><td><code>--help</code></td><td>this text</td></tr>
 </tbody></table></div>
 <h4 id="onboardingmerge-hooksmjs">onboarding/merge-hooks.mjs</h4>
-<pre><code class="language-text">usage: node merge-hooks.mjs [--settings &lt;file&gt;] [--config &lt;file&gt;] [--dry-run]</code></pre>
+<pre><code class="language-text">usage: node merge-hooks.mjs [--settings &lt;file&gt;] [--config &lt;file&gt;] [--dry-run] [--remove]</code></pre>
 <h2 id="exit-codes">Exit Codes</h2>
 <div class="table-wrap"><table>
 <thead><tr><th>Tool</th><th>Code</th><th>Meaning</th></tr></thead>
@@ -287,7 +288,7 @@ exit: 0 no check failed; 1 at least one check failed; 2 the doctor couldn't run 
 <tr><td><code>text-normalize.mjs</code></td><td>0</td><td>Canonical text written.</td></tr>
 <tr><td><code>text-normalize.mjs</code></td><td>1</td><td>Unknown argument.</td></tr>
 <tr><td><code>calibration/human-fp-budget.mjs</code></td><td>0</td><td>Budget met, or baseline written.</td></tr>
-<tr><td><code>calibration/human-fp-budget.mjs</code></td><td>1</td><td>Budget exceeded, a pinned tell or injection pattern hit a human document, a corpus is missing or has a different document count, or the in-process verdict disagrees with the CLI.</td></tr>
+<tr><td><code>calibration/human-fp-budget.mjs</code></td><td>1</td><td>Budget exceeded, a pinned tell or injection pattern hit a human document, a corpus is missing or has a different document count, the in-process verdict disagrees with the CLI, or the hook lane is over its baseline or could not run.</td></tr>
 <tr><td><code>voice-tell-gate.py</code></td><td>0</td><td>Normal. The decision is in the JSON on stdout: a deny for a blocked send, or added context for a nudge.</td></tr>
 <tr><td><code>voice-tell-gate.py</code></td><td>2</td><td>Unreadable hook input. The tier cannot be told, so the hook returns Claude Code's blocking code.</td></tr>
 </tbody></table></div>
@@ -297,13 +298,18 @@ exit: 0 no check failed; 1 at least one check failed; 2 the doctor couldn't run 
 <thead><tr><th>Variable</th><th>Read By</th><th>Default</th><th>Purpose</th></tr></thead>
 <tbody>
 <tr><td><code>AVOID_AI_DETECTOR</code></td><td><code>aiscore.mjs</code></td><td><code>./avoid-ai-writing/detector/patterns.js</code></td><td>Path to the detector <code>patterns.js</code>.</td></tr>
+<tr><td><code>CLAUDE_CONFIG_DIR</code></td><td><code>voice-tell-gate.py</code></td><td><code>~/.claude</code></td><td>Claude Code's config folder when it isn't <code>~/.claude</code>. The send hook reads the company-names file from <code>$CLAUDE_CONFIG_DIR/voice/company-names.txt</code> then.</td></tr>
 <tr><td><code>PROSE_GATE_AISCORE_TIMEOUT_MS</code></td><td><code>prose-gate.mjs</code></td><td><code>120000</code></td><td>Milliseconds before the gate kills aiscore and returns ERROR.</td></tr>
 <tr><td><code>VOICE_AISCORE</code></td><td><code>voice-tell-gate.py</code></td><td><code>~/.claude/tools/aiscore.mjs</code></td><td>Path to the aiscore.mjs the hook runs.</td></tr>
+<tr><td><code>VOICE_COMPANY_NAMES</code></td><td><code>voice-tell-gate.py</code></td><td><code>~/.claude/voice/company-names.txt</code></td><td>The per-user company-names file the send hook reads for the &quot;As &lt;Name&gt;&quot; opener: one name per line of up to four words, <code>#</code> comments, <code>!</code> for a name that is never a company (a <code>!</code> line also takes a built-in name off the list). A missing file means the built-in list only; a longer line is skipped with a note. Without this variable the file is <code>$CLAUDE_CONFIG_DIR/voice/company-names.txt</code> when <code>CLAUDE_CONFIG_DIR</code> is set.</td></tr>
 <tr><td><code>VOICE_CORPORA</code></td><td><code>calibration/human-fp-budget.mjs</code>, <code>calibration/fetch-public-corpora.sh</code></td><td><code>~/.cache/voice-system/corpora</code></td><td>Directory that holds the public corpora for the false-positive budget.</td></tr>
+<tr><td><code>VOICE_DRAFT_HOOK</code></td><td><code>hook-tests/voice-draft-gate.test.py</code></td><td></td><td>The draft gate copy its test runs. Default: <code>hook/voice-draft-gate.py</code> in the repo.</td></tr>
+<tr><td><code>VOICE_DRAFT_STATE_DIR</code></td><td><code>hook/voice-draft-gate.py</code></td><td><code>~/.cache/voice-system/draft-gate</code></td><td>Where the draft gate keeps its per-session block counts.</td></tr>
 <tr><td><code>VOICE_HOOK</code></td><td><code>hook-tests/voice-tell-gate.test.py</code></td><td></td><td>The hook copy the hook test and the onboarding test run, and the docs tools read. Default: <code>hook/voice-tell-gate.py</code> in the repo.</td></tr>
 <tr><td><code>VOICE_NORMALIZE</code></td><td><code>voice-tell-gate.py</code></td><td><code>~/.claude/tools/text-normalize.mjs</code></td><td>Path to the text-normalize.mjs the hook runs.</td></tr>
 <tr><td><code>VOICE_SCORER_TIMEOUT</code></td><td><code>voice-tell-gate.py</code></td><td><code>20</code></td><td>Seconds the hook waits for the scorer. A value outside 0 &lt; x &lt;= 40 falls back to the default.</td></tr>
-<tr><td><code>VOICE_TOOLS</code></td><td><code>hook-tests/voice-tell-gate.test.py</code></td><td></td><td>Checkout of this repo whose scorer the hook test uses.</td></tr>
+<tr><td><code>VOICE_TELL_GATE</code></td><td><code>hook/voice-draft-gate.py</code></td><td><code>voice-tell-gate.py next to the draft gate</code></td><td>The send hook the draft gate imports <code>analyze()</code> from.</td></tr>
+<tr><td><code>VOICE_TOOLS</code></td><td><code>hook-tests/voice-tell-gate.test.py</code>, <code>hook-tests/voice-draft-gate.test.py</code></td><td></td><td>Checkout of this repo whose scorer the hook test uses.</td></tr>
 </tbody></table></div>
 <h2 id="hook-tiers-and-matchers">Hook Tiers and Matchers</h2>
 <p><code>voice-tell-gate.py</code> runs on tool calls, never on conversation text. It has two tiers, matched to whether the action can be undone. It keys on the raw detector <code>score</code>, not <code>adjustedScore</code>, and calls no judge.</p>
@@ -312,21 +318,26 @@ exit: 0 no check failed; 1 at least one check failed; 2 the doctor couldn't run 
 <tbody>
 <tr><td>PostToolUse</td><td><code>Write|Edit|MultiEdit</code></td><td>NUDGE: a file write is never blocked</td></tr>
 <tr><td>PreToolUse</td><td>the send tools below</td><td>BLOCK or NUDGE</td></tr>
+<tr><td>Stop</td><td><code>&quot;&quot;</code> (Stop has no tool to match)</td><td>the draft gate, <code>voice-draft-gate.py</code>: BLOCK the stop, at most 2 times per reply, or a note for the user (see Draft Gate)</td></tr>
 </tbody></table></div>
 <p>A send tool name is matched as a substring of the tool name, so one entry covers every MCP server prefix (31 names): <code>slack_send_message</code>, <code>slack_send_message_draft</code>, <code>slack_schedule_message</code>, <code>slack_create_canvas</code>, <code>slack_update_canvas</code>, <code>send_gmail_message</code>, <code>draft_gmail_message</code>, <code>create_doc</code>, <code>import_to_google_doc</code>, <code>batch_update_doc</code>, <code>insert_doc_elements</code>, <code>modify_doc_text</code>, <code>find_and_replace_doc</code>, <code>update_doc_headers_footers</code>, <code>create_presentation</code>, <code>import_to_google_slides</code>, <code>batch_update_presentation</code>, <code>create_form</code>, <code>batch_update_form</code>, <code>manage_document_comment</code>, <code>manage_presentation_comment</code>, <code>manage_spreadsheet_comment</code>, <code>create_pull_request</code>, <code>create_issue</code>, <code>add_issue_comment</code>, <code>create_pull_request_review</code>, <code>update_pull_request</code>, <code>update_issue</code>, <code>add_comment_to_pending_review</code>, <code>add_reply_to_pull_request_comment</code>, <code>pull_request_review_write</code>.</p>
 <p>A tool whose own name (the part after the last <code>__</code>) has any of <code>read</code>, <code>search</code>, <code>list</code>, <code>get</code>, <code>fetch</code>, <code>download</code>, <code>poll</code>, <code>branch</code> as a whole word is never treated as a send, so <code>list_spreadsheet_comments</code> is a read and <code>manage_spreadsheet_comment</code> is a send.</p>
-<p>File writes are checked only for <code>.html</code>, <code>.htm</code>, <code>.md</code>, <code>.mdx</code>, <code>.txt</code>, <code>.rtf</code>, <code>.docx</code> files, and only when the text written (the content, the edit's new text, or a MultiEdit's new texts joined) is at least 400 characters. A send is checked when its harvested prose is at least 3 characters; keys that hold plumbing (channel, id, url, path and 26 others) are skipped.</p>
+<p>File writes are checked only for <code>.html</code>, <code>.htm</code>, <code>.md</code>, <code>.mdx</code>, <code>.txt</code>, <code>.rtf</code>, <code>.docx</code> files, and only when the text written (the content, the edit's new text, or a MultiEdit's new texts joined) is at least 400 characters. A draft file, one with a folder named <code>drafts</code> in its path or <code>draft</code> in its file name (any case), is checked from 3 characters. A send is checked when its harvested prose is at least 3 characters; keys that hold plumbing (channel, id, url, path and 26 others) are skipped.</p>
 <div class="table-wrap"><table>
 <thead><tr><th>Surface</th><th>Outcome</th><th>Trigger</th></tr></thead>
 <tbody>
-<tr><td>Send</td><td>BLOCK</td><td>A critical-severity overlay structure (<code>&lt;prefix&gt;-struct-*</code>, any issue prefix); an overlay phrase (<code>&lt;prefix&gt;-phrase</code>) the overlay marks critical or the lexicon blocks; a lexicon block word or block phrase; the scorer or normalizer failing, timing out or returning unusable output</td></tr>
-<tr><td>Send</td><td>NUDGE</td><td>A high or medium overlay structure; a lexicon nudge word; any other overlay phrase the lexicon does not exempt; raw score at or above 40 on text longer than 200 characters</td></tr>
+<tr><td>Send</td><td>BLOCK</td><td>A critical-severity overlay structure (<code>&lt;prefix&gt;-struct-*</code>, any issue prefix); an overlay phrase (<code>&lt;prefix&gt;-phrase</code>) the overlay marks critical or the lexicon blocks; a lexicon block word or block phrase; an &quot;As &lt;Name&gt;&quot; opener in company voice (&quot;As Globex, we ...&quot;) or naming a listed company; the scorer or normalizer failing, timing out or returning unusable output</td></tr>
+<tr><td>Send</td><td>NUDGE</td><td>A high or medium overlay structure; a lexicon nudge word or nudge phrase; any other overlay phrase the lexicon does not exempt; any other &quot;As &lt;Name&gt;&quot; sentence opener; raw score at or above 40 on text longer than 200 characters; a company-names file that couldn't be read (a note, the send goes out)</td></tr>
 <tr><td>File write</td><td>NUDGE</td><td>Any flagged item, or raw score at or above 40. A scorer failure adds a visible warning that the structure checks did not run</td></tr>
 </tbody></table></div>
 <p>Timeouts: the scorer gets 20 seconds by default (<code>VOICE_SCORER_TIMEOUT</code>, valid range above 0 up to 40); the normalizer gets the smaller of that and 10 seconds.</p>
 <p>The hook does not read overlay word hits (<code>&lt;prefix&gt;-word</code>) or cadence and register checks (<code>&lt;prefix&gt;-cadence-*</code>); those show in the scorer's and the gate's output only.</p>
 <h3 id="lexicon">Lexicon</h3>
-<p>The hook carries its own word and phrase list, the lexicon, because the generic detector scores single slop words near 0 on short text, which is the send surface. Overlay word hits are ignored in favor of it. The tiers are block words, block phrases, nudge words and never-flagged words; edit them in your copy of the hook.</p>
+<p>The hook carries its own word and phrase list, the lexicon, because the generic detector scores single slop words near 0 on short text, which is the send surface. Overlay word hits are ignored in favor of it. The tiers are block words, block phrases, nudge words, nudge phrases and never-flagged words; edit them in your copy of the hook. The word tiers include inflected forms: 38 forms block like their base word and 62 nudge, chosen by how often real writers use each form (Decision Log, D16).</p>
+<h3 id="the-as--opener">The &quot;As &lt;Name&gt;&quot; Opener</h3>
+<p>A sentence that opens &quot;As&quot; plus a capitalized name of one to four words is read three ways. Company voice, the name and then a first-person main clause (&quot;As Globex, we ...&quot;, &quot;As Globex, a leader in X, our team ...&quot;, &quot;As Globex, founded in 1985, we ...&quot;, &quot;As Globex — a widget leader — we ...&quot;, &quot;As Globex, together we ...&quot;), blocks a send. It is read after one short aside closed the way it opened (a comma or a dash), a colon, semicolon or ellipsis, an adverb, or more words of a long name, and never across a blank line. Two shapes are not company voice: a possessive appositive followed by the as-clause's own verb (&quot;As Dana, our new AE, ramps up, ...&quot;), and a list of subjects with its own verb (&quot;As Dana, the AE and the SE finish the deck, we ...&quot;). The check also reads the text as it renders, with backticks dropped and line breaks as spaces, so &quot;As <code>Globex</code>, we&quot; blocks too. So does a name on the company list: 22 large companies built in (<code>Google</code>, <code>Alphabet</code>, <code>Microsoft</code>, <code>Amazon</code>, <code>AWS</code>, <code>Apple</code>, <code>Meta</code>, <code>Facebook</code>, <code>OpenAI</code>, <code>Anthropic</code>, <code>Oracle</code>, <code>SAP</code>, <code>IBM</code>, <code>Adobe</code>, <code>ServiceNow</code>, <code>Workday</code>, <code>HubSpot</code>, <code>Snowflake</code>, <code>Databricks</code>, <code>Nvidia</code>, <code>Intel</code>, <code>Cisco</code>) plus the names in the per-user file <code>~/.claude/voice/company-names.txt</code> (or the file <code>VOICE_COMPANY_NAMES</code> names), matched case-insensitively on whole words with a possessive and a trailing Inc, Corp, Co, Ltd, LLC, plc, GmbH or AG ignored. Any other name in that position is a nudge: the send goes out with &quot;consider leading with the subject&quot;. Attribution (&quot;As Dana said&quot;), roles (&quot;As CEO&quot;), stock openers (&quot;As of&quot;, &quot;As soon as&quot;), months and Title Case headings decide between a nudge and silence for other names; they never excuse company voice or a listed name. In the names file a line starting <code>#</code> is a comment, and a line starting <code>!</code> is a name that is never a company (an event, a product you write about, or a built-in name you mean in its everyday sense, &quot;!Amazon&quot;): its openers are silent instead of a nudge, and company voice still blocks. A line of more than four words can't match and is skipped with a note. The file is <code>$CLAUDE_CONFIG_DIR/voice/company-names.txt</code> when <code>CLAUDE_CONFIG_DIR</code> is set.</p>
+<h3 id="draft-gate">Draft Gate</h3>
+<p><code>voice-draft-gate.py</code> is a Stop hook. When Claude's reply ends it reads the reply's drafts, scores only those with the send hook's <code>analyze()</code> (imported read-only, so both gates share one word list and one scorer), and decides. A draft is a fenced block whose info string starts with <code>draft</code> (<code>draft`, </code>draft email<code>, </code>~~~draft slack<code>), or, only when the reply has no draft fence, the first blockquote or untagged fence within {{fact:draft.lead_in_lines}} lines after a </code>Written for:<code>line. Prose around a draft is never scored. A hard tell blocks the stop: Claude is sent back to fix the draft and show it again, and Claude Code shows the user &quot;Stop hook error occurred&quot; with a one-line note. A soft tell allows the stop with a note. After {{fact:draft.max_blocks}} blocks in one reply the stop is allowed with a note that the draft is still flagged. Any failure (transcript, scorer, normalizer, the send hook, the hook's own input) allows the stop with &quot;draft not checked: &lt;cause&gt;&quot;: a Stop hook that fails closed would trap the session. The send hook's scorer and normalizer calls are held to {{fact:draft.scorer_timeout_s}} and {{fact:draft.normalizer_timeout_s}} seconds here. Env:</code>VOICE_TELL_GATE<code>, </code>VOICE_DRAFT_STATE_DIR`.</p>
 <h2 id="files-and-tests">Files and Tests</h2>
 <h3 id="files">Files</h3>
 <p>Files of the repo outside <code>docs/</code> and <code>onboarding/</code> that this edition describes. The send hook's source is <code>hook/voice-tell-gate.py</code>; the detector is a pinned clone in <code>avoid-ai-writing/</code>.</p>
@@ -337,10 +348,13 @@ exit: 0 no check failed; 1 at least one check failed; 2 the doctor couldn't run 
 <tr><td><code>aiscore.mjs</code></td><td>Deterministic scorer CLI and <code>scoreText()</code>: HTML reduction, normalization, the pinned detector, the overlay, the evidence score.</td></tr>
 <tr><td><code>aiscore.test.mjs</code></td><td>aiscore tests.</td></tr>
 <tr><td><code>calibration/fetch-public-corpora.sh</code></td><td>Downloads the public corpora at pinned versions and checks each file's sha256.</td></tr>
+<tr><td><code>calibration/hook-lexicon.py</code></td><td>The budget's hook lane: the send hook's word list, &quot;As &lt;Name&gt;&quot; check and flat view over the same documents, as counts only.</td></tr>
 <tr><td><code>calibration/human-fp-budget.json</code></td><td>Recorded baseline counts for the budget.</td></tr>
 <tr><td><code>calibration/human-fp-budget.mjs</code></td><td>Standing gate: the deterministic layer must not start rejecting human documents.</td></tr>
 <tr><td><code>calibration/public-corpora.sha256</code></td><td>Checksums for the public corpora.</td></tr>
+<tr><td><code>hook-tests/voice-draft-gate.test.py</code></td><td>Draft gate tests, run against <code>hook/voice-draft-gate.py</code> on synthetic transcripts.</td></tr>
 <tr><td><code>hook-tests/voice-tell-gate.test.py</code></td><td>Send hook tests, run against <code>hook/voice-tell-gate.py</code> and this repo's scorer.</td></tr>
+<tr><td><code>hook/voice-draft-gate.py</code></td><td>The draft gate, a Stop hook that checks the drafts Claude shows in chat with the send hook's <code>analyze()</code>. Claude Code runs an installed copy at <code>~/.claude/hooks/scripts/voice-draft-gate.py</code>.</td></tr>
 <tr><td><code>hook/voice-tell-gate.py</code></td><td>The send and write hook. Claude Code runs an installed copy at <code>~/.claude/hooks/scripts/voice-tell-gate.py</code>.</td></tr>
 <tr><td><code>prose-gate.mjs</code></td><td>The gate: aiscore, the injection check and the judge panel combined into ADMIT, REJECT, INCONCLUSIVE or ERROR.</td></tr>
 <tr><td><code>prose-gate.unit.test.mjs</code></td><td>Gate tests with no judge call: injection, prompt framing, combine, CLI, fail-closed.</td></tr>
@@ -355,12 +369,13 @@ exit: 0 no check failed; 1 at least one check failed; 2 the doctor couldn't run 
 <tbody>
 <tr><td><code>aiscore.test.mjs</code></td><td><code>node aiscore.test.mjs</code></td><td>20 of 20</td></tr>
 <tr><td><code>prose-gate.unit.test.mjs</code></td><td><code>node prose-gate.unit.test.mjs</code></td><td>119 of 119</td></tr>
-<tr><td><code>hook-tests/voice-tell-gate.test.py</code></td><td><code>python3 hook-tests/voice-tell-gate.test.py</code></td><td>115 of 115</td></tr>
-<tr><td><code>onboarding/test/</code></td><td><code>node --test onboarding/test/*.test.mjs</code></td><td>74 of 74</td></tr>
+<tr><td><code>hook-tests/voice-tell-gate.test.py</code></td><td><code>python3 hook-tests/voice-tell-gate.test.py</code></td><td>552 of 552</td></tr>
+<tr><td><code>hook-tests/voice-draft-gate.test.py</code></td><td><code>python3 hook-tests/voice-draft-gate.test.py</code></td><td>126 of 126</td></tr>
+<tr><td><code>onboarding/test/</code></td><td><code>node --test onboarding/test/*.test.mjs</code></td><td>85 of 85</td></tr>
 </tbody></table></div>
-<p>The human false-positive budget (<code>calibration/human-fp-budget.mjs</code>) needs the public corpora on disk: measured at b4534e3 on 2026-10-02.</p>
+<p>The human false-positive budget (<code>calibration/human-fp-budget.mjs</code>) needs the public corpora on disk: measured at cc4c915 on 2026-10-03.</p>
 <nav class="pager" aria-label="Previous and next chapter"><span><a href="04-runbooks.html">Previous: Runbooks</a></span><span><a href="06-calibration-and-evidence.html">Next: Calibration and Evidence</a></span></nav>
-<p class="built">Built from tools commit b4534e3 with facts from 2026-10-02.</p>
+<p class="built">Built from tools commit cc4c915 with facts from 2026-10-03.</p>
 </main>
 </div>
 <script src="search-index.js"></script>

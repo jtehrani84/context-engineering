@@ -10,14 +10,16 @@ The full walkthrough is chapter 01 of the voice docs, [Getting Started](docs/voi
 
 In Claude Code, type `/voice-setup`. The skill runs the steps below in order and asks before it changes `settings.json` or installs an overlay. You can also run each command yourself, with `T=~/.claude/tools` and `V=~/.claude/voice`.
 
-1. **Doctor.** `node "$T/onboarding/voice-doctor.mjs"` lists what is missing. On a fresh install it reports RED until the steps below are done.
-2. **Config and hook wiring.** Copy `$T/onboarding/voice-config.example.json` to `$V/voice-config.json` and answer its four questions (drafter lab, judges, send tools, strictness). `./setup.sh` already wired `voice-tell-gate.py` on file writes and on the default send tools; if you add send tools, `node "$T/onboarding/merge-hooks.mjs"` rewrites that entry.
+1. **Doctor.** `node "$T/onboarding/voice-doctor.mjs"` lists what is missing. On a fresh install it reports RED with two FAILs, `overlay` and `user-calibration`, until the steps below are done.
+2. **Config and hook wiring.** Copy `$T/onboarding/voice-config.example.json` to `$V/voice-config.json` and answer its four questions (drafter lab, judges, send tools, strictness). `./setup.sh` already wired `voice-tell-gate.py` on file writes and on the default send tools, and the draft gate `voice-draft-gate.py` on Stop; if you add send tools, `node "$T/onboarding/merge-hooks.mjs"` rewrites those entries. Optional: copy `$T/onboarding/templates/company-names.example.txt` to `$V/company-names.txt` and list the companies you never want a sentence to open with "As <Company>".
 3. **Samples.** Put 20 to 40 pieces of your own writing, one per file, in `$V/samples`. Use text you typed yourself, not a model's draft you edited, and remove customer names, deal values, credentials and personal data first.
 4. **Draft an overlay.** `node "$T/onboarding/profile-build.mjs"` measures your samples and writes `$V/voice-overlay.draft.mjs`. It prints counts and sample ids, never sample text.
 5. **Review the draft.** Open the draft yourself, keep or cut each entry, and set `REVIEWED = true`.
 6. **Calibrate on held-out writing.** `node "$T/onboarding/calibrate-user.mjs" --overlay "$V/voice-overlay.draft.mjs" --no-report` checks that your held-out samples pass the gate and the send hook.
 7. **Install the overlay.** Back up `$T/voice-overlay.mjs`, copy the reviewed draft over it, and run `node "$T/onboarding/calibrate-user.mjs"` to write the report the doctor reads.
 8. **Doctor GREEN.** `node "$T/onboarding/voice-doctor.mjs"`.
+
+**Drafts.** `rules/communication.md` asks Claude to write anything you might send to a `drafts/` folder first (the file check reads it at any length) and to show a draft in the chat in a ` ```draft ` fence (the draft gate checks it when the reply ends). Keep `drafts/` out of git.
 
 Your samples stay on the machine: `profile-build.mjs` and `calibrate-user.mjs` turn off Node's network modules in their own processes, the config check refuses a file that sets `samplesLeaveMachine`, `samplesToJudges` or `printSampleText` to anything but `false`, and no step sends a sample to a judge or a model.
 

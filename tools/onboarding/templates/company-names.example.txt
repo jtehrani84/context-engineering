@@ -1,0 +1,14 @@
+# Extra names for the voice gate's "As [Company]" check. Copy to ~/.claude/voice/company-names.txt
+# (or point VOICE_COMPANY_NAMES at another file). One name per line, up to four words; # starts a comment.
+#
+#   Initech          a send that opens "As Initech ..." is blocked whatever follows: "As Initech pushed the
+#                    update, ..." blocks too, though it isn't company voice (company voice, "As Initech, we
+#                    ...", is blocked for any name, listed or not)
+#   Initech Cloud    multi-word names match on whole words, case-insensitive; "Inc", "Corp", "Ltd" and a
+#                    possessive are ignored, so "As Initech Cloud's roadmap ..." matches too
+#   !Initech Summit  a "!" name is never a company (an event, a product you write about): "As Initech Summit
+#                    wraps, ..." stays silent instead of getting a nudge; "As Initech Summit, we ..." still blocks
+#
+# The built-in list (the large companies in hook/voice-tell-gate.py COMPANY_NAMES) is always on, and works the same
+# way: "As Apple pushed the update, ..." blocks. A "!" line exempts a listed or built-in name ("!Apple"); company
+# voice ("As Apple, we ...") still blocks.

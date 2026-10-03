@@ -62,7 +62,7 @@ Text only the internal edition renders.
 </ul>
 <h3 id="the-facts-file">The Facts File</h3>
 <p><code>node docs/tools/facts.mjs</code> runs the local test suites, gate-eval and the human false-positive budget, reads counts from the code, and writes <code>docs/facts.json</code>. Each fact records a key, a value, a status (<code>measured</code>, <code>recorded</code>, <code>not-run</code>, <code>skipped</code> or <code>failed</code>), the command or file it came from, the tools commit, the date, and the editions that may show it. A fact with no editions list is internal only.</p>
-<p>Source text cites a fact as <code>{{fact:key}}</code>, and the build fills in the value. For example, this edition was built from facts measured at tools commit b4534e3, with the detector pinned at 58a95fc. Modifiers change the output: <code>|raw</code> (no thousands separator), <code>|sha</code>, <code>|date</code>, <code>|source</code> and <code>|status</code>. A placeholder inside inline code or a fenced block is left as written.</p>
+<p>Source text cites a fact as <code>{{fact:key}}</code>, and the build fills in the value. For example, this edition was built from facts measured at tools commit cc4c915, with the detector pinned at 58a95fc. Modifiers change the output: <code>|raw</code> (no thousands separator), <code>|sha</code>, <code>|date</code>, <code>|source</code> and <code>|status</code>. A placeholder inside inline code or a fenced block is left as written.</p>
 <p>The build fails on:</p>
 <ul>
 <li>an unknown key</li>
@@ -120,16 +120,16 @@ tail -f /tmp/facts-run.log</code></pre>
 <tr><td>the docs tools</td><td><code>node --test docs/tools/test/*.test.mjs</code>, then all five</td></tr>
 <tr><td>the onboarding tools</td><td><code>node --test onboarding/test/*.test.mjs</code>, then all five (<code>onboarding/</code> is a facts input, so the old facts are stale)</td></tr>
 </tbody></table></div>
-<p>Pass the test files, not the folder: on Node 22, <code>node --test onboarding/test/</code> fails at once with &quot;Cannot find module&quot;. The docs tools' own suite passed 69 of 69 tests at b4534e3, and the onboarding suite passed 74 of 74. Every fixture in both is synthetic and built in a temporary directory.</p>
+<p>Pass the test files, not the folder: on Node 22, <code>node --test onboarding/test/</code> fails at once with &quot;Cannot find module&quot;. The docs tools' own suite passed 70 of 70 tests at cc4c915, and the onboarding suite passed 85 of 85. Every fixture in both is synthetic and built in a temporary directory.</p>
 <p>The onboarding suite includes one test that copies the shipped send hook (<code>VOICE_HOOK</code>, else <code>hook/voice-tell-gate.py</code> in the repo) into a throwaway install and runs the doctor's wiring and fail-closed checks on it. It only reads the original. To check the copy Claude Code actually runs, set <code>VOICE_HOOK=~/.claude/hooks/scripts/voice-tell-gate.py</code>. When it fails, that hook and the engine in this checkout disagree: update one so they match, rather than editing the test.</p>
 <p><code>verify-docs.mjs --fresh</code> re-runs every suite and compares each measured value with the committed one. Run it before a release, and whenever you suspect a fact was edited by hand.</p>
 <h2 id="adding-a-chapter-or-a-fact">Adding a Chapter or a Fact</h2>
 <p>To add a chapter, create <code>docs/src/NN-name.md</code> with frontmatter that lists its editions, use Title Case headings, and cite every number with a placeholder or an evidence file. Then run the build, render and verify steps above. A chapter that should not reach an edition must leave it out of the frontmatter. Don't rely on the leak check to catch it.</p>
 <p>To add a fact, add an entry to the fact list in <code>docs/tools/facts.mjs</code> with its key, the command or file it comes from, the editions that may show it, and any <code>claims</code> phrases. Run <code>facts.mjs</code>, then use the key in the source. Give a fact the narrowest editions list that works: a fact with no list is internal only, and <code>verify-docs</code> fails when an internal-only value of 1,000 or more shows up in a wider edition.</p>
 <h2 id="committing-a-rendered-site">Committing a Rendered Site</h2>
-<p><code>docs/dist/</code> is build output, ignored by the root <code>.gitignore</code> (<code>/docs/dist/*</code>). To commit a rendered edition, add an exception line there, for example <code>!/docs/dist/public/</code>, and commit the build output together with the facts file it was built from. Commit only a build that <code>verify-docs</code> passed, never one made with <code>--allow-stale</code>. This build was made from facts measured at b4534e3.</p>
+<p><code>docs/dist/</code> is build output, ignored by the root <code>.gitignore</code> (<code>/docs/dist/*</code>). To commit a rendered edition, add an exception line there, for example <code>!/docs/dist/public/</code>, and commit the build output together with the facts file it was built from. Commit only a build that <code>verify-docs</code> passed, never one made with <code>--allow-stale</code>. This build was made from facts measured at cc4c915.</p>
 <nav class="pager" aria-label="Previous and next chapter"><span><a href="09-review-packet.html">Previous: Review Packet</a></span><span></span></nav>
-<p class="built">Built from tools commit b4534e3 with facts from 2026-10-02.</p>
+<p class="built">Built from tools commit cc4c915 with facts from 2026-10-03.</p>
 </main>
 </div>
 <script src="search-index.js"></script>
