@@ -22,10 +22,13 @@
 #                             refutation-oracle-gate).
 #   WIKI_DEST                 where --with-wiki copies the wiki skeleton (default ~/.claude/wiki).
 #
-# Usage: ./setup.sh [--dry-run] [--with-wiki] [--check] [--uninstall]
+# Usage: ./setup.sh [--dry-run] [--with-wiki] [--check] [--uninstall [--yes]]
 #
 #   --check       Health check: what is installed, and whether the model endpoint that /review and
 #                 /validate use (LLM_BASE_URL, LLM_API_KEY) is configured. Makes no network calls.
+#
+#   --uninstall   Remove the kit's files (only copies you never edited) and unwire their hooks. Asks first;
+#                 add --yes to skip the question (for a script or CI, where there is no terminal to answer).
 #
 #   --with-wiki   Also copy the wiki skeleton (wiki/ plus templates/wiki/log.md) to
 #                 ~/.claude/wiki, or to $WIKI_DEST if you set it. Never overwrites a file you already have.
@@ -36,6 +39,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CLAUDE_DIR="$HOME/.claude"
 DRY_RUN=false
 WITH_WIKI=false
+ASSUME_YES=false
 
 # Colors (defined early for --check and --uninstall)
 GREEN='\033[0;32m'
@@ -66,6 +70,7 @@ for arg in "$@"; do
     case "$arg" in
         --dry-run) DRY_RUN=true ;;
         --with-wiki) WITH_WIKI=true ;;
+        --yes|-y) ASSUME_YES=true ;;
     esac
 done
 
@@ -267,7 +272,16 @@ if [[ "${1:-}" == "--uninstall" ]]; then
     echo "  blank copy, so it is kept."
     echo ""
 
-    read -p "  Remove these ${#FILES_TO_REMOVE[@]} files? (Y/n) " confirm
+    if [[ "$ASSUME_YES" == true ]]; then
+        confirm=Y
+    elif ! read -r -p "  Remove these ${#FILES_TO_REMOVE[@]} files? (Y/n) " confirm; then
+        # No answer came back (stdin is not a terminal, or it closed). Under `set -e` a bare `read` would end
+        # the script here with no message, so say what happened and stop without removing anything.
+        echo ""
+        echo -e "  ${YELLOW}Cancelled: no answer (stdin is not a terminal). No files were removed.${NC}"
+        echo "  To uninstall from a script, run: ./setup.sh --uninstall --yes"
+        exit 1
+    fi
     if [[ "${confirm:-Y}" =~ ^[Yy]$ ]]; then
         for f in "${FILES_TO_REMOVE[@]}"; do
             rm "$f"

@@ -17,7 +17,8 @@
 #          on Stop with the guarded command, so a missing script can never block a reply
 #        - writes settings.json back in its own layout, so every entry it didn't change keeps its bytes
 #   3. a second run changes nothing; --dry-run writes nothing
-#   4. --uninstall removes unedited kit files, keeps edited ones, and unwires only the hooks it removed
+#   4. --uninstall removes unedited kit files, keeps edited ones, and unwires only the hooks it removed;
+#      with no terminal and no answer it removes nothing and says so (exit 1); --yes skips the prompt
 #   5. --check makes no network call and reports whether the model endpoint is configured
 set -uo pipefail
 
@@ -296,6 +297,15 @@ check "--check with an endpoint set: reports it configured, without calling it" 
 echo; echo "== 5b. a machine with no settings.json at all gets a minimal one, wired"
 env HOME="$TMP/fresh" bash -c 'mkdir -p "$HOME"; bash "$0/setup.sh" < /dev/null' "$TMP/new" > "$TMP/fresh.log" 2>&1
 check "fresh setup with no settings.json exits 0 and creates one with hooks" '[[ -f "$TMP/fresh/.claude/settings.json" ]] && grep -q "guardrail.py" "$TMP/fresh/.claude/settings.json"'
+
+echo; echo "== 5c. a non-interactive uninstall says why it stopped, and --yes runs it without a prompt"
+NB=$(find "$TMP/fresh/.claude" -type f | wc -l)
+env HOME="$TMP/fresh" bash "$TMP/new/setup.sh" --uninstall < /dev/null > "$TMP/uninstall-noinput.log" 2>&1; NOIN_RC=$?
+NA=$(find "$TMP/fresh/.claude" -type f | wc -l)
+check "--uninstall with no terminal and no answer removes nothing" '[[ $NB -eq $NA && -f "$TMP/fresh/.claude/hooks/scripts/guardrail.py" ]]'
+check "--uninstall with no answer exits 1 and says Cancelled, pointing at --yes" '[[ $NOIN_RC -eq 1 ]] && grep -q "Cancelled" "$TMP/uninstall-noinput.log" && grep -q -- "--yes" "$TMP/uninstall-noinput.log"'
+env HOME="$TMP/fresh" bash "$TMP/new/setup.sh" --uninstall --yes < /dev/null > "$TMP/uninstall-yes.log" 2>&1; YES_RC=$?
+check "--uninstall --yes with no terminal exits 0, removes kit files and unwires their hooks" '[[ $YES_RC -eq 0 && ! -f "$TMP/fresh/.claude/hooks/scripts/guardrail.py" ]] && ! grep -q "scripts/guardrail.py" "$TMP/fresh/.claude/settings.json"'
 
 echo; echo "== 6. uninstall keeps what you edited"
 printf 'y\n' | bash "$TMP/new/setup.sh" --uninstall > "$TMP/uninstall.log" 2>&1
