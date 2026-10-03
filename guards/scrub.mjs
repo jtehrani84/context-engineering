@@ -119,4 +119,11 @@ function main() {
   process.exit(flagged.length ? 1 : 0);
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) main();
+// main-module check that holds through a symlinked path (macOS /tmp, a symlinked ~/.claude), where argv[1] as typed
+// differs from the module's URL, and under `node -e`, where argv[1] is just an argument
+const isMain = (() => {
+  if (typeof import.meta.main === 'boolean') return import.meta.main;   // Node 22.18+ / 24.2+
+  if (process.execArgv.some((a) => /^(-e|-p|--eval|--print)(=|$)/.test(a))) return false;   // node -e: argv[1] is an argument
+  try { return !!process.argv[1] && fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(import.meta.url)); } catch { return false; }
+})();
+if (isMain) main();

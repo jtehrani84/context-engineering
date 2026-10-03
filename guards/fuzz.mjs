@@ -10,6 +10,8 @@
  */
 import { classifyOp } from './mcp-classify.mjs';
 import { checkEgress } from './egress-guard.mjs';
+import { realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 function lcg(seed) { let s = seed >>> 0; return () => (s = (s * 1664525 + 1013904223) >>> 0) / 2 ** 32; }
 const pick = (rnd, arr) => arr[(rnd() * arr.length) | 0];
@@ -83,7 +85,14 @@ export function runFuzz() {
   return { egress: e, classifier: c, ablation: a, ok: e.ok && c.ok && a.ok };
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// main-module check that holds through a symlinked path (macOS /tmp, a symlinked ~/.claude), where argv[1] as typed
+// differs from the module's URL, and under `node -e`, where argv[1] is just an argument
+const isMain = (() => {
+  if (typeof import.meta.main === 'boolean') return import.meta.main;   // Node 22.18+ / 24.2+
+  if (process.execArgv.some((a) => /^(-e|-p|--eval|--print)(=|$)/.test(a))) return false;   // node -e: argv[1] is an argument
+  try { return !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url)); } catch { return false; }
+})();
+if (isMain) {
   const r = runFuzz();
   console.log(`fuzz·egress: ${r.egress.tested} inputs, ${r.egress.failOpen} fail-open${r.egress.escapes.length ? ' [' + r.egress.escapes.join(', ') + ']' : ''}`);
   console.log(`fuzz·classifier: ${r.classifier.tested} inputs, ${r.classifier.underGate} under-gated`);

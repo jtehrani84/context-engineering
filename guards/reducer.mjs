@@ -16,8 +16,9 @@
  *
  * Usage:  node reducer.mjs <logfile>    -> the receipt + the measured saving on THIS input + the caveat
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 
 const THRESHOLD = 4 * 1024;   // 4 KiB — below this, bypass unchanged
 const HEAD = 8, TAIL = 8;     // verbatim head / tail lines
@@ -75,7 +76,14 @@ export function applyReducer(text, opts = {}) {
   };
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// main-module check that holds through a symlinked path (macOS /tmp, a symlinked ~/.claude), where argv[1] as typed
+// differs from the module's URL, and under `node -e`, where argv[1] is just an argument
+const isMain = (() => {
+  if (typeof import.meta.main === 'boolean') return import.meta.main;   // Node 22.18+ / 24.2+
+  if (process.execArgv.some((a) => /^(-e|-p|--eval|--print)(=|$)/.test(a))) return false;   // node -e: argv[1] is an argument
+  try { return !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url)); } catch { return false; }
+})();
+if (isMain) {
   const f = process.argv[2];
   if (!f) { console.error('usage: node reducer.mjs <logfile>'); process.exit(2); }
   const r = applyReducer(readFileSync(f, 'utf8'));

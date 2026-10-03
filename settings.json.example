@@ -133,6 +133,9 @@
       {
         "hooks": [
           { "type": "command", "command": "python3 ~/.claude/hooks/scripts/session-init.py" }
+          // Optional, not wired by setup: one line when a model role's id has changed since the last session
+          // (reads ~/.cache/model-roster only, never blocks, always exits 0). Add it inside this list to turn it on:
+          // { "type": "command", "command": "node ~/.claude/tools/model-roster.mjs --notice" }
         ]
       }
     ],

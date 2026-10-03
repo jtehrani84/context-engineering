@@ -19,7 +19,11 @@
 // LLM_MODEL_ALIASES (a JSON map, the same variable scripts/llm-call.py reads, e.g. '{"grok": "<model-id>"}'); else
 // the newest id in the role's family that your endpoint's GET /models lists. A role the endpoint doesn't list
 // throws, naming the role and what it lists; there is no fallback to LLM_MODEL or another vendor.
-import { loadRoster, normalizeRole, pickId, RosterError } from './model-roster.mjs';
+// The /models pick goes through model-roster.mjs resolve(), the same resolver opencode-llm uses: two providers listing
+// one family ("a/x" and "b/x") is an ambiguity error (MODEL_ROSTER_PROVIDERS settles it per role), and the pick is
+// cached and a changed id logged in ~/.cache/model-roster/, under "<role>@llm-endpoint". When /models can't be read,
+// the last-known id is used with a STALE note on stderr; a change gets a note too.
+import { loadRoster, normalizeRole, resolve, RosterError } from './model-roster.mjs';
 
 function config(opts) {
   const base = process.env.LLM_BASE_URL;
@@ -45,15 +49,24 @@ export async function modelForRole(role, { base, key } = config({ role })) {
   if (!n) throw new RosterError(`llm.mjs: unknown role '${role}'. Known roles: ${Object.keys(roster.roles).join(', ')}.`, { role });
   const pinned = aliases()[role] ?? aliases()[n.role];
   if (typeof pinned === 'string' && pinned) return pinned;
-  const res = await fetch(`${base}/models`, { headers: { Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(15000) });
-  if (!res.ok) throw new RosterError(`llm.mjs: role '${n.role}' did not resolve: GET ${base}/models answered HTTP ${res.status}. Name its id in LLM_MODEL_ALIASES instead.`, { role: n.role });
-  const listed = ((await res.json())?.data || []).map((m) => m?.id).filter((id) => typeof id === 'string');
-  // match on the id's last path segment (an endpoint may list "vendor/model"), and send the id as listed
-  const bare = new Map(listed.map((id) => [id.slice(id.lastIndexOf('/') + 1), id]));
-  const pick = pickId(roster.roles[n.role], [...bare.keys()], roster);
-  if (!pick) throw new RosterError(`llm.mjs: role '${n.role}' did not resolve: ${base}/models lists no id matching ${roster.roles[n.role].family}. It lists: ${listed.join(', ') || '(nothing)'}. No fallback to another model; name the id in LLM_MODEL_ALIASES, or edit the role's pattern in model-roster.json.`, { role: n.role, served: listed });
-  return bare.get(pick);
+  const listModels = async () => {
+    const res = await fetch(`${base}/models`, { headers: { Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(15000) });
+    if (!res.ok) throw new Error(`GET ${base}/models answered HTTP ${res.status}`);
+    return ((await res.json())?.data || []).map((m) => m?.id).filter((id) => typeof id === 'string');
+  };
+  let r;
+  try { r = await resolve(n.role, { roster, listModels, scope: 'llm-endpoint', sourceName: `${base}/models` }); }
+  catch (e) {
+    if (!(e instanceof RosterError)) throw e;
+    throw new RosterError(`llm.mjs: ${String(e.message).replace(/^model-roster: /, '')} Name the id in LLM_MODEL_ALIASES, or edit the role's pattern in model-roster.json.`, { role: n.role, served: e.served });
+  }
+  const note = r.changed ? `llm.mjs: role '${r.role}' is now ${r.qualified} (was ${r.previous}); going ahead with the new id`
+    : r.stale ? `llm.mjs: role '${r.role}' uses ${r.qualified}, the last-known id from ${r.resolvedAt} (STALE: ${(r.unavailable || []).join('; ').replace(/\s+/g, ' ').trim()}); it may have been removed since` : '';
+  if (note && !noted.has(note)) { noted.add(note); console.error(note); }
+  // the id as the endpoint listed it ("vendor/model" keeps its prefix)
+  return r.qualified;
 }
+const noted = new Set();
 
 export async function llm(prompt, opts = {}) {
   const { base, key } = config(opts);

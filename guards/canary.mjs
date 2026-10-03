@@ -11,6 +11,8 @@
 import { silentEmpty, drift, ungrounded, execution, modelSubstitution, injection, injectionFromEvents } from './primitives.mjs';
 import { classifyOp } from './mcp-classify.mjs';
 import { checkEgress } from './egress-guard.mjs';
+import { realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 const fired = r => (r && r.ok === false) ? 'fire' : 'silent'; // a guard "fires" when it returns ok:false
 const ALLOW = ['trusted-saas.test'];
@@ -67,7 +69,14 @@ export function runCanaries(opts = {}) {
   return { total: results.length, drifted, ok: drifted.length === 0, results, seedMatched: seed ? seedMatched : undefined };
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// main-module check that holds through a symlinked path (macOS /tmp, a symlinked ~/.claude), where argv[1] as typed
+// differs from the module's URL, and under `node -e`, where argv[1] is just an argument
+const isMain = (() => {
+  if (typeof import.meta.main === 'boolean') return import.meta.main;   // Node 22.18+ / 24.2+
+  if (process.execArgv.some((a) => /^(-e|-p|--eval|--print)(=|$)/.test(a))) return false;   // node -e: argv[1] is an argument
+  try { return !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url)); } catch { return false; }
+})();
+if (isMain) {
   const r = runCanaries({ seedDrift: process.argv.includes('--seed-fail') });
   for (const x of r.results) console.log(`  ${x.ok ? '✓' : '✗ DRIFT'} ${x.id} — expected ${x.expected}, got ${x.got}`);
   console.log(r.ok ? `canary: ${r.total} guards holding, no drift` : `canary: DRIFT in ${r.drifted.length}/${r.total} — ${r.drifted.map(d => d.id).join(', ')}`);

@@ -15,6 +15,8 @@
  * blocks, and an unmet owner requirement blocks and cannot be auto-cleared. Unknown verifier kinds
  * fail closed to the owner tier (a check we can't classify must not auto-pass).
  */
+import { realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 export const TIERS = ['advisory', 'oracle', 'owner']; // strictly increasing authority
 
@@ -71,6 +73,13 @@ export function adjudicate(results = [], opts = {}) {
   };
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// main-module check that holds through a symlinked path (macOS /tmp, a symlinked ~/.claude), where argv[1] as typed
+// differs from the module's URL, and under `node -e`, where argv[1] is just an argument
+const isMain = (() => {
+  if (typeof import.meta.main === 'boolean') return import.meta.main;   // Node 22.18+ / 24.2+
+  if (process.execArgv.some((a) => /^(-e|-p|--eval|--print)(=|$)/.test(a))) return false;   // node -e: argv[1] is an argument
+  try { return !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url)); } catch { return false; }
+})();
+if (isMain) {
   console.log('verifier tiers:', TIERS.join(' < '), '(advisory never blocks; oracle blocks; owner is outside the builder\'s reach)');
 }

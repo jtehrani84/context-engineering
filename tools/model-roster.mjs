@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * model-roster.mjs — role → model id. Callers ask for a ROLE (sol, terra, luna, grok, gemini-pro,
- * gemini-flash, opus, sonnet, haiku), never a model id; this resolves the role to whatever id the current
- * sources serve, so a gateway moving from one version to the next doesn't break the callers.
+ * model-roster.mjs — role → model id. Callers ask for a ROLE (a name model-roster.json defines, such as grok,
+ * gemini-pro or opus), never a model id; this resolves the role to whatever id the current sources serve, so a
+ * gateway moving from one version to the next doesn't break the callers.
  *
  * Why it exists (2026-10-03): a review failed because code pinned one gateway id after the gateway moved
  * on to the next version. Pinned ids go stale silently; a role resolved at call time doesn't.
@@ -16,11 +16,15 @@
  *     `const policy = {...}` object's providerID + models), (b) `opencode models` (provider/id lines),
  *   dispatch 'native' roles: the gateway's OpenAI-compatible /models listing (endpoint from an opencode
  *     config file),
+ *   a caller's own listing (opts.listModels, e.g. an HTTP endpoint's /models) replaces those per-dispatch sources
+ *     for that call; its picks are cached under opts.scope (`<role>@<scope>`), apart from the opencode picks,
  *   then (c) the last-known-good cache (~/.cache/model-roster/resolved.json), ONLY when every live source is
  *     unavailable. A live source that answers but no longer serves the role is an error, never a cache hit:
  *     a removed id is never kept in use silently.
- * Provider id: the `provider` option, else MODEL_ROSTER_PROVIDER, else the json's sources.provider, else the
- * policy's providerID, else the only provider whose ids match the role (two or more = an error, not a guess).
+ * Provider id, most specific first: the `provider` option; the role's entry in MODEL_ROSTER_PROVIDERS
+ * ("role=provider,role=provider"); the role's `provider` in the json; MODEL_ROSTER_PROVIDER; the json's
+ * sources.provider; the policy's providerID; else the only provider whose ids match the role (two or more = an
+ * error, not a guess).
  *
  * Change detection: each live resolve is compared to the cache. A new id for a role appends
  * `<iso>\t<role>\t<old> -> <new>\t<source>` to changes.log and returns changed:true + previous. Callers that
@@ -42,9 +46,10 @@
  *   --notice  session-start line: prints changes logged since the last notice; reads the cache dir only,
  *             never blocks, always exits 0
  * Env: MODEL_ROSTER_CONFIG, MODEL_ROSTER_POLICY, MODEL_ROSTER_OPENCODE_BIN, MODEL_ROSTER_GATEWAY_CONFIG
- *      (each 'none' disables that source), MODEL_ROSTER_PROVIDER, MODEL_ROSTER_CACHE_DIR.
+ *      (each 'none' disables that source), MODEL_ROSTER_PROVIDERS, MODEL_ROSTER_PROVIDER, MODEL_ROSTER_CACHE_DIR.
+ * The CLI also runs when started through a symlinked path (both sides of the main-module check are realpath'd).
  */
-import { readFileSync, writeFileSync, appendFileSync, mkdirSync, existsSync, renameSync } from 'node:fs';
+import { readFileSync, writeFileSync, appendFileSync, mkdirSync, existsSync, renameSync, realpathSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -93,7 +98,7 @@ export function loadRoster(src) {
 }
 export const ROLE_NAMES = (roster = loadRoster()) => Object.keys(roster.roles);
 
-// name → { role, deprecated, from? }. Accepts a role, a legacy name (gpt, @luna, an old pinned-id key, a friendly id),
+// name → { role, deprecated, from? }. Accepts a role, a legacy name (the json's `legacy` map: an old alias or tag),
 // or a served id (optionally provider-qualified) that matches a role family. Unknown → null.
 export function normalizeRole(name, roster = loadRoster()) {
   if (name === undefined || name === null) return null;
@@ -242,9 +247,45 @@ function makeCtx(opts) {
     policy: () => once('policy', async () => { const { text, where } = readPolicyText(cfg, opts); const p = text == null ? null : parsePolicy(text); if (!p) throw new Error(text == null ? `policy file ${where}` : `policy file unparseable (${where})`); return p; }),
     opencode: () => once('opencode', async () => parseOpencodeModels(await (opts.runOpencode ? opts.runOpencode() : defaultRunOpencode(cfg)))),
     gateway: () => once('gateway', async () => (opts.fetchGateway ? opts.fetchGateway() : defaultFetchGateway(cfg, opts))),
+    listing: () => once('listing', async () => opts.listModels()),
   };
 }
-const configuredProvider = (ctx) => ctx.opts.provider || process.env.MODEL_ROSTER_PROVIDER || ctx.cfg.sources?.provider || null;
+// "role=provider, role=provider" → { role: provider }; malformed entries are ignored
+function perRoleProviders() {
+  const out = {};
+  for (const part of String(process.env.MODEL_ROSTER_PROVIDERS || '').split(',')) {
+    const m = /^\s*([^=\s]+)\s*=\s*([A-Za-z0-9._-]+)\s*$/.exec(part);
+    if (m) out[m[1]] = m[2];
+  }
+  return out;
+}
+// most specific first: the call's option, the role's own setting (env, then json), then the global setting (env, then json)
+const configuredProvider = (ctx, role) => ctx.opts.provider || (role && perRoleProviders()[role]) || (role && ctx.cfg.roles?.[role]?.provider)
+  || process.env.MODEL_ROSTER_PROVIDER || ctx.cfg.sources?.provider || null;
+const AMBIGUOUS_HINT = (role) => `Set the provider for this role (MODEL_ROSTER_PROVIDERS=${role}=<provider>, or "provider" on the role in model-roster.json), or for every role (MODEL_ROSTER_PROVIDER or sources.provider).`;
+
+// provider/id rows → { id, provider } for one role, or a RosterError. Shared by `opencode models` and a caller listing.
+function pickFromRows(role, def, rows, ctx, label, source) {
+  const want = configuredProvider(ctx, role);
+  const scoped = want ? rows.filter(r => r.provider === want) : rows;
+  const re = new RegExp(def.family);
+  const providers = [...new Set(scoped.filter(r => re.test(r.id)).map(r => r.provider))];
+  const show = (p) => (p == null ? '(no provider)' : p);
+  if (providers.length > 1) throw new RosterError(`model-roster: role '${role}' is ambiguous: providers ${providers.map(show).join(', ')} all serve it. ${AMBIGUOUS_HINT(role)}`, { role, providers });
+  const served = scoped.map(r => (r.provider == null ? r.id : `${r.provider}/${r.id}`));
+  if (!providers.length) throw new RosterError(`model-roster: role '${role}' did not resolve: ${label}${want ? ` (provider ${want})` : ''} lists no id matching ${def.family}. It lists: ${servedList(served)}. No fallback to another model.`, { role, served });
+  const id = pickId(def, scoped.filter(r => r.provider === providers[0]).map(r => r.id), ctx.cfg);
+  return { id, provider: providers[0], source };
+}
+// a caller listing: strings ("id" or "vendor/id") or {provider, id}
+function listingRows(list) {
+  const rows = [];
+  for (const x of Array.isArray(list) ? list : []) {
+    if (x && typeof x === 'object' && typeof x.id === 'string') rows.push({ provider: x.provider ?? null, id: x.id });
+    else if (typeof x === 'string' && x) { const i = x.lastIndexOf('/'); rows.push(i > 0 ? { provider: x.slice(0, i), id: x.slice(i + 1) } : { provider: null, id: x }); }
+  }
+  return rows;
+}
 const servedList = (ids) => (ids.length ? ids.join(', ') : '(nothing)');
 
 // → { id, provider, source } from a live source, or { unavailable: [reasons] }. Throws RosterError when a live
@@ -252,17 +293,22 @@ const servedList = (ids) => (ids.length ? ids.join(', ') : '(nothing)');
 async function liveResolve(role, def, ctx) {
   const notes = [];
   const fam = def.family;
+  if (ctx.opts.listModels) {
+    const l = await ctx.listing();
+    if (!l.ok) return { unavailable: [`${ctx.opts.sourceName || 'listing'}: ${l.err.message}`] };
+    return pickFromRows(role, def, listingRows(l.v), ctx, ctx.opts.sourceName || 'the listing', ctx.opts.sourceName || 'listing');
+  }
   if (def.dispatch === 'native') {
     const g = await ctx.gateway();
     if (!g.ok) return { unavailable: [`gateway models: ${g.err.message}`] };
-    const provider = configuredProvider(ctx) || g.v.provider || null;
+    const provider = configuredProvider(ctx, role) || g.v.provider || null;
     const id = pickId(def, g.v.ids, ctx.cfg);
     if (!id) throw new RosterError(`model-roster: role '${role}' did not resolve: the gateway listing serves no id matching ${fam}. It serves: ${servedList(g.v.ids)}. No fallback to another model.`, { role, served: g.v.ids });
     return { id, provider, source: 'gateway-models' };
   }
   const p = await ctx.policy();
   if (p.ok) {
-    const provider = configuredProvider(ctx) || p.v.providerID;
+    const provider = configuredProvider(ctx, role) || p.v.providerID;
     const id = pickId(def, p.v.models, ctx.cfg);
     if (!id) throw new RosterError(`model-roster: role '${role}' did not resolve: the provider policy (${provider}) allows no id matching ${fam}. It allows: ${servedList(p.v.models)}. No fallback to another model.`, { role, served: p.v.models });
     return { id, provider, source: 'policy' };
@@ -270,15 +316,7 @@ async function liveResolve(role, def, ctx) {
   notes.push(p.err.message);
   const o = await ctx.opencode();
   if (!o.ok) { notes.push(`opencode models: ${o.err.message}`); return { unavailable: notes }; }
-  const want = configuredProvider(ctx);
-  const rows = want ? o.v.filter(r => r.provider === want) : o.v;
-  const re = new RegExp(fam);
-  const providers = [...new Set(rows.filter(r => re.test(r.id)).map(r => r.provider))];
-  if (providers.length > 1) throw new RosterError(`model-roster: role '${role}' is ambiguous: providers ${providers.join(', ')} all serve it. Set the provider (MODEL_ROSTER_PROVIDER or sources.provider).`, { role, providers });
-  const served = rows.map(r => `${r.provider}/${r.id}`);
-  if (!providers.length) throw new RosterError(`model-roster: role '${role}' did not resolve: \`opencode models\`${want ? ` (provider ${want})` : ''} lists no id matching ${fam}. It lists: ${servedList(served)}. No fallback to another model.`, { role, served });
-  const id = pickId(def, rows.filter(r => r.provider === providers[0]).map(r => r.id), ctx.cfg);
-  return { id, provider: providers[0], source: 'opencode-models' };
+  return pickFromRows(role, def, o.v, ctx, '`opencode models`', 'opencode-models');
 }
 
 async function resolveWith(name, ctx, cache, changes) {
@@ -290,18 +328,19 @@ async function resolveWith(name, ctx, cache, changes) {
   const now = (ctx.opts.now ? ctx.opts.now() : new Date()).toISOString();
   const base = { role, vendor: def.vendor, tier: def.tier, dispatch: def.dispatch };
   if (n.deprecated) base.deprecatedName = n.from;
+  const key = ctx.opts.scope ? `${role}@${ctx.opts.scope}` : role;
   const live = await liveResolve(role, def, ctx);
   if (live.unavailable) {
-    const hit = !ctx.opts.refresh && cache.roles?.[role];
+    const hit = !ctx.opts.refresh && cache.roles?.[key];
     if (hit?.id) return { ...base, id: hit.id, provider: hit.provider ?? null, qualified: hit.qualified ?? null, source: 'cache', cachedFrom: hit.source, resolvedAt: hit.resolvedAt, stale: true, changed: false, unavailable: live.unavailable };
     throw new RosterError(`model-roster: role '${role}' did not resolve: no live source available (${live.unavailable.join('; ')})${ctx.opts.refresh ? ' and --refresh skips the cache' : ' and no cached id'}.`, { role, unavailable: live.unavailable });
   }
   const qualified = live.provider ? `${live.provider}/${live.id}` : live.id;
-  const prev = cache.roles?.[role]?.id;
+  const prev = cache.roles?.[key]?.id;
   const changed = !!prev && prev !== live.id;
-  if (changed) changes.push(`${now}\t${role}\t${prev} -> ${live.id}\t${live.source}`);
+  if (changed) changes.push(`${now}\t${key}\t${prev} -> ${live.id}\t${live.source}`);
   cache.roles = cache.roles || {};
-  cache.roles[role] = { id: live.id, provider: live.provider, qualified, source: live.source, resolvedAt: now };
+  cache.roles[key] = { id: live.id, provider: live.provider, qualified, source: live.source, resolvedAt: now };
   cache.dirty = true;
   return { ...base, id: live.id, provider: live.provider, qualified, source: live.source, resolvedAt: now, changed, ...(changed ? { previous: prev } : {}) };
 }
@@ -442,6 +481,9 @@ async function cli(argv) {
   return flags.has('--check') && Object.keys(res.errors).length ? 1 : 0;
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+// realpath both sides: argv[1] is the path as typed, which differs from the module's own path through a symlink
+// (macOS /tmp → /private/tmp, a symlinked ~/.claude), and a plain compare made the CLI a silent exit-0 no-op there
+const isMain = (() => { try { return !!process.argv[1] && realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url)); } catch { return false; } })();
+if (isMain) {
   cli(process.argv.slice(2)).then(code => process.exit(code), e => { console.error(String(e?.message || e)); process.exit(process.argv.includes('--notice') ? 0 : 1); });
 }
