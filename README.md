@@ -246,7 +246,7 @@ In the repo, not installed by setup
 |   +-- manage.sh                                     # Install / uninstall / status / test (launchd)
 |-- docs/                                             # Inventory page, recommended plugins, Apps Script guide, voice system docs and site (docs/voice/)  (31 files)
 |-- examples/                                         # Worked examples  (4 files)
-|-- guards/                                           # Working controls for agents (egress, broker, reducer, path protection, leak scan) with tests  (23 files)
+|-- guards/                                           # Working controls for agents (egress, broker, reducer, path protection, leak scan) with tests  (24 files)
 |-- hooks/                                            # Hook sources (setup installs hooks/scripts/)
 |   |-- tests/
 |   |   +-- test_proof_gates.py                       # Tests for the three proof-family hooks
