@@ -1,7 +1,7 @@
-<!-- built from docs/src/04-runbooks.md for the public edition at tools commit cc4c915 -->
+<!-- built from docs/src/04-runbooks.md for the public edition at tools commit c558a2f -->
 # Runbooks
 
-Each runbook starts from something you can see (a blocked send, an exit code, a hook that stays quiet) and ends with a check you can run. Every runbook has the same five parts: **Symptom**, **Confirm**, **Fix**, **Verify** and **Rollback**. The commands and file names match the engine at tools commit cc4c915, written 2026-10-02. Flags, exit codes and environment variables are in the generated reference (chapter 05); this chapter links to them instead of repeating them.
+Each runbook starts from something you can see (a blocked send, an exit code, a hook that stays quiet) and ends with a check you can run. Every runbook has the same five parts: **Symptom**, **Confirm**, **Fix**, **Verify** and **Rollback**. The commands and file names match the engine at tools commit c558a2f, written 2026-10-02. Flags, exit codes and environment variables are in the generated reference (chapter 05); this chapter links to them instead of repeating them.
 
 The commands use two shell variables:
 
@@ -207,7 +207,7 @@ To turn the gate off, remove its `Stop` entry from `settings.json` (or restore t
    node "$T/calibration/human-fp-budget.mjs"
    ```
 
-   It fails when the pooled public reject count rises above the recorded baseline plus a small margin, when the pinned structure or any injection pattern hits a single human document, or when a corpus has the wrong document count. The last run (measured at cc4c915 on 2026-10-03) found 0 rejects in 18,335 public human documents.
+   It fails when the pooled public reject count rises above the recorded baseline plus a small margin, when the pinned structure or any injection pattern hits a single human document, or when a corpus has the wrong document count. The last run (measured at c558a2f on 2026-10-03) found 0 rejects in 18,335 public human documents.
 
 3. Your own held-out writing (starter kit installs):
 
@@ -262,11 +262,11 @@ The generated reference describes the hook's tiers; the words themselves are in 
 
 **Symptom.** A judge model is retired or unavailable, a better model from the same lab is out, or you want a judge from a lab the registry does not have yet.
 
-**Confirm.** The registry is the `JUDGES` constant in `prose-gate.mjs`: each entry has a name, a `vendor` (the lab), a `backend` and a `model`. Two more constants depend on it: `JUROR_ORDER`, the panel and spares for each drafter lab, and `TELL_PROFILE`, which maps drafter names to labs. The gate never seats a judge from the drafter's lab, and that rule reads `vendor`, so a wrong `vendor` value breaks the self-bias protection without any error. The registry has 4 judges at cc4c915: grok, gemini, claude, gpt, from xai, google, anthropic, openai.
+**Confirm.** The registry is the `JUDGES` constant in `prose-gate.mjs`: each entry has a name, a `vendor` (the lab), a `backend`, a `role` (resolved to a model id at call time by `model-roster.mjs`) and `calibratedOn` (the id the panel was measured on). Two more constants depend on it: `JUROR_ORDER`, the panel and spares for each drafter lab, and `TELL_PROFILE`, which maps drafter names to labs. The gate never seats a judge from the drafter's lab, and that rule reads `vendor`, so a wrong `vendor` value breaks the self-bias protection without any error. The registry has 4 judges at c558a2f: grok, gemini, claude, gpt, from xai, google, anthropic, openai.
 
 **Fix.**
 
-1. **Same lab, new model.** Change `model` in the entry. Keep `vendor`.
+1. **Same lab, new model.** Usually nothing to do: the role follows the backend to the new id, and the gate reports the judge as uncalibrated until you re-measure the panel and set `calibratedOn` to the new id. To move a judge to another role from the same lab, change `role`. Keep `vendor`; `model-roles.test.mjs` fails when a role's vendor differs from the entry's.
 2. **New backend for an existing judge.** Change `backend` and add the call in `callJudge`. The backend must return the model's text; the gate parses the strict JSON answer itself.
 3. **New lab.** Add an entry with the right `vendor`, add it to the `JUROR_ORDER` lists where it should serve, and add the lab's drafter names to `TELL_PROFILE` if that lab also drafts.
 4. Leave `fence` unset on a new judge, so it gets the default fence wording. The one judge with `fence: 'short'` has it because of how that model handled the default fence, not as a general setting.

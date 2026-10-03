@@ -1,7 +1,7 @@
-<!-- built from docs/src/02-architecture.md for the public edition at tools commit cc4c915 -->
+<!-- built from docs/src/02-architecture.md for the public edition at tools commit c558a2f -->
 # Architecture
 
-This chapter describes the layers of the voice system, how text moves through them on a file write, a send and a gate run, what may leave the machine, and what the system depends on. It describes the code at tools commit cc4c915. Flags, exit codes and environment variables are listed in full in the Reference chapter, which is generated from the code.
+This chapter describes the layers of the voice system, how text moves through them on a file write, a send and a gate run, what may leave the machine, and what the system depends on. It describes the code at tools commit c558a2f. Flags, exit codes and environment variables are listed in full in the Reference chapter, which is generated from the code.
 
 ## Components
 

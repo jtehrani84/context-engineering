@@ -1,7 +1,7 @@
-<!-- built from docs/src/07-decision-log.md for the public edition at tools commit cc4c915 -->
+<!-- built from docs/src/07-decision-log.md for the public edition at tools commit c558a2f -->
 # Decision Log
 
-One entry per decision that set how the voice system behaves today. Each entry gives the context, the decision, the evidence, the date and commit, and what would reopen it. Numbers here are the measurements recorded in the named evidence files at the commits named; the current counts are in [Calibration and Evidence](06-calibration-and-evidence.md), filled from the facts file at cc4c915. Past values in this chapter are history and are not expected to match a fresh run.
+One entry per decision that set how the voice system behaves today. Each entry gives the context, the decision, the evidence, the date and commit, and what would reopen it. Numbers here are the measurements recorded in the named evidence files at the commits named; the current counts are in [Calibration and Evidence](06-calibration-and-evidence.md), filled from the facts file at c558a2f. Past values in this chapter are history and are not expected to match a fresh run.
 
 A decision is reopened by new evidence of the kind its entry names. Changing a decision means a new entry with its own evidence, and the old entry stays.
 
@@ -52,7 +52,7 @@ The cadence checks live in the author's personal overlay, which the starter kits
 - **Reopen if:** a modern (2020s) human business-email corpus contains the phrase, or the phrase is widened by a word.
 - **Limits:** the three AI catches are in-sample and come from two of 16 prompt topics. A drafter that holds the same ban list avoids the phrase by construction, so the pin is a tripwire for drafts written without the rules.
 
-The standing budget fails if the pinned phrase hits any human document. The run in the facts file (measured at cc4c915 on 2026-10-03) rejected 0 of the 18,335 public documents for any reason.
+The standing budget fails if the pinned phrase hits any human document. The run in the facts file (measured at c558a2f on 2026-10-03) rejected 0 of the 18,335 public documents for any reason.
 
 ## D3. Cadence Penalty Capped, Then Taken Out of the Score
 
@@ -147,7 +147,7 @@ Numbers. Mimicry recall on the frozen mimic set was 0 of 11 with a three-judge c
 - **Date and commit:** 2026-10-02, c8c713b.
 - **Context:** Until this commit, human false-positive rates were measured in one-time studies for each change (D1 to D3). No check ran on later changes, so a change could raise human rejects again without anyone seeing it.
 - **Decision:** `calibration/fetch-public-corpora.sh` pins the public corpora (18F @ 292605ab, PEPs @ f2f542d, 18 RFCs, the 20 Newsgroups tarball) with a sha256 per file, and `calibration/human-fp-budget.mjs` fails when human rejects exceed the recorded baseline plus a small margin, or when a pinned tell or injection pattern hits any human document. Every guard change has to pass it and `gate-eval.mjs`.
-- **Evidence:** the baseline `calibration/human-fp-budget.json`, measured 2026-10-02T05:07:45Z at tools commit 892b20b. The run in the facts file: 0 rejects in 18,335 public documents (measured at cc4c915 on 2026-10-03).
+- **Evidence:** the baseline `calibration/human-fp-budget.json`, measured 2026-10-02T05:07:45Z at tools commit 892b20b. The run in the facts file: 0 rejects in 18,335 public documents (measured at c558a2f on 2026-10-03).
 - **Why this replaced the tune-gain rule for verdict-only changes:** the harness evaluation measures raw score and flag counts, so a change that only moves a verdict (a pin, a bar, which checks count) reads as zero gain there and can neither pass nor fail it.
 - **Reopen if:** a corpus becomes unavailable at its pinned version, or a modern human corpus is added and the budget has to cover it.
 

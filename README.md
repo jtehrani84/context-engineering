@@ -215,7 +215,7 @@ See `examples/compound-loop/` for a complete walkthrough showing one real correc
 |   |-- week-plan.md
 |   |-- weekly-report.md
 |   +-- wiki-lint.md
-|-- tools/  (64 files)                                # Voice engine (scorer, normalizer, gate, send hook and draft gate source, /voice-setup tools, calibration), RAG-quality and transcript-export tools
+|-- tools/  (69 files)                                # Voice engine (scorer, normalizer, gate and the model roster its judges use, send hook and draft gate source, /voice-setup tools, calibration), RAG-quality and transcript-export tools
 |-- harness-evolution/  (4 files)                     # Held-out eval harness + your voice corpus
 |-- workflows/  (4 files)                             # Multi-agent audit workflows behind /claim-audit, /plan-audit, /execution-truth, /provenance-audit
 |-- scripts/  (llm-call.py, llm-review.py, review-prompts/)  # llm-call.py + llm-review.py back /review and /validate (LLM_BASE_URL, LLM_API_KEY)

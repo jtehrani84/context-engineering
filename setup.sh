@@ -5,8 +5,8 @@
 # What it does:
 #   1. Creates ~/.claude/ directory structure (won't overwrite existing)
 #   2. Copies rules, hooks, skill templates, and the voice engine + eval harness (tools/: the scorer, the
-#      normalizer, the gate, the send hook's source and tests, the calibration harness and the /voice-setup
-#      onboarding tools; the docs are in docs/voice/)
+#      normalizer, the gate, the model roster its judges resolve through, the send hook's source and tests, the
+#      calibration harness and the /voice-setup onboarding tools; the docs are in docs/voice/)
 #   3. Wires hooks into settings (merge-safe and re-runnable, so upgrades pick up new hooks), including the voice
 #      hooks: voice-tell-gate on the MCP send tools (a regular-expression matcher over mcp__<server>__<tool>) and on
 #      file writes, and voice-draft-gate on Stop (a guarded command, so a missing script never blocks a reply).
@@ -122,7 +122,7 @@ if [[ "${1:-}" == "--check" ]]; then
     # 4. Voice engine. voice-tell-gate calls aiscore.mjs and text-normalize.mjs and fails closed without them:
     #    a send it can't score is denied, so a missing file blocks your send tools.
     voice_missing=()
-    for f in aiscore.mjs text-normalize.mjs prose-gate.mjs onboarding/voice-doctor.mjs; do
+    for f in aiscore.mjs text-normalize.mjs prose-gate.mjs opencode-llm.mjs model-roster.mjs model-roster.json onboarding/voice-doctor.mjs; do
         [[ -f "$CLAUDE_DIR/tools/$f" ]] || voice_missing+=("$f")
     done
     if [[ ${#voice_missing[@]} -eq 0 ]]; then

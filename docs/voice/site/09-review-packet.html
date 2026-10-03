@@ -33,7 +33,7 @@
 </nav>
 <main id="main" class="content">
 <h1 id="review-packet">Review Packet</h1>
-<p>This chapter is for an outside reviewer. It lists what the voice system claims, the evidence for each claim, what is still undecided, the known limits, and a command that reproduces the public numbers from scratch. Counts are from the facts file at tools commit cc4c915 (2026-10-03).</p>
+<p>This chapter is for an outside reviewer. It lists what the voice system claims, the evidence for each claim, what is still undecided, the known limits, and a command that reproduces the public numbers from scratch. Counts are from the facts file at tools commit c558a2f (2026-10-03).</p>
 <p>The most useful findings are a claim below that a fresh run contradicts, a human document from the public corpora that the deterministic layer rejects, a spelling or encoding that hides a pinned phrase or an injection from the checks, and any way to get ADMIT out of the gate on text it did not score.</p>
 <p>Send findings as an issue on the starter kit repository, github.com/jtehrani84/context-engineering. Include the command you ran, the commit, and the output. Do not paste private writing into an issue; describe it, or reproduce the effect on public or made-up text.</p>
 <h2 id="what-the-system-does">What the System Does</h2>
@@ -44,11 +44,11 @@
 <div class="table-wrap"><table>
 <thead><tr><th>#</th><th>Claim</th><th>Evidence</th><th>Reproduce Publicly</th></tr></thead>
 <tbody>
-<tr><td>1</td><td>The deterministic layer rejects 0 of 18,335 documents in the pinned public human corpora.</td><td>facts file (measured at cc4c915 on 2026-10-03), <code>calibration/human-fp-budget.mjs</code></td><td>yes, see <a href="#reproduce-the-public-numbers">Reproduce</a></td></tr>
+<tr><td>1</td><td>The deterministic layer rejects 0 of 18,335 documents in the pinned public human corpora.</td><td>facts file (measured at c558a2f on 2026-10-03), <code>calibration/human-fp-budget.mjs</code></td><td>yes, see <a href="#reproduce-the-public-numbers">Reproduce</a></td></tr>
 <tr><td>2</td><td>No pinned structure and no injection pattern matches any document in those corpora.</td><td>same run; the script fails on a single hit</td><td>yes</td></tr>
 <tr><td>3</td><td>The judge panel rejected 0 of 400 human documents and caught 101 of 154 generated AI drafts.</td><td>study, <code>judge/JUDGE.md</code> (2026-10-02)</td><td>needs your own access to the four judge models; the sample lists are not shipped</td></tr>
 <tr><td>4</td><td>A judge from the drafter's own vendor rates that vendor's drafts as less AI-like (about 12 points on n = 4 documents).</td><td>study, <code>case-study/RESULTS.md</code> (2026-09-29)</td><td>demonstration only; no interval</td></tr>
-<tr><td>5</td><td>The gate never returns ADMIT on text it did not score: a broken or hung scorer gives ERROR, exit 4, with no judge called.</td><td><code>prose-gate.unit.test.mjs</code>, 119 of 119 cases; verification run broke the scorer 13 ways (2026-10-02)</td><td>yes, the unit suite runs locally</td></tr>
+<tr><td>5</td><td>The gate never returns ADMIT on text it did not score: a broken or hung scorer gives ERROR, exit 4, with no judge called.</td><td><code>prose-gate.unit.test.mjs</code>, 123 of 123 cases; verification run broke the scorer 13 ways (2026-10-02)</td><td>yes, the unit suite runs locally</td></tr>
 <tr><td>6</td><td>Typing a pinned phrase or an injection with look-alike, invisible, bidi or tag characters does not hide it.</td><td>111 normalization cases; verification attack table, 24 of 24 spellings and 9 of 9 injections caught after ca26e8a</td><td>partly; the attack suite is not shipped</td></tr>
 <tr><td>7</td><td>Text addressed to a grader in a wording the 10 injection patterns list is rejected before any judge sees it.</td><td>40 must-fire and 25 must-stay-silent injection cases</td><td>yes, unit suite</td></tr>
 <tr><td>8</td><td>The send hook blocks on its block tier and denies a send when its scorer or normalizer fails, for tool calls its matcher routes to it.</td><td><code>hook-tests/voice-tell-gate.test.py</code> on <code>hook/voice-tell-gate.py</code>, 552 of 552 cases</td><td>yes; the starter kit ships them as <code>tools/hook/</code> and <code>tools/hook-tests/</code> from its 2026-10-02 release that added these docs (<code>docs/voice/</code>), and the kit at 9505301 does not</td></tr>
@@ -60,7 +60,7 @@
 <p>One command, run from the tools directory (<code>tools/</code> in the starter kit, or <code>~/.claude/tools</code> after install). It downloads the four public corpora at their pinned versions, checks every file against its sha256, then scores every document locally:</p>
 <pre><code class="language-bash">bash calibration/fetch-public-corpora.sh &amp;&amp; node calibration/human-fp-budget.mjs</code></pre>
 <p>Check first that <code>calibration/human-fp-budget.mjs</code> and <code>prose-gate.mjs</code> exist in your copy. The starter kit ships both under <code>tools/</code> from its 2026-10-02 release that added these docs (<code>docs/voice/</code>); the kit at 9505301 does not, so on an older clone run <code>git pull</code> first. Requirements: Node (no npm packages), bash, curl and tar, network access for the download, and the detector clone at the pinned commit (see <a href="04-runbooks.html">Runbooks</a>). The corpora go to <code>$VOICE_CORPORA</code>, by default <code>~/.cache/voice-system/corpora</code>; a second run reuses them once they verify. Scoring makes no network call and sends no text anywhere.</p>
-<p>What to expect. A table with one row per corpus (n, rejects, rejects by score, pinned hits, injection hits), a line <code>pooled public: R of N rejected; CLI cross-check K/K agree</code>, and a final line starting <code>PASS:</code>. The numbers in this packet are R = 0 and N = 18,335 (measured at cc4c915 on 2026-10-03). A <code>FAIL:</code> line names which condition broke: the budget, a pinned or injection hit on a human document, a document count that differs from the recorded one (a different corpus version), or a disagreement between the in-process verdict and the CLI.</p>
+<p>What to expect. A table with one row per corpus (n, rejects, rejects by score, pinned hits, injection hits), a line <code>pooled public: R of N rejected; CLI cross-check K/K agree</code>, and a final line starting <code>PASS:</code>. The numbers in this packet are R = 0 and N = 18,335 (measured at c558a2f on 2026-10-03). A <code>FAIL:</code> line names which condition broke: the budget, a pinned or injection hit on a human document, a document count that differs from the recorded one (a different corpus version), or a disagreement between the in-process verdict and the CLI.</p>
 <p>Two local suites reproduce claims 5 and 7 with no download:</p>
 <pre><code class="language-bash">node aiscore.test.mjs &amp;&amp; node prose-gate.unit.test.mjs</code></pre>
 <p>The docs tools stay in the private repo. The owner checks the docs against a fresh run of everything local with <code>node docs/tools/verify-docs.mjs --fresh</code>, which re-runs each suite and fails when a listed number differs from what the run measures.</p>
@@ -84,7 +84,7 @@
 <li><strong>Private evidence.</strong> The judge, self-bias and mimicry studies are recorded in files that are not shipped. The decision log reports their numbers and dates; a reviewer can rerun the method on their own data but cannot recheck the original samples.</li>
 </ul>
 <nav class="pager" aria-label="Previous and next chapter"><span><a href="07-decision-log.html">Previous: Decision Log</a></span><span><a href="10-maintaining-the-docs.html">Next: Maintaining the Docs</a></span></nav>
-<p class="built">Built from tools commit cc4c915 with facts from 2026-10-03.</p>
+<p class="built">Built from tools commit c558a2f with facts from 2026-10-03.</p>
 </main>
 </div>
 <script src="search-index.js"></script>

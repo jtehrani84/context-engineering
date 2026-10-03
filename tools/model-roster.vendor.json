@@ -1,0 +1,8 @@
+{
+  "note": "tools/model-roster.mjs is vendored byte-identical from the upstream resolver, so there is one implementation. Never edit it here: change it upstream, copy it over, and update the hash. model-roster.drift.test.mjs enforces it. tools/model-roster.json is not vendored; it is this kit's role list, and yours to edit.",
+  "canonicalCommit": "b6780300",
+  "vendoredAt": "2026-10-03",
+  "files": {
+    "model-roster.mjs": "5eed383c406d8c672e3c496d58b02ea3fd6e2b55135c11a579a27c7c405532c0"
+  }
+}

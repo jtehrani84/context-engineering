@@ -1,7 +1,7 @@
-<!-- built from docs/src/03-threat-model.md for the public edition at tools commit cc4c915 -->
+<!-- built from docs/src/03-threat-model.md for the public edition at tools commit c558a2f -->
 # Threat Model
 
-This chapter lists the ways the voice system can be evaded, tricked or made to fail open, and the ways it could leak data. Each threat has the control that addresses it, the test that proves the control, and the limit that remains. It describes the code at tools commit cc4c915 (2026-10-03). The dated findings behind each control are in the Decision Log (D6 to D9); the commands are in the Reference chapter.
+This chapter lists the ways the voice system can be evaded, tricked or made to fail open, and the ways it could leak data. Each threat has the control that addresses it, the test that proves the control, and the limit that remains. It describes the code at tools commit c558a2f (2026-10-03). The dated findings behind each control are in the Decision Log (D6 to D9); the commands are in the Reference chapter.
 
 ## Scope
 
@@ -211,7 +211,7 @@ Each path below let text through when a part of the system broke, or could have.
 
 ## Open Gaps
 
-These are known and not yet closed at cc4c915:
+These are known and not yet closed at c558a2f:
 
 1. **Sends outside Claude Code tool calls are not checked** (see Sends Outside Claude Code Tool Calls).
 2. **The detector hash is checked by the doctor only.** Checking it at load in `aiscore.mjs` would make a changed detector an ERROR on every gate run and a deny on every send.

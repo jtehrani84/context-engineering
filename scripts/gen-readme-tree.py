@@ -81,7 +81,7 @@ COMMENTS = {
 
 # Directory notes shown on the directory line itself.
 DIR_COMMENTS = {
-    "tools": "Voice engine (scorer, normalizer, gate, send hook and draft gate source, /voice-setup tools, calibration), RAG-quality and transcript-export tools",
+    "tools": "Voice engine (scorer, normalizer, gate and the model roster its judges use, send hook and draft gate source, /voice-setup tools, calibration), RAG-quality and transcript-export tools",
     "harness-evolution": "Held-out eval harness + your voice corpus",
     "scripts": "llm-call.py + llm-review.py back /review and /validate (LLM_BASE_URL, LLM_API_KEY)",
     "scripts/": "Repo-only helpers: hook wiring, manifest and tree generators, install, cron and script tests",

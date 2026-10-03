@@ -1,4 +1,4 @@
-<!-- built from docs/src/10-maintaining-the-docs.md for the public edition at tools commit cc4c915 -->
+<!-- built from docs/src/10-maintaining-the-docs.md for the public edition at tools commit c558a2f -->
 # Maintaining the Docs
 
 These docs are built so that the generated tables, and every number in a phrase the facts file lists, fail a check when they drift from the code; other prose and commands are checked by review. This chapter explains the three mechanisms that do the checking (the facts file, the generated reference and `verify-docs`), how editions are cut from one source, and what to run before a commit.
@@ -46,7 +46,7 @@ Prose holds no hand-typed counts. A number in these docs comes from one of three
 
 `node docs/tools/facts.mjs` runs the local test suites, gate-eval and the human false-positive budget, reads counts from the code, and writes `docs/facts.json`. Each fact records a key, a value, a status (`measured`, `recorded`, `not-run`, `skipped` or `failed`), the command or file it came from, the tools commit, the date, and the editions that may show it. A fact with no editions list is internal only.
 
-Source text cites a fact as `{{fact:key}}`, and the build fills in the value. For example, this edition was built from facts measured at tools commit cc4c915, with the detector pinned at 58a95fc. Modifiers change the output: `|raw` (no thousands separator), `|sha`, `|date`, `|source` and `|status`. A placeholder inside inline code or a fenced block is left as written.
+Source text cites a fact as `{{fact:key}}`, and the build fills in the value. For example, this edition was built from facts measured at tools commit c558a2f, with the detector pinned at 58a95fc. Modifiers change the output: `|raw` (no thousands separator), `|sha`, `|date`, `|source` and `|status`. A placeholder inside inline code or a fenced block is left as written.
 
 The build fails on:
 
@@ -130,7 +130,7 @@ What to run depends on what changed:
 | the docs tools | `node --test docs/tools/test/*.test.mjs`, then all five |
 | the onboarding tools | `node --test onboarding/test/*.test.mjs`, then all five (`onboarding/` is a facts input, so the old facts are stale) |
 
-Pass the test files, not the folder: on Node 22, `node --test onboarding/test/` fails at once with "Cannot find module". The docs tools' own suite passed 70 of 70 tests at cc4c915, and the onboarding suite passed 85 of 85. Every fixture in both is synthetic and built in a temporary directory.
+Pass the test files, not the folder: on Node 22, `node --test onboarding/test/` fails at once with "Cannot find module". The docs tools' own suite passed 70 of 70 tests at c558a2f, and the onboarding suite passed 85 of 85. Every fixture in both is synthetic and built in a temporary directory.
 
 The onboarding suite includes one test that copies the shipped send hook (`VOICE_HOOK`, else `hook/voice-tell-gate.py` in the repo) into a throwaway install and runs the doctor's wiring and fail-closed checks on it. It only reads the original. To check the copy Claude Code actually runs, set `VOICE_HOOK=~/.claude/hooks/scripts/voice-tell-gate.py`. When it fails, that hook and the engine in this checkout disagree: update one so they match, rather than editing the test.
 
@@ -144,4 +144,4 @@ To add a fact, add an entry to the fact list in `docs/tools/facts.mjs` with its 
 
 ## Committing a Rendered Site
 
-`docs/dist/` is build output, ignored by the root `.gitignore` (`/docs/dist/*`). To commit a rendered edition, add an exception line there, for example `!/docs/dist/public/`, and commit the build output together with the facts file it was built from. Commit only a build that `verify-docs` passed, never one made with `--allow-stale`. This build was made from facts measured at cc4c915.
+`docs/dist/` is build output, ignored by the root `.gitignore` (`/docs/dist/*`). To commit a rendered edition, add an exception line there, for example `!/docs/dist/public/`, and commit the build output together with the facts file it was built from. Commit only a build that `verify-docs` passed, never one made with `--allow-stale`. This build was made from facts measured at c558a2f.

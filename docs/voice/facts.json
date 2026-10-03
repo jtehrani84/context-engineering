@@ -1,11 +1,11 @@
 {
   "schema": 1,
   "edition": "public",
-  "generatedAt": "2026-10-03T08:07:14.335Z",
+  "generatedAt": "2026-10-03T13:45:33.685Z",
   "date": "2026-10-03",
   "git": {
-    "sha": "cc4c9152a7b94472df403f640acb6dc9d310d3b1",
-    "short": "cc4c915"
+    "sha": "c558a2f08232171658f119f3de56e691f17ad3ec",
+    "short": "c558a2f"
   },
   "facts": [
     {
@@ -13,7 +13,7 @@
       "value": 429,
       "status": "measured",
       "source": "count of f18/ lines in calibration/public-corpora.sha256",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "files"
     },
@@ -22,7 +22,7 @@
       "value": 18,
       "status": "measured",
       "source": "count of RFC numbers in calibration/fetch-public-corpora.sh RFCS",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "RFCs"
     },
@@ -31,7 +31,7 @@
       "value": 2,
       "status": "measured",
       "source": "voice-corpus/public-human.json",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "samples"
     },
@@ -40,7 +40,7 @@
       "value": "yes",
       "status": "measured",
       "source": "detector.head compared with detector.pin",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03"
     },
     {
@@ -48,7 +48,7 @@
       "value": 51,
       "status": "measured",
       "source": "require detector/patterns.js TYPE_LABELS",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "categories"
     },
@@ -57,7 +57,7 @@
       "value": "58a95fc",
       "status": "measured",
       "source": "git -C avoid-ai-writing rev-parse HEAD",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03"
     },
     {
@@ -65,7 +65,7 @@
       "value": "58a95fc",
       "status": "recorded",
       "source": "README.md (git -C avoid-ai-writing checkout <pin>)",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03"
     },
     {
@@ -73,7 +73,7 @@
       "value": 3,
       "status": "measured",
       "source": "parse ~/.claude/tools/hook/voice-draft-gate.py LEAD_IN",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "lines"
     },
@@ -82,7 +82,7 @@
       "value": 2,
       "status": "measured",
       "source": "parse ~/.claude/tools/hook/voice-draft-gate.py MAX_BLOCKS",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "blocks"
     },
@@ -91,7 +91,7 @@
       "value": 3,
       "status": "measured",
       "source": "parse ~/.claude/tools/hook/voice-draft-gate.py NORMALIZER_TIMEOUT",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "seconds"
     },
@@ -100,7 +100,7 @@
       "value": 5,
       "status": "measured",
       "source": "parse ~/.claude/tools/hook/voice-draft-gate.py SCORER_TIMEOUT",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "seconds"
     },
@@ -109,7 +109,7 @@
       "value": "2.1.286",
       "status": "measured",
       "source": "claude --version (first token)",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03"
     },
     {
@@ -117,7 +117,7 @@
       "value": 9,
       "status": "measured",
       "source": "import ai-evidence.mjs COUNTED",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "categories"
     },
@@ -126,7 +126,7 @@
       "value": 42,
       "status": "measured",
       "source": "import ai-evidence.mjs NOT_COUNTED",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "categories"
     },
@@ -135,7 +135,7 @@
       "value": 1,
       "status": "measured",
       "source": "import ai-evidence.mjs NOT_COUNTED",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "categories"
     },
@@ -144,7 +144,7 @@
       "value": 20,
       "status": "measured",
       "source": "import ai-evidence.mjs NOT_COUNTED",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "categories"
     },
@@ -153,7 +153,7 @@
       "value": 2,
       "status": "measured",
       "source": "import ai-evidence.mjs NOT_COUNTED",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "categories"
     },
@@ -162,7 +162,7 @@
       "value": 19,
       "status": "measured",
       "source": "import ai-evidence.mjs NOT_COUNTED",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "categories"
     },
@@ -171,7 +171,7 @@
       "value": 0,
       "status": "measured",
       "source": "TYPE_LABELS minus COUNTED and NOT_COUNTED",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "categories"
     },
@@ -180,7 +180,7 @@
       "value": 421,
       "status": "measured",
       "source": "node calibration/human-fp-budget.mjs",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "docs"
     },
@@ -189,7 +189,7 @@
       "value": 0,
       "status": "measured",
       "source": "node calibration/human-fp-budget.mjs",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "docs"
     },
@@ -198,7 +198,7 @@
       "value": 17320,
       "status": "measured",
       "source": "node calibration/human-fp-budget.mjs",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "docs"
     },
@@ -207,7 +207,7 @@
       "value": 0,
       "status": "measured",
       "source": "node calibration/human-fp-budget.mjs",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "docs"
     },
@@ -216,7 +216,7 @@
       "value": "892b20b",
       "status": "recorded",
       "source": "calibration/human-fp-budget.json",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03"
     },
     {
@@ -224,7 +224,7 @@
       "value": "2026-10-02T05:07:45.633Z",
       "status": "recorded",
       "source": "calibration/human-fp-budget.json",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03"
     },
     {
@@ -232,7 +232,7 @@
       "value": 2,
       "status": "measured",
       "source": "calibration/human-fp-budget.mjs margin() applied to the baseline pooledPublic.n",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "docs"
     },
@@ -241,7 +241,7 @@
       "value": 576,
       "status": "measured",
       "source": "node calibration/human-fp-budget.mjs",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "docs"
     },
@@ -250,7 +250,7 @@
       "value": 0,
       "status": "measured",
       "source": "node calibration/human-fp-budget.mjs",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "docs"
     },
@@ -259,7 +259,7 @@
       "value": 18335,
       "status": "measured",
       "source": "node calibration/human-fp-budget.mjs",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "docs"
     },
@@ -268,7 +268,7 @@
       "value": 0,
       "status": "measured",
       "source": "node calibration/human-fp-budget.mjs",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "docs"
     },
@@ -277,7 +277,7 @@
       "value": 18,
       "status": "measured",
       "source": "node calibration/human-fp-budget.mjs",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "docs"
     },
@@ -286,7 +286,7 @@
       "value": 0,
       "status": "measured",
       "source": "node calibration/human-fp-budget.mjs",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "docs"
     },
@@ -295,7 +295,7 @@
       "value": "measured",
       "status": "measured",
       "source": "node calibration/human-fp-budget.mjs",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03"
     },
     {
@@ -303,7 +303,7 @@
       "value": 120000,
       "status": "measured",
       "source": "parse prose-gate.mjs AISCORE_TIMEOUT_MS",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "ms"
     },
@@ -312,7 +312,7 @@
       "value": 50,
       "status": "measured",
       "source": "parse prose-gate.mjs parseArgs defaults",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03"
     },
     {
@@ -320,7 +320,7 @@
       "value": 40,
       "status": "measured",
       "source": "parse prose-gate.mjs parseArgs defaults",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03"
     },
     {
@@ -338,7 +338,7 @@
       ],
       "status": "measured",
       "source": "parse prose-gate.mjs TELL_PROFILE",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03"
     },
     {
@@ -346,7 +346,7 @@
       "value": 150000,
       "status": "measured",
       "source": "parse prose-gate.mjs callJudge",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "ms"
     },
@@ -355,7 +355,7 @@
       "value": 38,
       "status": "measured",
       "source": "parse ~/.claude/tools/hook/voice-tell-gate.py BLOCK_FORMS",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "forms"
     },
@@ -364,7 +364,7 @@
       "value": 22,
       "status": "measured",
       "source": "parse ~/.claude/tools/hook/voice-tell-gate.py COMPANY_NAMES",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "names"
     },
@@ -373,7 +373,7 @@
       "value": 3,
       "status": "measured",
       "source": "parse ~/.claude/tools/hook/voice-tell-gate.py",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "characters"
     },
@@ -382,7 +382,7 @@
       "value": 400,
       "status": "measured",
       "source": "parse ~/.claude/tools/hook/voice-tell-gate.py",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "characters"
     },
@@ -391,7 +391,7 @@
       "value": "~/.claude/voice/company-names.txt",
       "status": "measured",
       "source": "parse ~/.claude/tools/hook/voice-tell-gate.py NAMES_FILE_DEFAULT",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03"
     },
     {
@@ -399,7 +399,7 @@
       "value": 10,
       "status": "measured",
       "source": "parse ~/.claude/tools/hook/voice-tell-gate.py",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "seconds"
     },
@@ -408,7 +408,7 @@
       "value": 8,
       "status": "measured",
       "source": "parse ~/.claude/tools/hook/voice-tell-gate.py NOT_SEND",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "substrings"
     },
@@ -417,7 +417,7 @@
       "value": 62,
       "status": "measured",
       "source": "parse ~/.claude/tools/hook/voice-tell-gate.py NUDGE_FORMS",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "forms"
     },
@@ -426,7 +426,7 @@
       "value": 40,
       "status": "measured",
       "source": "parse ~/.claude/tools/hook/voice-tell-gate.py",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "points"
     },
@@ -435,7 +435,7 @@
       "value": 200,
       "status": "measured",
       "source": "parse ~/.claude/tools/hook/voice-tell-gate.py",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "characters"
     },
@@ -444,7 +444,7 @@
       "value": 7,
       "status": "measured",
       "source": "parse ~/.claude/tools/hook/voice-tell-gate.py PROSE_EXT",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "extensions"
     },
@@ -453,7 +453,7 @@
       "value": 40,
       "status": "measured",
       "source": "parse ~/.claude/tools/hook/voice-tell-gate.py",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "seconds"
     },
@@ -462,7 +462,7 @@
       "value": 20,
       "status": "measured",
       "source": "parse ~/.claude/tools/hook/voice-tell-gate.py",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "seconds"
     },
@@ -471,7 +471,7 @@
       "value": 31,
       "status": "measured",
       "source": "parse ~/.claude/tools/hook/voice-tell-gate.py SEND_SUFFIXES",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "tool names"
     },
@@ -480,7 +480,7 @@
       "value": 10,
       "status": "measured",
       "source": "import prose-gate.mjs INJECTION_PATTERNS",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "patterns"
     },
@@ -489,7 +489,7 @@
       "value": 7,
       "status": "measured",
       "source": "import prose-gate.mjs INJECTION_PATTERNS",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "types"
     },
@@ -498,7 +498,7 @@
       "value": 4,
       "status": "measured",
       "source": "import prose-gate.mjs JUDGES",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "judges"
     },
@@ -512,7 +512,7 @@
       ],
       "status": "measured",
       "source": "import prose-gate.mjs JUDGES",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03"
     },
     {
@@ -525,7 +525,7 @@
       ],
       "status": "measured",
       "source": "import prose-gate.mjs JUDGES",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03"
     },
     {
@@ -533,25 +533,25 @@
       "value": 1,
       "status": "measured",
       "source": "VERDICT_STRUCT_TYPES, imported from the overlay",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "structures"
     },
     {
       "key": "repo.commits",
-      "value": 61,
+      "value": 66,
       "status": "measured",
       "source": "git rev-list --count HEAD",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "commits"
     },
     {
       "key": "repo.sha",
-      "value": "cc4c915",
+      "value": "c558a2f",
       "status": "measured",
       "source": "git rev-parse HEAD",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03"
     },
     {
@@ -559,7 +559,7 @@
       "value": 20,
       "status": "measured",
       "source": "node aiscore.test.mjs",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "cases"
     },
@@ -568,7 +568,7 @@
       "value": 20,
       "status": "measured",
       "source": "node aiscore.test.mjs",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "cases"
     },
@@ -577,7 +577,7 @@
       "value": 70,
       "status": "measured",
       "source": "node --test docs/tools/test/*.test.mjs",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "cases"
     },
@@ -586,7 +586,7 @@
       "value": 70,
       "status": "measured",
       "source": "node --test docs/tools/test/*.test.mjs",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "cases"
     },
@@ -595,7 +595,7 @@
       "value": 126,
       "status": "measured",
       "source": "python3 hook-tests/voice-draft-gate.test.py",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "cases"
     },
@@ -604,7 +604,7 @@
       "value": 126,
       "status": "measured",
       "source": "python3 hook-tests/voice-draft-gate.test.py",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "cases"
     },
@@ -613,7 +613,7 @@
       "value": 552,
       "status": "measured",
       "source": "python3 hook-tests/voice-tell-gate.test.py",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "cases"
     },
@@ -622,7 +622,7 @@
       "value": 552,
       "status": "measured",
       "source": "python3 hook-tests/voice-tell-gate.test.py",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "cases"
     },
@@ -631,7 +631,7 @@
       "value": 85,
       "status": "measured",
       "source": "node --test onboarding/test/*.test.mjs",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "cases"
     },
@@ -640,7 +640,7 @@
       "value": 85,
       "status": "measured",
       "source": "node --test onboarding/test/*.test.mjs",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "cases"
     },
@@ -649,7 +649,7 @@
       "value": 111,
       "status": "measured",
       "source": "the normalization cases of the overlay test suite",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "cases"
     },
@@ -658,7 +658,7 @@
       "value": 40,
       "status": "measured",
       "source": "node prose-gate.unit.test.mjs",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "cases"
     },
@@ -667,25 +667,25 @@
       "value": 25,
       "status": "measured",
       "source": "node prose-gate.unit.test.mjs",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "cases"
     },
     {
       "key": "tests.prose_gate_unit.passed",
-      "value": 119,
+      "value": 123,
       "status": "measured",
       "source": "node prose-gate.unit.test.mjs",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "cases"
     },
     {
       "key": "tests.prose_gate_unit.total",
-      "value": 119,
+      "value": 123,
       "status": "measured",
       "source": "node prose-gate.unit.test.mjs",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03",
       "unit": "cases"
     },
@@ -694,7 +694,7 @@
       "value": "yes",
       "status": "measured",
       "source": "node text-normalize.mjs --json (keys of the output)",
-      "sha": "cc4c915",
+      "sha": "c558a2f",
       "date": "2026-10-03"
     }
   ]

@@ -41,11 +41,14 @@ export function binDir(dir, { python = true } = {}) {
 }
 
 // An executable stand-in for a command: logs its argv (one JSON line per call) to `log` and prints `stdout`.
-export function stubCommand(path, log, stdout = '') {
+// `models`: when given, `<stub> models` prints it (an `opencode models` listing, provider/id per line) and logs
+// nothing, so the gate's role resolver can find the ids; every other call is logged and answers `stdout`.
+export function stubCommand(path, log, stdout = '', models = null) {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, [
     `#!${process.execPath}`,
     "const fs = require('fs');",
+    ...(models === null ? [] : [`if (process.argv[2] === 'models') { process.stdout.write(${JSON.stringify(models)}); process.exit(0); }`]),
     `fs.appendFileSync(${JSON.stringify(log)}, JSON.stringify(process.argv.slice(2)) + '\\n');`,
     `process.stdout.write(${JSON.stringify(stdout)});`,
     '',

@@ -60,6 +60,8 @@ suite "scripts/test-voice-kit.py"      python3 scripts/test-voice-kit.py
 suite "tools/aiscore.test.mjs"         node tools/aiscore.test.mjs
 suite "tools/text-normalize.test.mjs"  node tools/text-normalize.test.mjs
 suite "tools/prose-gate.unit.test.mjs" node tools/prose-gate.unit.test.mjs
+suite "tools/model-roster.drift.test.mjs" node --test tools/model-roster.drift.test.mjs
+suite "tools/model-roles.test.mjs"     node --test tools/model-roles.test.mjs
 suite "tools/hook-tests (send hook)"   python3 tools/hook-tests/voice-tell-gate.test.py
 suite "tools/hook-tests (draft gate)"  python3 tools/hook-tests/voice-draft-gate.test.py
 if [[ -z "$FAST" ]]; then

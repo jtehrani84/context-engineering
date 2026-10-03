@@ -115,6 +115,8 @@ export async function loadOverlay(path) {
 // their relative imports (static, dynamic and require). Only these are copied into an engine copy, so other tools that
 // share the folder never are. Returns basenames.
 export const ENGINE_ENTRIES = ['aiscore.mjs', 'prose-gate.mjs', 'text-normalize.mjs'];
+// Data files a module reads from its own folder; copied with it (model-roster.mjs loads model-roster.json beside it).
+export const ENGINE_DATA = { 'model-roster.mjs': ['model-roster.json'] };
 export function engineModules(toolsDir) {
   const seen = new Set(), queue = ENGINE_ENTRIES.filter((f) => existsSync(join(toolsDir, f)));
   while (queue.length) {
@@ -164,6 +166,7 @@ export function buildEngineWithOverlay(toolsDir, overlayPath, { into = null } = 
   for (const f of engineModules(toolsDir)) {
     if (shims.has(f) || isOverlay(join(dir, f))) continue; // overlay files become shims; never overwrite the overlay under test
     copyFileSync(join(toolsDir, f), join(dir, f));
+    for (const d of ENGINE_DATA[f] || []) if (existsSync(join(toolsDir, d))) copyFileSync(join(toolsDir, d), join(dir, d));
   }
   for (const d of ['avoid-ai-writing', 'calibration']) {
     const src = join(toolsDir, d);

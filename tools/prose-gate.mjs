@@ -11,7 +11,7 @@
 // REJECT where EITHER layer can reject. It scores a fresh piece of prose live.
 //
 // NEUTRAL-JUDGE RULE: judge vendor != drafter vendor, enforced by vendor-exclusion over the JUDGES map.
-// Backend: the opencode CLI (opencode-llm.mjs), one model per judge entry below.
+// Backend: the opencode CLI (opencode-llm.mjs), one model role per judge entry below.
 //
 // DATA NOTE: the gestalt judge sends the TEXT to the judge models. Use it only on text you are allowed to send to
 // those providers: public, made-up or your own non-confidential writing, never customer data, personal data or
@@ -30,7 +30,9 @@ import { readFileSync, realpathSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { llm as opencodeLLM } from './opencode-llm.mjs';
+// A namespace import, so an older opencode-llm.mjs you edited and setup kept (one without `target`) leaves the
+// deterministic layer working; only the judges then report that they can't resolve a role.
+import * as opencode from './opencode-llm.mjs';
 import { VERDICT_STRUCT_TYPES } from './voice-overlay.mjs';
 import { normalizeForScan, stripEmphasis, revealTags, stripHidden, renderedView } from './text-normalize.mjs';
 
@@ -53,24 +55,45 @@ const TELL_PROFILE = {
 };
 const vendorOf = (drafter) => (TELL_PROFILE[drafter] || TELL_PROFILE.unknown).vendor;
 
-// ── judge registry: name → {vendor, backend}. Vendor is used for judge≠drafter exclusion. ─────────
-// Every judge runs through opencode. The model ids are examples in opencode's provider/model form: before you turn
-// judges on, set each `model` to an id your opencode install can reach. With an id it can't reach, that juror errors,
-// and a panel with fewer answers than it needs returns INCONCLUSIVE.
+// ── judge registry: name → {vendor, backend, role, calibratedOn}. Vendor is used for judge≠drafter exclusion. ─────
+// Every judge runs through opencode and names a ROLE from model-roster.json, not a model id. model-roster.mjs
+// resolves the role at call time to an id `opencode models` lists, so a provider moving to a new version is followed
+// instead of breaking the juror. Check with `node model-roster.mjs --all --check` before you turn judges on, and edit
+// the role patterns in model-roster.json if a role doesn't resolve. A role nothing lists fails that juror loudly
+// (the roster's message names the role and what is listed); the spare juror takes its place, never a silent
+// substitute, and a panel with fewer answers than it needs returns INCONCLUSIVE.
+// calibratedOn: the model id this judge's panel numbers were measured on for your install. The kit ships none (the
+// docs' panel measurements were made on other models), so every judge reports as uncalibrated until you measure the
+// panel on your models and set it; a judge whose role later resolves to a different id is reported again.
 export const JUDGES = {
-  grok:   { vendor: 'xai',       backend: 'opencode', model: 'xai/grok-4' },
-  gemini: { vendor: 'google',    backend: 'opencode', model: 'google/gemini-2.5-pro' },
-  claude: { vendor: 'anthropic', backend: 'opencode', model: 'anthropic/claude-sonnet-4-5', fence: 'short' }, // see buildJudgePrompt
+  grok:   { vendor: 'xai',       backend: 'opencode', role: 'grok',       calibratedOn: null },
+  gemini: { vendor: 'google',    backend: 'opencode', role: 'gemini-pro', calibratedOn: null },
+  claude: { vendor: 'anthropic', backend: 'opencode', role: 'sonnet',     calibratedOn: null, fence: 'short' }, // see buildJudgePrompt
   // Added 2026-10-02 (judge/JUDGE.md): Gemini under-clocks Anthropic prose (AUC 0.83 on Opus drafts vs
   // 0.97 for GPT, 0.98 for Grok), so as the second juror on Claude drafts it vetoed most of Grok's
   // catches. Pre-registered swap, 0/400 public human docs rejected, Anthropic recall 28% -> 52%.
-  gpt:    { vendor: 'openai',    backend: 'opencode', model: 'openai/gpt-5' },
+  gpt:    { vendor: 'openai',    backend: 'opencode', role: 'gpt',        calibratedOn: null },
 };
 
-export async function callJudge(name, prompt) {
+// name → { judge, role, id, qualified, source, calibratedOn, calibrated, note? }. Throws the roster's error when the
+// role doesn't resolve (judgeOne turns that into a failed juror).
+export async function resolveJudge(name) {
   const j = JUDGES[name];
   if (!j) throw new Error(`unknown judge: ${name}`);
-  return opencodeLLM(prompt, { model: j.model, timeout: 150000 });
+  if (typeof opencode.target !== 'function') throw new Error('opencode-llm.mjs is an older version without role support (an edited copy setup kept); re-install it from the kit');
+  const r = await opencode.target({ role: j.role });
+  const calibrated = !!j.calibratedOn && r.id === j.calibratedOn;
+  const out = { judge: name, role: r.role, id: r.id, qualified: r.qualified, source: r.source, calibratedOn: j.calibratedOn ?? null, calibrated };
+  if (!calibrated) out.note = j.calibratedOn
+    ? `${name}: ${r.qualified}, not the model it was calibrated on (${j.calibratedOn}); its votes are uncalibrated until the panel is re-measured`
+    : `${name}: ${r.qualified}, no calibration recorded for this judge (calibratedOn is unset); its votes are uncalibrated until you measure the panel`;
+  return out;
+}
+
+export async function callJudge(name, prompt, resolved) {
+  const j = JUDGES[name];
+  if (!j) throw new Error(`unknown judge: ${name}`);
+  return opencode.llm(prompt, { role: j.role, resolved, timeout: 150000 });
 }
 
 // Per-vendor juror order, measured 2026-10-02 (judge/JUDGE.md). The first two are the panel, the rest
@@ -232,14 +255,19 @@ export async function judgeOne(text, name, register) {
   const prompt = buildJudgePrompt(stripHidden(text), register, undefined, JUDGES[name]?.fence || 'full');
   // Retry once on a transient failure (provider hiccup, timeout, malformed JSON) so a flake never
   // silently drops the consensus to n=1 (observed 2026-09-28). Two shots, then record the error.
+  // The role is resolved once per juror; an unresolvable role is a failed juror at once (no retry: opencode answered,
+  // it just doesn't list the role), with the roster's message naming the role and what is listed.
+  let resolved;
+  try { resolved = await resolveJudge(name); }
+  catch (e) { return { provider: name, error: String(e?.message || e).slice(0, 400) }; }
   let lastErr;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      const raw = await callJudge(name, prompt);
-      return { provider: name, ...parseJudgeJSON(raw) };
+      const raw = await callJudge(name, prompt, resolved.qualified ? resolved : undefined);
+      return { provider: name, model: resolved, ...parseJudgeJSON(raw) };
     } catch (e) { lastErr = e; }
   }
-  return { provider: name, error: String(lastErr).slice(0, 200) };
+  return { provider: name, model: resolved, error: String(lastErr).slice(0, 200) };
 }
 
 // ── combine ───────────────────────────────────────────────────────────────────────────────────────
@@ -328,7 +356,7 @@ async function gate(f, text) {
 
   const result = {
     file: f.file || '(stdin)', drafter: f.drafter, drafterVendor: vendorOf(f.drafter),
-    judges: judgeModels, register: f.register, bar: f.bar, detBar: f.detBar,
+    judges: judgeModels, judgeIds: Object.fromEntries(judges.filter((j) => j.model).map((j) => [j.provider, j.model])), register: f.register, bar: f.bar, detBar: f.detBar,
     deterministic: { ...det, reject: c.detReject, reason: c.detReason }, gestalt: c.gestalt, judgeDetail: judges, verdict: c.verdict,
   };
   if (f.json) { console.log(JSON.stringify(result, null, 2)); process.exit(c.exit); }
@@ -349,6 +377,7 @@ async function gate(f, text) {
         if (j.error) console.log(`      · ${j.provider}: ERROR ${j.error}`);
         else console.log(`      · ${j.provider}: ${j.clockable} ${j.ai_ness}/100 — ${j.loudest_tell}`);
       }
+      for (const j of judges) if (j.model?.note) console.log(`      ! ${j.model.note}`);
     } else {
       console.log(`  L5   gestalt judge:   UNREACHABLE (${judges.map((j) => j.provider + ':' + (j.error || '?')).join(' ; ')})`);
     }

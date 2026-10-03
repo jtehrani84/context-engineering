@@ -44,5 +44,11 @@ corpus path and wire `../llm.mjs`, then they run against your knowledge base:
 - ECHO, VERA, and Meta-Knowledge are published methods (see the arXiv ids above; read the papers for
   the authors' exact claims). These are practitioner implementations — faithful to the mechanisms, not the papers' exact models or scale.
 - Every tool needs an LLM except `echo-attribute`. That call goes through `../llm.mjs` — set it once.
+- The tools ask `../llm.mjs` for a model ROLE, not a model id: `gemini-flash` for generation and re-ranking, `grok`
+  for `mk-rerank`'s independent oracle. `llm.mjs` gives each role the newest id in its family (the patterns are in
+  `../model-roster.json`) that your endpoint's `GET /models` lists, or the id you name for it in `LLM_MODEL_ALIASES`
+  (for example `'{"gemini-flash": "<model-id>", "grok": "<model-id>"}'`). A role your endpoint doesn't serve is an
+  error that names the role and what the endpoint lists, never a quiet fallback to `LLM_MODEL`, so the oracle can't
+  silently become the re-ranker's own model.
 - `mk-rerank` is an LLM re-ranker, **not** the paper's pre-trained cross-encoder: same goal, different
   mechanism. Say so if you present it.

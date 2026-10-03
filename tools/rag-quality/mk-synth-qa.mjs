@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // mk-synth-qa.mjs — index-time synthetic Q&A generation (Meta-Knowledge's ingest step),
-// local + Gemini. For a sample of grounding chunks, Gemini generates {question, answer_span}; the
+// local + one model call per chunk (the gemini-flash role in ../llm.mjs). For a sample of grounding chunks, the model
+// generates {question, answer_span}; the
 // answer_span must appear VERBATIM in the chunk — a DETERMINISTIC self-consistency check (no second
 // LLM call), which is the guard that stops a mis-synthesized question from becoming a bad index entry.
 // Proves the generation mechanism locally; writing the Q&A packets into your retrieval index is left to you.
@@ -26,7 +27,7 @@ const main = async () => {
     const text = (c.text || c.full_text || '').slice(0, 2500);
     let qa = [];
     try {
-      const r = await llm(`From this documentation chunk, generate 3 synthetic questions a user would realistically ask that THIS chunk answers, and for each, the ANSWER SPAN copied VERBATIM from the chunk (exact substring, no paraphrase). Return ONLY a JSON array: [{"question":"...","answer_span":"..."}].\n\nChunk:\n${text}`, { max: 2048, model: 'gemini-3.8-flash' });
+      const r = await llm(`From this documentation chunk, generate 3 synthetic questions a user would realistically ask that THIS chunk answers, and for each, the ANSWER SPAN copied VERBATIM from the chunk (exact substring, no paraphrase). Return ONLY a JSON array: [{"question":"...","answer_span":"..."}].\n\nChunk:\n${text}`, { max: 2048, role: 'gemini-flash' });
       const m = r.match(/\[[\s\S]*\]/);
       qa = m ? JSON.parse(m[0]) : [];
     } catch { qa = []; }

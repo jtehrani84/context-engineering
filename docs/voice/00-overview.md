@@ -1,7 +1,7 @@
-<!-- built from docs/src/00-overview.md for the public edition at tools commit cc4c915 -->
+<!-- built from docs/src/00-overview.md for the public edition at tools commit c558a2f -->
 # Overview
 
-The voice system is a set of local command-line tools and two Claude Code hooks that check prose for the patterns of generic AI writing: before a send, right after a prose file is written, and when Claude's reply ends with a draft in it. It scores text with fixed rules, can ask a panel of language models for a second opinion, and blocks a send when the text carries a hard-ban pattern. This chapter says what the system does, what it cannot do, and where to read next. Numbers in this edition come from a facts file written at tools commit cc4c915 on 2026-10-03. A number recorded at an earlier commit names that commit where it appears.
+The voice system is a set of local command-line tools and two Claude Code hooks that check prose for the patterns of generic AI writing: before a send, right after a prose file is written, and when Claude's reply ends with a draft in it. It scores text with fixed rules, can ask a panel of language models for a second opinion, and blocks a send when the text carries a hard-ban pattern. This chapter says what the system does, what it cannot do, and where to read next. Numbers in this edition come from a facts file written at tools commit c558a2f on 2026-10-03. A number recorded at an earlier commit names that commit where it appears.
 
 ## What the System Does
 
@@ -36,7 +36,7 @@ Everything runs on the user's machine. The engine is plain Node ES modules with 
 
 ## How Well It Does on Human Writing
 
-The standing gate runs the deterministic layer over public human writing from before 2022 and fails if the reject count rises above the stored budget. The run measured at cc4c915 on 2026-10-03 rejected 0 of 18,335 pooled public documents: the 18F blog, Python PEPs, RFCs and the 20 Newsgroups set. Anyone can reproduce this with `bash calibration/fetch-public-corpora.sh && node calibration/human-fp-budget.mjs`. Per-set counts, the judge panel's numbers and their limits are in Calibration and Evidence.
+The standing gate runs the deterministic layer over public human writing from before 2022 and fails if the reject count rises above the stored budget. The run measured at c558a2f on 2026-10-03 rejected 0 of 18,335 pooled public documents: the 18F blog, Python PEPs, RFCs and the 20 Newsgroups set. Anyone can reproduce this with `bash calibration/fetch-public-corpora.sh && node calibration/human-fp-budget.mjs`. Per-set counts, the judge panel's numbers and their limits are in Calibration and Evidence.
 
 ## The Overlay in This Edition
 

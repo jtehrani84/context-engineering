@@ -1,0 +1,24 @@
+{
+  "schema": "model-roster.v1",
+  "note": "Callers ask for a ROLE, never a model id. model-roster.mjs resolves each role to an id that `opencode models` lists now, so a provider moving to a new version is followed instead of breaking every call. family = a regular expression over the listed ids (the part after provider/); capture 1 = the version, capture 2 (optional) = a suffix. prefer = ordering rules applied in order: version-desc puts the highest version first, plain-first puts an id with no suffix before one with a suffix in suffixOrder (a dated id counts as -date). No provider is set: a role resolves from the one provider that lists its family; when two do, set the provider (MODEL_ROSTER_PROVIDER, or sources.provider here). Edit the families if your providers name models differently. This file is yours: setup.sh keeps an edited copy. The cache (last-known-good ids, used only when opencode can't be run) and the change log are in ~/.cache/model-roster/.",
+  "sources": {
+    "provider": null,
+    "policyFiles": [],
+    "opencodeBins": ["opencode"],
+    "opencodeTimeoutMs": 15000
+  },
+  "suffixOrder": ["-preview", "-latest", "-date"],
+  "roles": {
+    "gpt":          { "vendor": "openai",    "tier": "premium",  "dispatch": "opencode", "family": "^gpt-(\\d+(?:\\.\\d+)?)(-preview|-latest|-\\d{4}-\\d{2}-\\d{2})?$",              "prefer": ["version-desc", "plain-first"] },
+    "gpt-mini":     { "vendor": "openai",    "tier": "standard", "dispatch": "opencode", "family": "^gpt-(\\d+(?:\\.\\d+)?)-mini(-preview|-latest|-\\d{4}-\\d{2}-\\d{2})?$",         "prefer": ["version-desc", "plain-first"] },
+    "grok":         { "vendor": "xai",       "tier": "standard", "dispatch": "opencode", "family": "^grok-(\\d+(?:\\.\\d+)?)(-preview|-latest|-\\d{4})?$",                          "prefer": ["version-desc", "plain-first"] },
+    "gemini-pro":   { "vendor": "google",    "tier": "premium",  "dispatch": "opencode", "family": "^gemini-(\\d+(?:\\.\\d+)?)-pro(-preview(?:-[0-9-]+)?|-latest)?$",               "prefer": ["version-desc", "plain-first"] },
+    "gemini-flash": { "vendor": "google",    "tier": "standard", "dispatch": "opencode", "family": "^gemini-(\\d+(?:\\.\\d+)?)-flash(-preview(?:-[0-9-]+)?|-latest)?$",             "prefer": ["version-desc", "plain-first"] },
+    "opus":         { "vendor": "anthropic", "tier": "premium",  "dispatch": "opencode", "family": "^claude-opus-(\\d+(?:[.-]\\d{1,2})?)(-\\d{8}|-latest)?$",                     "prefer": ["version-desc", "plain-first"] },
+    "sonnet":       { "vendor": "anthropic", "tier": "standard", "dispatch": "opencode", "family": "^claude-sonnet-(\\d+(?:[.-]\\d{1,2})?)(-\\d{8}|-latest)?$",                   "prefer": ["version-desc", "plain-first"] },
+    "haiku":        { "vendor": "anthropic", "tier": "standard", "dispatch": "opencode", "family": "^claude-haiku-(\\d+(?:[.-]\\d{1,2})?)(-\\d{8}|-latest)?$",                    "prefer": ["version-desc", "plain-first"] }
+  },
+  "legacy": {
+    "@gpt": "gpt", "@grok": "grok", "gemini": "gemini-pro", "@gemini": "gemini-pro", "claude": "sonnet", "@claude": "sonnet"
+  }
+}

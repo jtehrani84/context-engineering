@@ -1,48 +1,48 @@
 {
   "edition": "public",
-  "toolsCommit": "cc4c915",
+  "toolsCommit": "c558a2f",
   "factsDate": "2026-10-03",
-  "factsGeneratedAt": "2026-10-03T08:07:14.335Z",
+  "factsGeneratedAt": "2026-10-03T13:45:33.685Z",
   "files": [
     {
       "name": "00-overview.md",
-      "sha256": "f95ff9071fdeaee344b75f66e01ad5f2ca08ac0fd5ffbc8a4ba2f004a3e75ff8"
+      "sha256": "e3c063c2f29969a2778ab720a1535a76cba699fb8372cc262c908792d0bfe35c"
     },
     {
       "name": "01-getting-started.md",
-      "sha256": "91d49b545dead31e8fda09df3465397f9e379e144647107524a5385d2afbf7ac"
+      "sha256": "6d0b3b3bac5d8a6fce9c8aa3226dcf0ed6a6b66ea3bbed696af7dc28248244a3"
     },
     {
       "name": "02-architecture.md",
-      "sha256": "debc0e04b78a16daad1e1270b9d01e78f040c39798fdbd29e732e03de756b74b"
+      "sha256": "09304645660d04415b46ec2d4f81168c01dc718b3f0962375df0b0b103193fd7"
     },
     {
       "name": "03-threat-model.md",
-      "sha256": "8d6b7340f43f50889a7e127dcaf94a5301107f3a6c1936807bbd7bd62fd45654"
+      "sha256": "35b084b21019e92bcee570f8a16c8e7bd01ac4eb15e345246dc4ae41a5fe7016"
     },
     {
       "name": "04-runbooks.md",
-      "sha256": "1df0750d933f9d445fe2cccf2f32e2d542362d5ba1963785d5224e88d3cbd070"
+      "sha256": "6160d3fa5a70247f745b44a4c211f026c02a6e17c0a682b044e70502a335a023"
     },
     {
       "name": "05-reference.md",
-      "sha256": "0f4ad73fb4f893e0bc754291811efdae4af170765562b3977e0b1c9a4d9f058d"
+      "sha256": "83d2030929d9654f871fab7a1c1e1ae7fdcaf29acb0b355c94599c3795ce24ff"
     },
     {
       "name": "06-calibration-and-evidence.md",
-      "sha256": "da6288c8a1cda8b1c5b40800453cdb0f061caca8a2846ea59efedd702c1cac98"
+      "sha256": "de7f936df3a68ed515a2b7986d4b9392659ac7641f4960ac21acdf3ae69f424d"
     },
     {
       "name": "07-decision-log.md",
-      "sha256": "5a7728dd1f3318c17cd2808b3e515867baac3116dadaa65afe31c1e7577e6d6f"
+      "sha256": "dcd7843cd6ad414276457d506a8f1011f1b2b3421fcfd2f57c9da4e93a1ea246"
     },
     {
       "name": "09-review-packet.md",
-      "sha256": "90968f35ef84e0dfed9912871bf3555701b9d0e8a56ac7445d3a7525da463cce"
+      "sha256": "89c2b9312edceccd367ffff829c9dbea7d609a02d2de1c58e197b484c13f82df"
     },
     {
       "name": "10-maintaining-the-docs.md",
-      "sha256": "dddc57db5977c95328f760f2829491df4a133f9e8496133dd23a13b95b2a211c"
+      "sha256": "70255e36ee7f3d03b8b3f9e3769c7934b07f1b84149b38b2f9e2d3e91e657e64"
     }
   ]
 }

@@ -33,7 +33,7 @@
 </nav>
 <main id="main" class="content">
 <h1 id="threat-model">Threat Model</h1>
-<p>This chapter lists the ways the voice system can be evaded, tricked or made to fail open, and the ways it could leak data. Each threat has the control that addresses it, the test that proves the control, and the limit that remains. It describes the code at tools commit cc4c915 (2026-10-03). The dated findings behind each control are in the Decision Log (D6 to D9); the commands are in the Reference chapter.</p>
+<p>This chapter lists the ways the voice system can be evaded, tricked or made to fail open, and the ways it could leak data. Each threat has the control that addresses it, the test that proves the control, and the limit that remains. It describes the code at tools commit c558a2f (2026-10-03). The dated findings behind each control are in the Decision Log (D6 to D9); the commands are in the Reference chapter.</p>
 <h2 id="scope">Scope</h2>
 <p>What the system protects:</p>
 <ul>
@@ -159,7 +159,7 @@
 </ul>
 <p><strong>Limits.</strong> <code>aiscore.mjs</code> does not verify the hash when it loads the detector; only the doctor does, so a changed file is caught when the doctor runs, not on every scan. <code>AVOID_AI_DETECTOR</code> points the scorer at any file. The detector is not sandboxed. A user who pulls upstream into the clone runs whatever upstream ships until the doctor runs.</p>
 <h2 id="open-gaps">Open Gaps</h2>
-<p>These are known and not yet closed at cc4c915:</p>
+<p>These are known and not yet closed at c558a2f:</p>
 <ol>
 <li><strong>Sends outside Claude Code tool calls are not checked</strong> (see Sends Outside Claude Code Tool Calls).</li>
 <li><strong>The detector hash is checked by the doctor only.</strong> Checking it at load in <code>aiscore.mjs</code> would make a changed detector an ERROR on every gate run and a deny on every send.</li>
@@ -186,7 +186,7 @@
 <li><strong>The draft gate only sees marked drafts.</strong> A draft in plain prose, with no <code>draft</code> fence and no <code>Written for:</code> line, isn't checked, and a quoted incoming message placed first under <code>Written for:</code> is scored instead of the reply after it. The <code>draft</code> fence avoids the second case.</li>
 </ol>
 <nav class="pager" aria-label="Previous and next chapter"><span><a href="02-architecture.html">Previous: Architecture</a></span><span><a href="04-runbooks.html">Next: Runbooks</a></span></nav>
-<p class="built">Built from tools commit cc4c915 with facts from 2026-10-03.</p>
+<p class="built">Built from tools commit c558a2f with facts from 2026-10-03.</p>
 </main>
 </div>
 <script src="search-index.js"></script>

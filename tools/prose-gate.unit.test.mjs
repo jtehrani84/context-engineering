@@ -13,6 +13,14 @@ import { stripHidden } from './text-normalize.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const GATE = join(HERE, 'prose-gate.mjs');
+// Judge roles resolve through model-roster.mjs, which caches what it resolves; keep that cache in a scratch folder
+// (every spawn below inherits it) and ignore any roster settings in the caller's environment.
+for (const k of Object.keys(process.env)) if (k.startsWith('MODEL_ROSTER_')) delete process.env[k];
+const ROSTER_CACHE = mkdtempSync(join(tmpdir(), 'prose-gate-roster-cache-'));
+process.env.MODEL_ROSTER_CACHE_DIR = ROSTER_CACHE;
+// a made-up `opencode models` listing, so every judge role resolves in the fake-judge tests below
+const MODELS = 'xai/grok-7\nopenai/gpt-9\ngoogle/gemini-9-pro\nanthropic/claude-sonnet-9-2\n';
+const fakeJudge = (path, answer, models = MODELS) => writeFileSync(path, `#!/bin/sh\nif [ "$1" = models ]; then printf '${models}'; exit 0; fi\necho '${answer}'\n`, { mode: 0o755 });
 let fail = 0, n = 0;
 const check = (ok, msg) => { n++; if (!ok) { fail++; console.log(`✗ ${msg}`); } };
 
@@ -160,8 +168,8 @@ for (const t of HUMAN) { const r = detectInjection(t); check(r.count === 0, `INJ
 {
   const tmp = mkdtempSync(join(tmpdir(), 'prose-gate-failclosed-'));
   const FAKE_NO = join(tmp, 'fake-opencode.sh');
-  writeFileSync(FAKE_NO, '#!/bin/sh\necho \'{"clockable":"NO","ai_ness":5,"loudest_tell":"fake judge","spans":[]}\'\n', { mode: 0o755 });
-  for (const f of ['prose-gate.mjs', 'opencode-llm.mjs', 'voice-overlay.mjs', 'text-normalize.mjs']) copyFileSync(join(HERE, f), join(tmp, f));
+  fakeJudge(FAKE_NO, '{"clockable":"NO","ai_ness":5,"loudest_tell":"fake judge","spans":[]}');
+  for (const f of ['prose-gate.mjs', 'opencode-llm.mjs', 'model-roster.mjs', 'model-roster.json', 'voice-overlay.mjs', 'text-normalize.mjs']) copyFileSync(join(HERE, f), join(tmp, f));
   const BROKEN = {
     'crashes': "console.error('boom'); process.exit(1);",
     'prints non-JSON': "console.log('not json at all');",
@@ -200,12 +208,33 @@ for (const t of HUMAN) { const r = detectInjection(t); check(r.count === 0, `INJ
   check(a.clockable === 'NO' && a.ai_ness === 7 && b.clockable === 'YES' && b.ai_ness === 91 && c.clockable === 'YES' && c.ai_ness === 100, 'well-formed replies still parse (string number, fenced JSON, boolean clockable, ai_ness clamped to 100)');
   const tmp = mkdtempSync(join(tmpdir(), 'prose-gate-judgejson-'));
   const FAKE_EMPTY = join(tmp, 'fake-opencode.sh');
-  writeFileSync(FAKE_EMPTY, "#!/bin/sh\necho '{}'\n", { mode: 0o755 });
+  fakeJudge(FAKE_EMPTY, '{}');
   const p = spawnSync('node', [GATE, '-', '--json', '--drafter', 'opus'], { input: 'We moved the review to Thursday at ten, after the quarter-end numbers are in.', encoding: 'utf8', env: { ...process.env, OPENCODE_BIN: FAKE_EMPTY }, timeout: 120000 });
   let j = null; try { j = JSON.parse(p.stdout); } catch {}
   check(p.status === 3 && j?.verdict === 'INCONCLUSIVE' && (j?.judgeDetail || []).length > 0 && j.judgeDetail.every((d) => d.error), `jurors that answer {} → INCONCLUSIVE (exit 3), every juror an error, never ADMIT (got exit ${p.status}, ${j?.verdict})`);
   rmSync(tmp, { recursive: true, force: true });
 }
+
+// ── judges name roles: resolved at call time through model-roster.mjs from what `opencode models` lists; a role
+// nothing lists is a failed juror with the roster's message (never a silent pin or another vendor), the spare juror
+// takes its place, and each judge's resolved id and calibration status are reported in JSON and in text.
+{
+  const tmp = mkdtempSync(join(tmpdir(), 'prose-gate-roles-'));
+  const FAKE = join(tmp, 'fake-opencode.sh');
+  fakeJudge(FAKE, '{"clockable":"NO","ai_ness":5,"loudest_tell":"fake judge","spans":[]}', 'openai/gpt-9\\ngoogle/gemini-9-pro\\n');
+  const env = { ...process.env, OPENCODE_BIN: FAKE, MODEL_ROSTER_CACHE_DIR: join(tmp, 'cache') };
+  const input = 'We moved the review to Thursday at ten, after the quarter-end numbers are in.';
+  const p = spawnSync('node', [GATE, '-', '--json', '--drafter', 'opus'], { input, encoding: 'utf8', env, timeout: 120000 });
+  let j = null; try { j = JSON.parse(p.stdout); } catch {}
+  const grok = (j?.judgeDetail || []).find((d) => d.provider === 'grok');
+  check(grok?.error && /role 'grok' did not resolve/.test(grok.error) && /No fallback/.test(grok.error), `a judge role nothing lists is a failed juror with the roster's error (got ${JSON.stringify(grok)})`);
+  check(j?.judgeIds?.gpt?.qualified === 'openai/gpt-9' && j.judgeIds.gpt.calibrated === false && j.judgeIds.gpt.calibratedOn === JUDGES.gpt.calibratedOn, `JSON reports each judge's resolved id and that it is uncalibrated here (got ${JSON.stringify(j?.judgeIds?.gpt)})`);
+  check(j?.verdict === 'ADMIT' && j.judges.join('+') === 'grok+gpt+gemini', `the spare juror replaces the unresolvable one, so the panel stays at two (got ${j?.verdict} ${j?.judges})`);
+  const t = spawnSync('node', [GATE, '-', '--drafter', 'opus'], { input, encoding: 'utf8', env, timeout: 120000 });
+  check(/gpt: openai\/gpt-9, no calibration recorded/.test(t.stdout), `text output names the uncalibrated judge model (got ${t.stdout.split('\n').filter((l) => l.includes('!')).join(' | ')})`);
+  rmSync(tmp, { recursive: true, force: true });
+}
+rmSync(ROSTER_CACHE, { recursive: true, force: true });
 
 console.log(fail ? `\nFAIL: ${fail}/${n} cases failed` : `PASS: ${n}/${n} cases (${INJECT.length} injection-fire, ${HUMAN.length} injection-silent, judge prompt, combine, CLI, fail-closed, judge replies)`);
 process.exit(fail ? 1 : 0);

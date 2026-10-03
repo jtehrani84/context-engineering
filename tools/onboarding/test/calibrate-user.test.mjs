@@ -155,7 +155,9 @@ describe('calibrate-user', { concurrency: 3 }, () => {
     const inst = makeInstall();
     try {
       const log = join(inst.root, 'judge-calls.log');
-      const bin = stubCommand(join(inst.root, 'judge-bin', 'opencode'), log, '{"clockable":"NO","ai_ness":12,"loudest_tell":"none","spans":[]}');
+      // The stub is the judge backend: it lists the models it serves (the gate resolves judge roles from that list)
+      // and answers every judge call with the same verdict.
+      const bin = stubCommand(join(inst.root, 'judge-bin', 'opencode'), log, '{"clockable":"NO","ai_ness":12,"loudest_tell":"none","spans":[]}', 'gw/grok-5\ngw/gpt-7\n');
       const judges = (aiDraftsToJudges) => ({ judges: { mode: 'consensus', drafterLab: 'anthropic', allowed: [{ name: 'grok', lab: 'xai', command: bin }, { name: 'gpt', lab: 'openai', command: bin }], aiDraftsToJudges } });
       inst.writeConfig(judges(true));
       writeSamples(join(inst.voice, 'samples'), SAMPLES);

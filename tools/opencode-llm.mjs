@@ -2,34 +2,62 @@
 // opencode-llm.mjs: send one prompt to a model through the opencode CLI and return its reply. prose-gate.mjs uses it
 // as the judge backend, one call per juror.
 //
-// It runs `opencode run <prompt> -m <model> --pure`. --pure turns off opencode's plugins and MCP tools: the judge
-// needs no tools, and a session's tool list can make a provider reject the call. The CLI is OPENCODE_BIN, else
-// `opencode` on PATH. Model ids use opencode's provider/model form.
+// Callers name a ROLE, not a model id: gpt, gpt-mini, grok, gemini-pro, gemini-flash, opus, sonnet or haiku (the
+// list and each role's id pattern are in model-roster.json). model-roster.mjs resolves the role to an id that
+// `opencode models` lists now, so when a provider moves to a new version the calls follow it instead of breaking on
+// a pinned id. An old provider/model id (openai/gpt-5) is read as its role, with a note on stderr. A role nothing
+// lists throws, naming the role and what is listed; there is no fallback to another model or vendor.
+//
+// It runs `opencode run --pure -m <provider/id> <prompt>`, built by the roster's runSpec. --pure turns off opencode's
+// plugins and MCP tools: the judge needs no tools, and a session's tool list can make a provider reject the call.
+// runSpec also declares the resolved id on its provider in OPENCODE_CONFIG_CONTENT, for an id that only a plugin
+// defines (--pure skips plugins); no config file is touched. The CLI is OPENCODE_BIN, else `opencode` on PATH, and
+// the role list comes from the same binary unless MODEL_ROSTER_OPENCODE_BIN names another.
 //
 // DATA NOTE: the prompt goes to that model's provider. Send only text you are allowed to send there.
-// Usage:  import { llm } from './opencode-llm.mjs';  await llm(prompt, { model: 'anthropic/claude-sonnet-4-5', max })
-//         node opencode-llm.mjs "prompt" --model anthropic/claude-sonnet-4-5
+// Usage:  import { llm } from './opencode-llm.mjs';  await llm(prompt, { role: 'sonnet', timeout })
+//         node opencode-llm.mjs "prompt" --role sonnet
 
 import { execFile } from 'node:child_process';
+import { resolve as resolveRole, runSpec } from './model-roster.mjs';
 
-const OPENCODE = process.env.OPENCODE_BIN || 'opencode';
+const OPENCODE = () => process.env.OPENCODE_BIN || 'opencode';
+export const DEFAULT_ROLE = 'sonnet';
 const stripAnsi = (s) => s.replace(/\x1b\[[0-9;]*m/g, '').replace(/\x1b\][^\x07]*\x07/g, '');
+
+// role (or an old model name or id) → the roster's resolution: { role, id, qualified, source, changed, ... }
+export async function target(opts = {}) {
+  const name = opts.role || opts.model || DEFAULT_ROLE;
+  const ro = process.env.MODEL_ROSTER_OPENCODE_BIN === undefined ? { runOpencode: () => listModels(OPENCODE()) } : {};
+  const r = await resolveRole(name, ro);
+  if (r.deprecatedName && !warned.has(r.deprecatedName)) { warned.add(r.deprecatedName); console.error(`opencode-llm: '${r.deprecatedName}' is an old model name; ask for role '${r.role}' (resolved to ${r.qualified})`); }
+  return r;
+}
+const warned = new Set();
+function listModels(bin) {
+  return new Promise((resolve, reject) => {
+    const child = execFile(bin, ['models'], { encoding: 'utf8', timeout: 15000, killSignal: 'SIGKILL', maxBuffer: 4 * 1024 * 1024 }, (err, stdout) => (err ? reject(err) : resolve(stdout)));
+    child.stdin?.end();
+  });
+}
 
 // Async on purpose (2026-09-30): the old execFileSync blocked the event loop, so prose-gate's
 // Promise.all ran its judges one after another. A slow juror plus one retry each could take ~600s,
 // past the 400s wrappers that call the gate, which then printed nothing at all. execFile lets the
 // judges overlap; the timeout kills the child so a stuck call can't hang the gate.
 export async function llm(prompt, opts = {}) {
-  const model = opts.model || 'anthropic/claude-sonnet-4-5';
-  const args = ['run', prompt, '-m', model, '--pure'];
+  const t = opts.resolved || await target(opts);
+  if (!t?.qualified) throw new Error(`no provider/id for role '${t?.role}'`);
+  const spec = runSpec(t.qualified, prompt);
+  const timeout = opts.timeout || 150000;
   const out = await new Promise((resolve, reject) => {
     // execFileSync closed the child's stdin for us; async execFile leaves it open and opencode run
     // waits on it forever, so close it explicitly (child.stdin.end() below).
-    const child = execFile(OPENCODE, args, {
-      encoding: 'utf8', timeout: opts.timeout || 150000, killSignal: 'SIGKILL', maxBuffer: 16 * 1024 * 1024,
-      env: process.env,
+    const child = execFile(OPENCODE(), spec.args, {
+      encoding: 'utf8', timeout, killSignal: 'SIGKILL', maxBuffer: 16 * 1024 * 1024,
+      env: { ...process.env, ...spec.env },
     }, (err, stdout) => {
-      if (err) return reject(err.killed ? new Error(`${model} timed out after ${opts.timeout || 150000}ms`) : err);
+      if (err) return reject(err.killed ? new Error(`${t.qualified} timed out after ${timeout}ms`) : err);
       resolve(stdout);
     });
     child.stdin?.end();
@@ -40,6 +68,6 @@ export async function llm(prompt, opts = {}) {
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   const argv = process.argv.slice(2); const flags = {}; const rest = [];
-  for (let i = 0; i < argv.length; i++) { if (argv[i] === '--model') flags.model = argv[++i]; else if (argv[i] === '--max') flags.max = +argv[++i]; else rest.push(argv[i]); }
-  llm(rest.join(' ') || 'Reply with exactly the two letters: OK', flags).then((x) => console.log(x)).catch((e) => { console.error(String(e)); process.exit(1); });
+  for (let i = 0; i < argv.length; i++) { if (argv[i] === '--role') flags.role = argv[++i]; else if (argv[i] === '--model') flags.model = argv[++i]; else if (argv[i] === '--max') flags.max = +argv[++i]; else rest.push(argv[i]); }
+  llm(rest.join(' ') || 'Reply with exactly the two letters: OK', flags).then((x) => console.log(x)).catch((e) => { console.error(String(e?.message || e)); process.exit(1); });
 }

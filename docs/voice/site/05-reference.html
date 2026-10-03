@@ -33,7 +33,7 @@
 </nav>
 <main id="main" class="content">
 <h1 id="reference">Reference</h1>
-<p>This chapter is generated from the code. Counts come from the facts file, measured at tools commit cc4c915.</p>
+<p>This chapter is generated from the code. Counts come from the facts file, measured at tools commit c558a2f.</p>
 <h2 id="check-catalog">Check Catalog</h2>
 <h3 id="text-normalization">Text Normalization</h3>
 <p>Every scan reads canonical text from <code>text-normalize.mjs</code>, so a tell cannot be hidden by typing it with invisible or look-alike characters. Its exports:</p>
@@ -298,7 +298,7 @@ exit: 0 no check failed; 1 at least one check failed; 2 the doctor couldn't run 
 <thead><tr><th>Variable</th><th>Read By</th><th>Default</th><th>Purpose</th></tr></thead>
 <tbody>
 <tr><td><code>AVOID_AI_DETECTOR</code></td><td><code>aiscore.mjs</code></td><td><code>./avoid-ai-writing/detector/patterns.js</code></td><td>Path to the detector <code>patterns.js</code>.</td></tr>
-<tr><td><code>CLAUDE_CONFIG_DIR</code></td><td><code>voice-tell-gate.py</code></td><td><code>~/.claude</code></td><td>Claude Code's config folder when it isn't <code>~/.claude</code>. The send hook reads the company-names file from <code>$CLAUDE_CONFIG_DIR/voice/company-names.txt</code> then.</td></tr>
+<tr><td><code>CLAUDE_CONFIG_DIR</code></td><td><code>calibration/human-fp-budget.mjs</code>, <code>voice-tell-gate.py</code></td><td><code>~/.claude</code></td><td>Claude Code's config folder when it isn't <code>~/.claude</code>. The send hook reads the company-names file from <code>$CLAUDE_CONFIG_DIR/voice/company-names.txt</code> then.</td></tr>
 <tr><td><code>PROSE_GATE_AISCORE_TIMEOUT_MS</code></td><td><code>prose-gate.mjs</code></td><td><code>120000</code></td><td>Milliseconds before the gate kills aiscore and returns ERROR.</td></tr>
 <tr><td><code>VOICE_AISCORE</code></td><td><code>voice-tell-gate.py</code></td><td><code>~/.claude/tools/aiscore.mjs</code></td><td>Path to the aiscore.mjs the hook runs.</td></tr>
 <tr><td><code>VOICE_COMPANY_NAMES</code></td><td><code>voice-tell-gate.py</code></td><td><code>~/.claude/voice/company-names.txt</code></td><td>The per-user company-names file the send hook reads for the &quot;As &lt;Name&gt;&quot; opener: one name per line of up to four words, <code>#</code> comments, <code>!</code> for a name that is never a company (a <code>!</code> line also takes a built-in name off the list). A missing file means the built-in list only; a longer line is skipped with a note. Without this variable the file is <code>$CLAUDE_CONFIG_DIR/voice/company-names.txt</code> when <code>CLAUDE_CONFIG_DIR</code> is set.</td></tr>
@@ -368,14 +368,14 @@ exit: 0 no check failed; 1 at least one check failed; 2 the doctor couldn't run 
 <thead><tr><th>Suite</th><th>Command</th><th>Passed</th></tr></thead>
 <tbody>
 <tr><td><code>aiscore.test.mjs</code></td><td><code>node aiscore.test.mjs</code></td><td>20 of 20</td></tr>
-<tr><td><code>prose-gate.unit.test.mjs</code></td><td><code>node prose-gate.unit.test.mjs</code></td><td>119 of 119</td></tr>
+<tr><td><code>prose-gate.unit.test.mjs</code></td><td><code>node prose-gate.unit.test.mjs</code></td><td>123 of 123</td></tr>
 <tr><td><code>hook-tests/voice-tell-gate.test.py</code></td><td><code>python3 hook-tests/voice-tell-gate.test.py</code></td><td>552 of 552</td></tr>
 <tr><td><code>hook-tests/voice-draft-gate.test.py</code></td><td><code>python3 hook-tests/voice-draft-gate.test.py</code></td><td>126 of 126</td></tr>
 <tr><td><code>onboarding/test/</code></td><td><code>node --test onboarding/test/*.test.mjs</code></td><td>85 of 85</td></tr>
 </tbody></table></div>
-<p>The human false-positive budget (<code>calibration/human-fp-budget.mjs</code>) needs the public corpora on disk: measured at cc4c915 on 2026-10-03.</p>
+<p>The human false-positive budget (<code>calibration/human-fp-budget.mjs</code>) needs the public corpora on disk: measured at c558a2f on 2026-10-03.</p>
 <nav class="pager" aria-label="Previous and next chapter"><span><a href="04-runbooks.html">Previous: Runbooks</a></span><span><a href="06-calibration-and-evidence.html">Next: Calibration and Evidence</a></span></nav>
-<p class="built">Built from tools commit cc4c915 with facts from 2026-10-03.</p>
+<p class="built">Built from tools commit c558a2f with facts from 2026-10-03.</p>
 </main>
 </div>
 <script src="search-index.js"></script>

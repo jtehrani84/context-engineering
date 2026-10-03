@@ -1,4 +1,4 @@
-<!-- built from docs/src/01-getting-started.md for the public edition at tools commit cc4c915 -->
+<!-- built from docs/src/01-getting-started.md for the public edition at tools commit c558a2f -->
 # Getting Started With /voice-setup
 
 This chapter takes one person from a fresh install to `voice-doctor` GREEN. It follows the `/voice-setup` skill (`skills/voice-setup.md` in the starter kit, which `./setup.sh` installs as `~/.claude/commands/voice-setup.md`) step by step, and every command below is one the onboarding tools in `onboarding/` accept as of 2026-10-02. You can type `/voice-setup` in Claude Code and let the skill run the steps, or run them yourself in a terminal. The result is the same.
@@ -101,7 +101,7 @@ The schema is `$T/onboarding/voice-config.schema.json`, and each property has a 
 
 1. **Which model drafts most of your text?** Set `judges.drafterLab` to its lab (`anthropic`, `google`, `openai`, `xai`) or `unknown`.
 2. **Can you call models from other labs?** If not, set `judges.mode` to `none` and empty `judges.allowed`. The system then runs det-only, which is a complete setup. If you can, list them in `judges.allowed` with their lab, and set `command` to the judge backend CLI's path when `OPENCODE_BIN` isn't set. A judge never comes from the drafter's lab, because a model under-rates the tells in its own lab's writing; the config check refuses a judge that does. `consensus` needs two labs; `single` runs one judge, and that judge alone decides the judge layer. The example config sets `consensus` with three judges; the schema default is `none`.
-   The judge entries in `prose-gate.mjs` (`JUDGES`) name example model ids in opencode's provider/model form. Before you turn judges on, set each entry's `model` to an id your `opencode` install can reach; with ids it can't reach, every juror errors and the verdict is INCONCLUSIVE.
+   The judge entries in `prose-gate.mjs` (`JUDGES`) name roles, not model ids. `model-roster.mjs` resolves each role to an id your `opencode` install serves, using the pattern for that role in `model-roster.json`. Before you turn judges on, run `node "$T/model-roster.mjs" --all --check`, and edit the patterns in `model-roster.json` if a role doesn't resolve; a juror whose role doesn't resolve errors, and with too few answers the verdict is INCONCLUSIVE.
 3. **Which tools send your words somewhere they can't be taken back?** `sendTools` lists them: chat messages, email, shared documents and slides, comments, pull requests and issues by default. A name without the `mcp__` prefix matches that tool under any MCP server. Add your own send tools; a tool you add must also be in the hook's `SEND_SUFFIXES` list in `$H`, and the doctor's `hook-wiring` check fails until it is. Remove none unless you mean to.
 4. **Standard or strict?** With `strictness.level` set to `standard`, a held-out sample fails when the gate rejects it or the send hook blocks it. `strict` also counts a nudge.
 

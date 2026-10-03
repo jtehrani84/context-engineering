@@ -33,7 +33,7 @@
 </nav>
 <main id="main" class="content">
 <h1 id="architecture">Architecture</h1>
-<p>This chapter describes the layers of the voice system, how text moves through them on a file write, a send and a gate run, what may leave the machine, and what the system depends on. It describes the code at tools commit cc4c915. Flags, exit codes and environment variables are listed in full in the Reference chapter, which is generated from the code.</p>
+<p>This chapter describes the layers of the voice system, how text moves through them on a file write, a send and a gate run, what may leave the machine, and what the system depends on. It describes the code at tools commit c558a2f. Flags, exit codes and environment variables are listed in full in the Reference chapter, which is generated from the code.</p>
 <h2 id="components">Components</h2>
 <div class="table-wrap"><table>
 <thead><tr><th>File</th><th>Role</th></tr></thead>
@@ -175,7 +175,7 @@
 <p>The detector is a separate clone beside the tools (<code>avoid-ai-writing/</code>), loaded with <code>require</code> from <code>AVOID_AI_DETECTOR</code> or the default path. Its <code>patterns.js</code> has no imports. Whether the clone is at the pinned commit when these facts were written: yes. <code>aiscore.mjs</code> does not check the pin when it loads the detector; the doctor does, and the Threat Model chapter covers what that leaves open.</p>
 <p>Every calibration number in these docs was measured on the pinned detector. Moving the pin means re-running <code>calibration/gate-eval.mjs</code> and <code>calibration/human-fp-budget.mjs</code> on the new commit first; the Runbooks chapter has the steps.</p>
 <nav class="pager" aria-label="Previous and next chapter"><span><a href="01-getting-started.html">Previous: Getting Started With /voice-setup</a></span><span><a href="03-threat-model.html">Next: Threat Model</a></span></nav>
-<p class="built">Built from tools commit cc4c915 with facts from 2026-10-03.</p>
+<p class="built">Built from tools commit c558a2f with facts from 2026-10-03.</p>
 </main>
 </div>
 <script src="search-index.js"></script>

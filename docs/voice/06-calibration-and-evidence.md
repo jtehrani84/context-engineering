@@ -1,7 +1,7 @@
-<!-- built from docs/src/06-calibration-and-evidence.md for the public edition at tools commit cc4c915 -->
+<!-- built from docs/src/06-calibration-and-evidence.md for the public edition at tools commit c558a2f -->
 # Calibration and Evidence
 
-This chapter describes how the voice system is measured and lists the numbers behind its current settings. Counts come from the facts file, measured at tools commit cc4c915 on 2026-10-03. Numbers that come from a one-time study cite the evidence file and date instead.
+This chapter describes how the voice system is measured and lists the numbers behind its current settings. Counts come from the facts file, measured at tools commit c558a2f on 2026-10-03. Numbers that come from a one-time study cite the evidence file and date instead.
 
 The system can fail in two ways. It can reject text a person wrote (a false positive), or it can admit text a model wrote (a miss). The settings put the first one near zero and accept a partial catch rate on the second, because a rejected human message costs the writer trust in the tool, while a missed AI draft still goes to the judge panel. The deterministic layer is tuned against human text first; the judges carry most of the recall.
 
@@ -31,7 +31,7 @@ The corpora are pinned to fixed versions by `calibration/fetch-public-corpora.sh
 | 20 Newsgroups, by-date split | qwone.com, 1992 to 1993 Usenet | research use | 17,320 | 0 |
 | Pooled public | | | 18,335 | 0 |
 
-The fetch downloads 429 18F files; the cleaning step keeps the 421 that hold post text. Status of this run: measured at cc4c915 on 2026-10-03.
+The fetch downloads 429 18F files; the cleaning step keeps the 421 that hold post text. Status of this run: measured at c558a2f on 2026-10-03.
 
 The script fails (exit 1) when:
 
@@ -124,7 +124,7 @@ The network is switched off in `calibrate-user.mjs` and in every Node process it
 | Suite | Command | Result |
 |---|---|---|
 | Scorer | `node aiscore.test.mjs` | 20 of 20 |
-| Gate unit (no judge call) | `node prose-gate.unit.test.mjs` | 119 of 119 |
+| Gate unit (no judge call) | `node prose-gate.unit.test.mjs` | 123 of 123 |
 | Send hook | `python3 hook-tests/voice-tell-gate.test.py` | 552 of 552 |
 | Onboarding tools | `node --test onboarding/test/*.test.mjs` | 85 of 85 |
 | Docs tools | `node --test docs/tools/test/*.test.mjs` | 70 of 70 |
